@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import type { LogisticsRisk, OrderStatusCount, SupplierPurchase } from "@/lib/logistica/types";
 import { cn } from "@/lib/utils";
 
@@ -33,10 +33,10 @@ function OrdersDonutChart({ ordersByStatus, total }: { ordersByStatus: OrderStat
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-bold text-slate-900">{total}</span>
-          <span className="text-[10px] text-slate-500">Total</span>
+          <span className="app-panel-meta">Total</span>
         </div>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+      <ul className="app-panel-list min-w-0 flex-1">
         {ordersByStatus.map((item) => (
           <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
             <span className="flex items-center gap-1.5 truncate">
@@ -77,14 +77,14 @@ export function LogisticaRightPanel({
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Órdenes por estado</h3>
+          <h3 className="app-panel-title">Órdenes por estado</h3>
           <div className="mt-4">
             <OrdersDonutChart ordersByStatus={ordersByStatus} total={totalRecords} />
           </div>
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Compras por proveedor</h3>
+          <h3 className="app-panel-title">Compras por proveedor</h3>
           <ul className="mt-3 space-y-3">
             {purchasesBySupplier.map((supplier) => (
               <li key={supplier.name}>
@@ -107,7 +107,7 @@ export function LogisticaRightPanel({
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Riesgos logísticos</h3>
+            <h3 className="app-panel-title">Riesgos logísticos</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

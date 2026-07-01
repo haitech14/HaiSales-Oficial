@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Braces,
   Calendar,
@@ -408,7 +408,7 @@ export function NuevaCampanaWhatsAppModal({ open, onOpenChange }: NuevaCampanaWh
                     {form.mensajePreview}
                   </p>
                   <div className="mt-1 flex items-center justify-end gap-1">
-                    <span className="text-[10px] text-slate-400">11:30</span>
+                    <span className="text-xs text-slate-400">11:30</span>
                     <CheckCheck className="h-3.5 w-3.5 text-sky-500" />
                   </div>
                 </div>

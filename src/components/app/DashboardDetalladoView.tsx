@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Calendar, ChevronDown, Filter, MoreHorizontal, Search } from "lucide-react";
 import { CrmKpiCard } from "@/components/app/CrmShared";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -103,7 +103,7 @@ export function DashboardDetalladoView({ activeTab, onTabChange }: DashboardDeta
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1040px] text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="app-table-head-row">
                 <th className="px-4 py-2.5">Fecha</th>
                 <th className="px-4 py-2.5">Área</th>
                 <th className="px-4 py-2.5">Documento</th>
@@ -119,7 +119,7 @@ export function DashboardDetalladoView({ activeTab, onTabChange }: DashboardDeta
                 <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-800">{item.date}</p>
-                    <p className="text-[10px] text-slate-400">{item.time}</p>
+                    <p className="text-xs text-slate-400">{item.time}</p>
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-700">{item.area}</td>
                   <td className="px-4 py-3">
@@ -134,7 +134,7 @@ export function DashboardDetalladoView({ activeTab, onTabChange }: DashboardDeta
                   <td className="px-4 py-3">
                     <span
                       className={cn(
-                        "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                        "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
                         getDashboardStatusStyles(item.status),
                       )}
                     >

@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import {
   almacenAlerts,
   movimientosPorTipo,
@@ -27,7 +27,7 @@ export function AlmacenesRightPanel({ className, onRefresh, isRefreshing }: Alma
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Movimientos por tipo</h3>
+          <h3 className="app-panel-title">Movimientos por tipo</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -48,10 +48,10 @@ export function AlmacenesRightPanel({ className, onRefresh, isRefreshing }: Alma
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xl font-bold text-slate-900">{totalMovimientos}</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {movimientosPorTipo.map((item) => (
                 <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="flex items-center gap-1.5 truncate">
@@ -66,7 +66,7 @@ export function AlmacenesRightPanel({ className, onRefresh, isRefreshing }: Alma
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Stock por almacén</h3>
+          <h3 className="app-panel-title">Stock por almacén</h3>
           <ul className="mt-3 space-y-3">
             {stockPorAlmacen.map((item) => (
               <li key={item.label}>
@@ -88,7 +88,7 @@ export function AlmacenesRightPanel({ className, onRefresh, isRefreshing }: Alma
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Alertas de almacén</h3>
+          <h3 className="app-panel-title">Alertas de almacén</h3>
           <ul className="mt-3 space-y-2.5">
             {almacenAlerts.map((alert) => (
               <li key={alert.label}>

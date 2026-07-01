@@ -1,4 +1,4 @@
-import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+﻿import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   Briefcase,
   Building2,
@@ -416,7 +416,7 @@ export function NuevoTrabajadorModal({
                   }
                 />
                 {dniValidado && (
-                  <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
                     <Check className="h-3 w-3" />
                     DNI disponible en el sistema
                   </p>
@@ -623,11 +623,11 @@ export function NuevoTrabajadorModal({
               <div className="mt-5 grid grid-cols-1 gap-4 rounded-xl bg-blue-50/70 px-4 py-4 sm:grid-cols-3">
                 {summaryItems.map((item) => (
                   <div key={item.label}>
-                    <p className="text-[11px] font-medium text-slate-500">{item.label}</p>
+                    <p className="text-xs font-medium text-slate-500">{item.label}</p>
                     <p className="mt-0.5 text-lg font-bold text-slate-900">
                       {formatTrabajadorCurrency(payroll[item.key])}
                     </p>
-                    <p className="text-[10px] text-slate-400">{item.subtext}</p>
+                    <p className="text-xs text-slate-400">{item.subtext}</p>
                   </div>
                 ))}
               </div>

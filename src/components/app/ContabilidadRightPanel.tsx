@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ContabilidadRightPanel({ className }: { className?: string }) {
@@ -6,7 +6,7 @@ export function ContabilidadRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Distribución contable</h3>
+          <h3 className="app-panel-title">Distribución contable</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -19,10 +19,10 @@ export function ContabilidadRightPanel({ className }: { className?: string }) {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xl font-bold text-slate-900">18</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {[
                 ["Activos", "6", "33%", "bg-blue-500"],
                 ["Pasivos", "4", "22%", "bg-violet-500"],
@@ -45,7 +45,7 @@ export function ContabilidadRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Flujo de caja</h3>
+          <h3 className="app-panel-title">Flujo de caja</h3>
           <ul className="mt-3 space-y-3">
             {[
               ["Cuentas por cobrar", "S/ 86,400", "100%"],
@@ -68,7 +68,7 @@ export function ContabilidadRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Alertas financieras</h3>
+            <h3 className="app-panel-title">Alertas financieras</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

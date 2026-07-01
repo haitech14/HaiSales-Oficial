@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChart3,
   BookOpen,
   ChevronDown,
@@ -152,7 +152,7 @@ function PipelineMockup() {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
-            <h4 className="text-sm font-bold text-slate-900">Pipeline de ventas</h4>
+            <h4 className="app-panel-title">Pipeline de ventas</h4>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -296,7 +296,7 @@ export function LandingWorkflowShowcase() {
                   <item.icon className={`h-5 w-5 ${item.iconColor}`} strokeWidth={2} />
                 </span>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
+                  <h3 className="app-panel-title">{item.title}</h3>
                   <p className="mt-1 text-sm text-slate-500">{item.description}</p>
                 </div>
               </article>

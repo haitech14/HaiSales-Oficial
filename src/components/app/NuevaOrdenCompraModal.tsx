@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+﻿import { useMemo, useState, type ReactNode } from "react";
 import {
   Briefcase,
   Calendar,
@@ -431,19 +431,19 @@ export function NuevaOrdenCompraModal({
 
         <div className="mx-6 mb-4 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 px-4 py-4 sm:grid-cols-4">
           <div>
-            <p className="text-[11px] text-slate-500">Subtotal</p>
+            <p className="text-xs text-slate-500">Subtotal</p>
             <p className="text-sm font-semibold text-slate-800">{formatOrdenCurrency(totals.subtotal)}</p>
           </div>
           <div>
-            <p className="text-[11px] text-slate-500">IGV (18%)</p>
+            <p className="text-xs text-slate-500">IGV (18%)</p>
             <p className="text-sm font-semibold text-slate-800">{formatOrdenCurrency(totals.igv)}</p>
           </div>
           <div>
-            <p className="text-[11px] text-slate-500">Total estimado</p>
-            <p className="text-sm font-bold text-slate-900">{formatOrdenCurrency(totals.total)}</p>
+            <p className="text-xs text-slate-500">Total estimado</p>
+            <p className="app-panel-title">{formatOrdenCurrency(totals.total)}</p>
           </div>
           <div>
-            <p className="text-[11px] text-slate-500">Estado</p>
+            <p className="text-xs text-slate-500">Estado</p>
             <div className="mt-0.5">
               <StatusBadge label={form.estadoAprobacion} tone="yellow" />
             </div>

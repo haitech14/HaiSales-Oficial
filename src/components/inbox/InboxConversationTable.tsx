@@ -1,4 +1,4 @@
-import { format, parseISO } from "date-fns";
+﻿import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { CheckCheck } from "lucide-react";
 import {
@@ -91,7 +91,7 @@ export function InboxConversationTable({ conversations }: { conversations: Inbox
                 <TableCell>
                   <span
                     className={cn(
-                      "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
                       inboxStageMeta[conversation.stage].badgeClass,
                     )}
                   >

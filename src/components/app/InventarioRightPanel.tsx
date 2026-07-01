@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import type { InventarioSnapshot } from "@/lib/inventario/types";
 import {
   inventoryAlerts as fallbackAlerts,
@@ -30,7 +30,7 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Stock por categoría</h3>
+          <h3 className="app-panel-title">Stock por categoría</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -51,10 +51,10 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xl font-bold text-slate-900">{totalInChart}</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {stockByCategory.map((item) => (
                 <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="flex items-center gap-1.5 truncate">
@@ -69,7 +69,7 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Productos con mayor rotación</h3>
+          <h3 className="app-panel-title">Productos con mayor rotación</h3>
           <ul className="mt-3 space-y-3">
             {topRotationProducts.map((product) => (
               <li key={product.name}>
@@ -90,7 +90,7 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Alertas de inventario</h3>
+            <h3 className="app-panel-title">Alertas de inventario</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

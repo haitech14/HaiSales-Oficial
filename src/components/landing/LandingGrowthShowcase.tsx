@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChart3,
   Bell,
   Calendar,
@@ -167,7 +167,7 @@ function CrmDashboardPreview() {
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
             <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 sm:flex">
               <Search className="h-3 w-3 text-slate-400" />
-              <span className="text-[10px] text-slate-400">Buscar...</span>
+              <span className="text-xs text-slate-400">Buscar...</span>
             </div>
             <div className="flex items-center gap-2.5">
               <Bell className="h-3.5 w-3.5 text-slate-400" />
@@ -179,7 +179,7 @@ function CrmDashboardPreview() {
           <div className="space-y-3 p-3 sm:p-4">
             {/* Greeting */}
             <div>
-              <h4 className="text-sm font-bold text-slate-900">
+              <h4 className="app-panel-title">
                 Bienvenido, Carlos <span aria-hidden="true">👋</span>
               </h4>
               <p className="mt-0.5 text-[10px] text-slate-500">
@@ -195,7 +195,7 @@ function CrmDashboardPreview() {
                   className="rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm"
                 >
                   <p className="text-[9px] text-slate-500">{kpi.label}</p>
-                  <p className="mt-0.5 text-sm font-bold text-slate-900">{kpi.value}</p>
+                  <p className="mt-0.5 app-panel-title">{kpi.value}</p>
                   <p className="mt-0.5 text-[9px] font-medium text-emerald-600">{kpi.change}</p>
                 </div>
               ))}
@@ -305,7 +305,7 @@ export function LandingGrowthShowcase() {
                       <mod.icon className="h-5 w-5 text-blue-600" strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-900">{mod.title}</p>
+                      <p className="app-panel-title">{mod.title}</p>
                       <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">{mod.description}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500" />

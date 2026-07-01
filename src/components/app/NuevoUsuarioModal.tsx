@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   ChevronDown,
   Clock,
@@ -208,7 +208,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 placeholder="Ej. jperez"
                 className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
-              <p className="mt-1 text-[11px] text-slate-400">
+              <p className="mt-1 text-xs text-slate-400">
                 Sin espacios. Solo letras, números, punto y guion bajo.
               </p>
             </div>
@@ -279,7 +279,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 <Grid3x3 className="h-4 w-4 text-blue-600" />
               </span>
               <div>
-                <p className="text-[10px] text-slate-400">Módulos asignados</p>
+                <p className="text-xs text-slate-400">Módulos asignados</p>
                 <p className="text-xs font-semibold text-blue-600">
                   {resumen.modulosCount} módulos
                 </p>
@@ -290,7 +290,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 <Lock className="h-4 w-4 text-orange-600" />
               </span>
               <div>
-                <p className="text-[10px] text-slate-400">Nivel de acceso</p>
+                <p className="text-xs text-slate-400">Nivel de acceso</p>
                 <p className="text-xs font-semibold text-orange-600">{resumen.nivelAcceso}</p>
               </div>
             </div>
@@ -299,7 +299,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 <Shield className="h-4 w-4 text-emerald-600" />
               </span>
               <div>
-                <p className="text-[10px] text-slate-400">Seguridad</p>
+                <p className="text-xs text-slate-400">Seguridad</p>
                 <p className="text-xs font-semibold text-emerald-600">{resumen.seguridad}</p>
               </div>
             </div>
@@ -308,7 +308,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 <Clock className="h-4 w-4 text-amber-600" />
               </span>
               <div>
-                <p className="text-[10px] text-slate-400">Estado</p>
+                <p className="text-xs text-slate-400">Estado</p>
                 <p className="text-xs font-semibold text-amber-600">{resumen.estado}</p>
               </div>
             </div>

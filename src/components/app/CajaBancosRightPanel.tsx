@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import {
   cajaBancosAlerts,
   cajaBancosBankBalances,
@@ -12,7 +12,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Flujo por cuenta</h3>
+          <h3 className="app-panel-title">Flujo por cuenta</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -24,10 +24,10 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center">
                 <span className="text-sm font-bold leading-tight text-slate-900">S/ 202,170</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {cajaBancosFlowByAccount.map((item) => (
                 <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="flex items-center gap-1.5 truncate">
@@ -43,7 +43,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Saldos bancarios</h3>
+            <h3 className="app-panel-title">Saldos bancarios</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas las cuentas
             </button>
@@ -54,7 +54,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-700">{account.name}</p>
-                    <p className="truncate text-[10px] text-slate-400">{account.number}</p>
+                    <p className="truncate text-xs text-slate-400">{account.number}</p>
                   </div>
                   <span className="shrink-0 font-semibold text-slate-900">
                     {formatCajaAmount(account.balance)}
@@ -70,7 +70,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Alertas de tesorería</h3>
+            <h3 className="app-panel-title">Alertas de tesorería</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import {
   formatLaborCost,
   laborAlerts,
@@ -38,10 +38,10 @@ function StaffDonutChart() {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-bold text-slate-900">{total}</span>
-          <span className="text-[10px] text-slate-500">Total</span>
+          <span className="app-panel-meta">Total</span>
         </div>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+      <ul className="app-panel-list min-w-0 flex-1">
         {staffByArea.map((area) => (
           <li key={area.label} className="flex items-center justify-between gap-2 text-slate-600">
             <span className="flex items-center gap-1.5 truncate">
@@ -67,14 +67,14 @@ export function PlanillasRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Personal por área</h3>
+          <h3 className="app-panel-title">Personal por área</h3>
           <div className="mt-4">
             <StaffDonutChart />
           </div>
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Costo laboral por área</h3>
+          <h3 className="app-panel-title">Costo laboral por área</h3>
           <ul className="mt-3 space-y-3">
             {laborCostByArea.map((item) => (
               <li key={item.label}>
@@ -98,7 +98,7 @@ export function PlanillasRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Alertas laborales</h3>
+            <h3 className="app-panel-title">Alertas laborales</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

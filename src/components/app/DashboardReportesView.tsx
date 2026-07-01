@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -52,7 +52,7 @@ export function DashboardReportesView() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Ingresos mensuales</h3>
+              <h3 className="app-panel-title">Ingresos mensuales</h3>
               <p className="text-xs text-slate-500">Evolución de ventas — 2026</p>
             </div>
             <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
@@ -84,7 +84,7 @@ export function DashboardReportesView() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Top clientes</h3>
+              <h3 className="app-panel-title">Top clientes</h3>
               <p className="text-xs text-slate-500">Participación en ventas del periodo</p>
             </div>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
@@ -168,7 +168,7 @@ export function DashboardReportesView() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="app-table-head-row">
                 <th className="px-4 py-2.5">Reporte</th>
                 <th className="px-4 py-2.5">Descripción</th>
                 <th className="px-4 py-2.5">Última ejecución</th>
@@ -207,7 +207,7 @@ export function DashboardReportesView() {
                     <td className="px-4 py-3">
                       <span
                         className={cn(
-                          "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                          "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
                           getReportFormatStyles(report.format),
                         )}
                       >

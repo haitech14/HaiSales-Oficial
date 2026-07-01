@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Building2,
   Calendar,
@@ -148,7 +148,7 @@ export function NuevoAsientoContableModal({ open, onOpenChange }: NuevoAsientoCo
                   placeholder="Ingrese la descripción del asiento..."
                   className="min-h-[88px] resize-none rounded-lg border-slate-200 pb-6 text-sm placeholder:text-slate-400 focus-visible:ring-blue-600/20"
                 />
-                <span className="absolute bottom-2 right-3 text-[11px] text-slate-400">
+                <span className="absolute bottom-2 right-3 text-xs text-slate-400">
                   {description.length}/200
                 </span>
               </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronDown,
@@ -28,7 +28,7 @@ function PipelineKanbanCard({ card }: { card: PipelineCard }) {
           {card.statusBadge && (
             <span
               className={cn(
-                "mb-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                "mb-1.5 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
                 card.statusBadge === "Ganada"
                   ? "bg-emerald-100 text-emerald-700"
                   : "bg-slate-100 text-slate-600",
@@ -38,7 +38,7 @@ function PipelineKanbanCard({ card }: { card: PipelineCard }) {
             </span>
           )}
           <p className="text-xs font-semibold leading-snug text-slate-900">{card.title}</p>
-          <p className="mt-1 text-[11px] text-slate-500">{card.company}</p>
+          <p className="mt-1 text-xs text-slate-500">{card.company}</p>
         </div>
         <button
           type="button"
@@ -52,10 +52,10 @@ function PipelineKanbanCard({ card }: { card: PipelineCard }) {
       <p className="mt-2 text-sm font-bold text-blue-600">{formatPipelineCurrency(card.value)}</p>
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="truncate text-[11px] text-slate-500">{card.owner}</span>
+        <span className="truncate text-xs text-slate-500">{card.owner}</span>
         <span
           className={cn(
-            "shrink-0 text-[11px] font-medium",
+            "shrink-0 text-xs font-medium",
             card.dueDateUrgent ? "text-red-500" : "text-slate-400",
           )}
         >
@@ -196,14 +196,14 @@ export default function PipelinePage() {
                             <h3 className={cn("text-sm font-bold", column.headerColor)}>{column.title}</h3>
                             <span
                               className={cn(
-                                "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                "rounded-full px-2 py-0.5 text-xs font-semibold",
                                 column.badgeBg,
                               )}
                             >
                               {column.count}
                             </span>
                           </div>
-                          <p className="mt-1 text-[11px] font-medium text-slate-500">
+                          <p className="mt-1 text-xs font-medium text-slate-500">
                             {formatPipelineCurrency(column.totalValue)}
                           </p>
                         </div>
@@ -229,7 +229,7 @@ export default function PipelinePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      <tr className="app-table-head-row">
                         <th className="px-4 py-2.5">Oportunidad</th>
                         <th className="px-4 py-2.5">Empresa</th>
                         <th className="px-4 py-2.5">Etapa</th>
@@ -304,7 +304,7 @@ export default function PipelinePage() {
             <button
               type="button"
               onClick={() => setPanelHidden(true)}
-              className="absolute left-0 top-4 z-10 flex -translate-x-full items-center gap-1.5 rounded-l-lg border border-r-0 border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+              className="absolute left-0 top-4 z-10 flex -translate-x-full items-center gap-1.5 rounded-l-lg border border-r-0 border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50"
               aria-label="Ocultar Panel lateral derecho"
             >
               <PanelRightClose className="h-3.5 w-3.5" />

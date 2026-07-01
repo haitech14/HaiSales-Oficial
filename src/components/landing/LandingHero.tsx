@@ -1,4 +1,4 @@
-import { ArrowRight, Check, LayoutGrid } from "lucide-react";
+﻿import { ArrowRight, Check, LayoutGrid } from "lucide-react";
 
 const trustPoints = [
   "Sin tarjeta de crédito",
@@ -56,7 +56,7 @@ export function LandingHero() {
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-600/50">
                   <Check className="h-2.5 w-2.5 text-blue-200" strokeWidth={3} />
                 </span>
-                <span className="whitespace-nowrap text-[11px] text-slate-500 sm:text-xs">{point}</span>
+                <span className="whitespace-nowrap text-xs text-slate-500 sm:text-xs">{point}</span>
               </div>
             ))}
           </div>

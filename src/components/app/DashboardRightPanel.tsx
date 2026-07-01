@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DashboardRightPanel({ className }: { className?: string }) {
@@ -6,7 +6,7 @@ export function DashboardRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Distribución financiera</h3>
+          <h3 className="app-panel-title">Distribución financiera</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -17,11 +17,11 @@ export function DashboardRightPanel({ className }: { className?: string }) {
                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="10 90" strokeDashoffset="-90" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center">
-                <span className="text-[11px] font-bold leading-tight text-slate-900">S/ 811,000</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="text-sm font-bold leading-tight text-slate-900">S/ 811,000</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {[
                 ["Ingresos", "48%", "S/ 389,280", "bg-emerald-500"],
                 ["Gastos", "27%", "S/ 218,970", "bg-red-500"],
@@ -44,7 +44,7 @@ export function DashboardRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Ingresos por línea</h3>
+          <h3 className="app-panel-title">Ingresos por línea</h3>
           <ul className="mt-3 space-y-3">
             {[
               ["Productos", "S/ 142,800", "58%"],
@@ -67,7 +67,7 @@ export function DashboardRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Alertas críticas</h3>
+            <h3 className="app-panel-title">Alertas críticas</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>

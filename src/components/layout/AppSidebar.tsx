@@ -34,7 +34,7 @@ export function AppSidebar() {
     <aside
       className={cn(
         "flex h-screen shrink-0 flex-col bg-[#0b1220] transition-[width] duration-200",
-        collapsed ? "w-[72px]" : "w-[248px]",
+        collapsed ? "w-[72px]" : "w-[284px]",
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-4">
@@ -42,7 +42,7 @@ export function AppSidebar() {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
             <BarChart3 className="h-5 w-5 text-white" strokeWidth={2.5} />
           </span>
-          {!collapsed && <span className="truncate text-lg font-bold text-white">HaiSales</span>}
+          {!collapsed && <span className="truncate text-base font-bold text-white">HaiSales</span>}
         </Link>
         <button
           type="button"
@@ -61,7 +61,7 @@ export function AppSidebar() {
               HS
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">HAITECH S.A.C.</p>
+              <p className="truncate text-[13px] font-semibold text-white">HAITECH S.A.C.</p>
               <p className="mt-0.5 text-xs text-slate-500">RUC 20600123456</p>
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
@@ -72,11 +72,7 @@ export function AppSidebar() {
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         {appNavSections.map((section) => (
           <div key={section.title}>
-            {!collapsed && (
-              <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                {section.title}
-              </p>
-            )}
+            {!collapsed && <p className="app-sidebar-section">{section.title}</p>}
             <ul className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = isNavItemActive(item.href, location.pathname, searchParams);
@@ -87,21 +83,24 @@ export function AppSidebar() {
                       to={item.href ?? "#"}
                       title={collapsed ? item.label : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition",
+                        "app-sidebar-link",
                         isActive
-                          ? "bg-blue-600 font-medium text-white"
+                          ? "bg-blue-600 font-semibold text-white"
                           : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
                         collapsed && "justify-center px-2",
                       )}
                     >
-                      <item.icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2 : 1.75} />
+                      <item.icon
+                        className={cn("mt-0.5 h-4 w-4 shrink-0", collapsed && "mt-0")}
+                        strokeWidth={isActive ? 2 : 1.75}
+                      />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 truncate">{item.label}</span>
+                          <span className="app-sidebar-label">{item.label}</span>
                           {item.badge !== undefined && (
                             <span
                               className={cn(
-                                "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                                "app-sidebar-badge",
                                 isActive ? "bg-white/20 text-white" : "bg-white/[0.08] text-slate-400",
                               )}
                             >

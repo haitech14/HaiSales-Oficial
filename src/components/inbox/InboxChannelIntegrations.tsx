@@ -1,4 +1,4 @@
-import { inboxChannelMeta, INBOX_CHANNEL_ORDER } from "@/lib/inbox/channels";
+﻿import { inboxChannelMeta, INBOX_CHANNEL_ORDER } from "@/lib/inbox/channels";
 import type { ChannelConnection } from "@/lib/inbox/types";
 import { ChannelIcon } from "@/components/inbox/ChannelIcon";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,7 @@ export function InboxChannelIntegrations({
                   <ChannelIcon channel={channel} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-bold text-slate-900">{meta.label}</h3>
+                      <h3 className="app-panel-title">{meta.label}</h3>
                       <Badge
                         variant="outline"
                         className={cn(
@@ -62,7 +62,7 @@ export function InboxChannelIntegrations({
                     <p className="mt-1 text-xs text-slate-500">Webhook: {meta.webhookPath}</p>
                     <ul className="mt-2 space-y-1">
                       {meta.apiEnvKeys.map((envKey) => (
-                        <li key={envKey} className="font-mono text-[10px] text-slate-400">
+                        <li key={envKey} className="font-mono text-xs text-slate-400">
                           {envKey}
                         </li>
                       ))}

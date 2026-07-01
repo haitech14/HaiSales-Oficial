@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -122,7 +122,7 @@ export default function UsuariosPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="app-table-head-row">
                       <th className="px-4 py-3">Usuario</th>
                       <th className="px-4 py-3">Correo</th>
                       <th className="px-4 py-3">Rol</th>

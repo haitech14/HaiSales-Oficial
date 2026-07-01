@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -82,7 +82,7 @@ export default function CuentasPorCobrarPage() {
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       className={cn(
-                        "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+                        "app-tab",
                         activeTab === tab.id
                           ? "border-blue-600 text-blue-600"
                           : "border-transparent text-slate-500 hover:text-slate-800",
@@ -140,9 +140,9 @@ export default function CuentasPorCobrarPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1200px] text-left text-sm">
+                <table className="app-table-body w-full min-w-[1200px] text-left">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="app-table-head-row">
                       <th className="px-4 py-3">Fecha</th>
                       <th className="px-4 py-3">Documento</th>
                       <th className="px-4 py-3">Cliente</th>

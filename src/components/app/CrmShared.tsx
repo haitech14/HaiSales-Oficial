@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+﻿import type { LucideIcon } from "lucide-react";
 import { Bell, Calendar, ChevronDown, CircleHelp, Filter, PanelRightClose, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,8 +58,8 @@ export function AppPageHeader({
     <header className="border-b border-slate-200 bg-white px-6 py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-500">{subtitle}</p>
+          <h1 className="app-page-title">{title}</h1>
+          <p className="app-page-subtitle">{subtitle}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +206,7 @@ export function CrmKpiCard({
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="app-kpi-label">{label}</p>
         {Icon && iconBg && iconColor && (
           <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", iconBg)}>
             <Icon className={cn("h-4 w-4", iconColor)} strokeWidth={2} />
@@ -215,10 +215,10 @@ export function CrmKpiCard({
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>
-          <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+          <p className="app-kpi-value">{value}</p>
           <p
             className={cn(
-              "mt-1 text-xs font-medium",
+              "app-kpi-change",
               changePositive ? "text-emerald-600" : "text-red-600",
             )}
           >
@@ -245,7 +245,7 @@ export function CrmRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Pipeline por etapa</h3>
+          <h3 className="app-panel-title">Pipeline por etapa</h3>
           <div className="mt-4 flex items-center gap-4">
             <div className="relative h-28 w-28 shrink-0">
               <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
@@ -258,10 +258,10 @@ export function CrmRightPanel({ className }: { className?: string }) {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-xl font-bold text-slate-900">128</span>
-                <span className="text-[10px] text-slate-500">Total</span>
+                <span className="app-panel-meta">Total</span>
               </div>
             </div>
-            <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+            <ul className="app-panel-list min-w-0 flex-1">
               {[
                 ["Prospectos", "36", "28%"],
                 ["Calificación", "24", "19%"],
@@ -282,7 +282,7 @@ export function CrmRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Ventas por vendedor</h3>
+          <h3 className="app-panel-title">Ventas por vendedor</h3>
           <ul className="mt-3 space-y-3">
             {[
               ["Jhelcen Romero", "S/ 186,400", "100%"],
@@ -304,7 +304,7 @@ export function CrmRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Actividades pendientes</h3>
+          <h3 className="app-panel-title">Actividades pendientes</h3>
           <ul className="mt-3 space-y-3">
             {[
               ["Llamadas por realizar", 18, "bg-red-500", "100%"],

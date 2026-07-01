@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+﻿import { RefreshCw } from "lucide-react";
 import {
   actividadReciente,
   alertasSeguridad,
@@ -37,10 +37,10 @@ function RolesDonutChart() {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-bold text-slate-900">{total}</span>
-          <span className="text-[10px] text-slate-500">Total</span>
+          <span className="app-panel-meta">Total</span>
         </div>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+      <ul className="app-panel-list min-w-0 flex-1">
         {usuariosPorRol.map((rol) => (
           <li key={rol.label} className="flex items-center justify-between gap-2 text-slate-600">
             <span className="flex items-center gap-1.5 truncate">
@@ -63,7 +63,7 @@ export function UsuariosRightPanel({ className }: { className?: string }) {
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Usuarios por rol</h3>
+          <h3 className="app-panel-title">Usuarios por rol</h3>
           <div className="mt-4">
             <RolesDonutChart />
           </div>
@@ -71,7 +71,7 @@ export function UsuariosRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Actividad reciente</h3>
+            <h3 className="app-panel-title">Actividad reciente</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>
@@ -81,14 +81,14 @@ export function UsuariosRightPanel({ className }: { className?: string }) {
               <li key={`${item.usuario}-${item.tiempo}`}>
                 <p className="text-xs font-medium text-slate-800">{item.usuario}</p>
                 <p className="text-xs text-slate-500">{item.accion}</p>
-                <p className="mt-0.5 text-[10px] text-slate-400">{item.tiempo}</p>
+                <p className="mt-0.5 text-xs text-slate-400">{item.tiempo}</p>
               </li>
             ))}
           </ul>
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Alertas de seguridad</h3>
+          <h3 className="app-panel-title">Alertas de seguridad</h3>
           <ul className="mt-3 space-y-3">
             {alertasSeguridad.map((alerta) => (
               <li key={alerta.label}>

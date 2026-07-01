@@ -1,4 +1,4 @@
-import { useState, type InputHTMLAttributes, type ReactNode } from "react";
+﻿import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   Boxes,
   FileText,
@@ -272,7 +272,7 @@ export function NuevoProductoModal({
                   </span>
                   <div>
                     <p className="text-xs font-semibold text-slate-800">{feature.title}</p>
-                    <p className="text-[11px] text-slate-500">{feature.subtitle}</p>
+                    <p className="text-xs text-slate-500">{feature.subtitle}</p>
                   </div>
                 </div>
               );

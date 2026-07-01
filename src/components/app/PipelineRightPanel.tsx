@@ -1,4 +1,4 @@
-import { Calendar, Phone, RefreshCw, Send, Video } from "lucide-react";
+﻿import { Calendar, Phone, RefreshCw, Send, Video } from "lucide-react";
 import {
   pipelineConversion,
   pipelineFunnel,
@@ -15,7 +15,7 @@ export function PipelineRightPanel({ className }: { className?: string }) {
         <section className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Ventas ganadas</h3>
+              <h3 className="app-panel-title">Ventas ganadas</h3>
               <p className="mt-2 text-3xl font-bold text-slate-900">34</p>
               <p className="mt-1 text-xs font-medium text-emerald-600">↑ 22.4% vs. mes anterior</p>
             </div>
@@ -34,7 +34,7 @@ export function PipelineRightPanel({ className }: { className?: string }) {
                       {item.count}
                     </div>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-slate-400">{item.value.toLocaleString("es-PE")} S/</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{item.value.toLocaleString("es-PE")} S/</p>
                 </div>
               </div>
             ))}
@@ -42,7 +42,7 @@ export function PipelineRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Conversión por etapa</h3>
+          <h3 className="app-panel-title">Conversión por etapa</h3>
           <ul className="mt-3 space-y-3">
             {pipelineConversion.map((item) => (
               <li key={item.label}>
@@ -60,7 +60,7 @@ export function PipelineRightPanel({ className }: { className?: string }) {
 
         <section className="border-t border-slate-100 pt-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Actividades próximas</h3>
+            <h3 className="app-panel-title">Actividades próximas</h3>
             <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
               Ver todas
             </button>
@@ -81,8 +81,8 @@ export function PipelineRightPanel({ className }: { className?: string }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-800">{activity.type}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{activity.opportunity}</p>
-                    <p className="mt-0.5 text-[10px] text-slate-400">{activity.date}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{activity.opportunity}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">{activity.date}</p>
                   </div>
                 </li>
               );

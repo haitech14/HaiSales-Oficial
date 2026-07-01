@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowLeftRight,
@@ -47,7 +47,7 @@ function OperacionBadge({ tipo }: { tipo: MovimientoTipo }) {
   const Icon = config.icon;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold", config.className)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold", config.className)}>
       <Icon className="h-3 w-3" strokeWidth={2.5} />
       {config.label}
     </span>
@@ -118,7 +118,7 @@ export default function CajaBancosPage() {
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       className={cn(
-                        "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+                        "app-tab",
                         activeTab === tab.id
                           ? "border-blue-600 text-blue-600"
                           : "border-transparent text-slate-500 hover:text-slate-800",
@@ -128,7 +128,7 @@ export default function CajaBancosPage() {
                       {tab.count !== null && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            "app-tab-badge",
                             activeTab === tab.id ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500",
                           )}
                         >
@@ -189,7 +189,7 @@ export default function CajaBancosPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1200px] text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="app-table-head-row">
                       <th className="px-4 py-2.5">Fecha</th>
                       <th className="px-4 py-2.5">Operación</th>
                       <th className="px-4 py-2.5">Cuenta</th>
@@ -208,14 +208,14 @@ export default function CajaBancosPage() {
                       <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
                         <td className="px-4 py-3">
                           <p className="font-medium text-slate-800">{item.date}</p>
-                          <p className="text-[10px] text-slate-400">{item.time}</p>
+                          <p className="text-xs text-slate-400">{item.time}</p>
                         </td>
                         <td className="px-4 py-3">
                           <OperacionBadge tipo={item.tipo} />
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-medium text-slate-800">{item.cuenta}</p>
-                          <p className="text-[10px] text-slate-400">{item.cuentaNumero}</p>
+                          <p className="text-xs text-slate-400">{item.cuentaNumero}</p>
                         </td>
                         <td className="px-4 py-3">
                           <a href="#" className="font-semibold text-blue-600 hover:text-blue-500">
@@ -247,7 +247,7 @@ export default function CajaBancosPage() {
                         <td className="px-4 py-3">
                           <span
                             className={cn(
-                              "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                              "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
                               getMovimientoEstadoStyles(item.estado),
                             )}
                           >

@@ -1,4 +1,4 @@
-import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
+﻿import { useMemo, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   ArrowLeftRight,
   Barcode,
@@ -330,7 +330,7 @@ export function NuevoMovimientoAlmacenModal({
           <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 px-4 py-4 sm:grid-cols-4">
             {summaryFields.map((field) => (
               <div key={field.label}>
-                <p className="text-[11px] font-medium text-slate-500">{field.label}</p>
+                <p className="text-xs font-medium text-slate-500">{field.label}</p>
                 <p className={cn("mt-0.5 text-base font-bold", field.color)}>
                   {field.isCurrency
                     ? formatMovimientoCurrency(summary[field.key])
@@ -339,7 +339,7 @@ export function NuevoMovimientoAlmacenModal({
               </div>
             ))}
             <div>
-              <p className="text-[11px] font-medium text-slate-500">Estado</p>
+              <p className="text-xs font-medium text-slate-500">Estado</p>
               <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
                 <Check className="h-4 w-4" />
                 Kardex actualizado

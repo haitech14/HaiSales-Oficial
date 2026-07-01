@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   Calendar,
   ChevronDown,
@@ -435,15 +435,15 @@ export function NuevaVentaModal({ open, onOpenChange }: NuevaVentaModalProps) {
             </div>
             <div className="flex shrink-0 items-end gap-6 lg:gap-8">
               <div className="text-right">
-                <p className="text-[11px] text-slate-400">Subtotal</p>
+                <p className="text-xs text-slate-400">Subtotal</p>
                 <p className="text-sm font-medium text-slate-700">{formatVentaCurrency(totals.subtotal)}</p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-slate-400">IGV (18%)</p>
+                <p className="text-xs text-slate-400">IGV (18%)</p>
                 <p className="text-sm font-medium text-slate-700">{formatVentaCurrency(totals.igv)}</p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-slate-400">Total</p>
+                <p className="text-xs text-slate-400">Total</p>
                 <p className="text-xl font-bold text-blue-600">{formatVentaCurrency(totals.total)}</p>
               </div>
             </div>

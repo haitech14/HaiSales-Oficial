@@ -53,7 +53,7 @@ export const appNavSections: NavSection[] = [
     title: "Facturación",
     items: [
       { label: "Facturación electrónica", href: "/app/ventas", icon: Receipt },
-      { label: "Cuentas por cobrar", href: "/app/cuentas-cobrar", icon: CreditCard, badge: 45 },
+      { label: "Cuentas por Cobrar", href: "/app/cuentas-cobrar", icon: CreditCard, badge: 45 },
     ],
   },
   {

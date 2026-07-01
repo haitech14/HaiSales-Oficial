@@ -1,4 +1,4 @@
-import type { InboxKpi } from "@/lib/inbox/types";
+﻿import type { InboxKpi } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
 function Sparkline({ points, color }: { points: number[]; color: string }) {
@@ -43,7 +43,7 @@ export function InboxKpiCards({ kpis }: { kpis: InboxKpi[] }) {
               <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{kpi.value}</p>
               <p
                 className={cn(
-                  "mt-1 text-[11px] font-medium",
+                  "mt-1 text-xs font-medium",
                   kpi.changePositive ? "text-emerald-600" : "text-rose-600",
                 )}
               >

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,7 @@ function ReviewCard({ quote, name, role, avatar }: (typeof testimonials)[number]
           loading="lazy"
         />
         <div>
-          <p className="text-sm font-bold text-slate-900">{name}</p>
+          <p className="app-panel-title">{name}</p>
           <p className="text-xs text-slate-500">{role}</p>
         </div>
       </div>

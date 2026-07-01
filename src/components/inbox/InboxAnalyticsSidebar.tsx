@@ -1,4 +1,4 @@
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+﻿import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import type { InboxAdvisorStat, InboxPendingStats, InboxStageStat } from "@/lib/inbox/types";
 
@@ -25,7 +25,7 @@ function StageDonut({ stats }: { stats: InboxStageStat[] }) {
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-2xl font-bold text-slate-900">{total}</span>
-        <span className="text-[11px] text-slate-500">Total</span>
+        <span className="text-xs text-slate-500">Total</span>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ export function InboxAnalyticsSidebar({
   return (
     <aside className="space-y-4">
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900">Leads por etapa</h3>
+        <h3 className="app-panel-title">Leads por etapa</h3>
         <div className="mt-3">
           <StageDonut stats={stageStats} />
         </div>
@@ -95,7 +95,7 @@ export function InboxAnalyticsSidebar({
       </article>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900">Respuesta por asesor</h3>
+        <h3 className="app-panel-title">Respuesta por asesor</h3>
         <ul className="mt-4 space-y-3">
           {advisorStats.map((advisor) => (
             <li key={advisor.name}>
@@ -120,7 +120,7 @@ export function InboxAnalyticsSidebar({
       </article>
 
       <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-900">Mensajes pendientes</h3>
+        <h3 className="app-panel-title">Mensajes pendientes</h3>
         <div className="mt-4 space-y-3">
           <PendingBar
             label="Sin responder"

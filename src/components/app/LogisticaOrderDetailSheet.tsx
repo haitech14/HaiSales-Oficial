@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { Calendar, KeyRound, Package, ShoppingCart, Truck, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ export function LogisticaOrderDetailSheet({
             </div>
 
             <section className="mt-6">
-              <h3 className="text-sm font-bold text-slate-900">Proveedor</h3>
+              <h3 className="app-panel-title">Proveedor</h3>
               <div className="mt-2 rounded-xl border border-slate-200 p-4">
                 <p className="font-semibold text-slate-900">{order.proveedor}</p>
                 <p className="mt-1 text-sm text-slate-500">RUC {order.ruc}</p>
@@ -113,7 +113,7 @@ export function LogisticaOrderDetailSheet({
             </section>
 
             <section className="mt-6">
-              <h3 className="text-sm font-bold text-slate-900">Responsable</h3>
+              <h3 className="app-panel-title">Responsable</h3>
               <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-200 p-4">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className="bg-blue-100 text-xs font-semibold text-blue-700">
@@ -131,11 +131,11 @@ export function LogisticaOrderDetailSheet({
             </section>
 
             <section className="mt-6">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="app-panel-title">
                 Ítems de la orden ({order.items.length})
               </h3>
               <div className="mt-2 overflow-hidden rounded-xl border border-slate-200">
-                <table className="w-full text-left text-sm">
+                <table className="app-table-body w-full text-left">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                       <th className="px-3 py-2">Descripción</th>
@@ -174,7 +174,7 @@ export function LogisticaOrderDetailSheet({
 
             {order.notas && (
               <section className="mt-6">
-                <h3 className="text-sm font-bold text-slate-900">Notas</h3>
+                <h3 className="app-panel-title">Notas</h3>
                 <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
                   {order.notas}
                 </p>
@@ -182,7 +182,7 @@ export function LogisticaOrderDetailSheet({
             )}
 
             <section className="mt-6">
-              <h3 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+              <h3 className="flex items-center gap-1.5 app-panel-title">
                 <Truck className="h-4 w-4 text-slate-400" />
                 Seguimiento logístico
               </h3>

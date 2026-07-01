@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -473,7 +473,7 @@ function PricingSection() {
               <item.icon className="h-5 w-5 text-blue-600" strokeWidth={1.75} />
             </span>
             <div>
-              <p className="text-sm font-bold text-slate-900">{item.title}</p>
+              <p className="app-panel-title">{item.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.description}</p>
             </div>
           </div>

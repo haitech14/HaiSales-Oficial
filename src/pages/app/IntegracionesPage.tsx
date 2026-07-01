@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Plug, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppPageHeader } from "@/components/app/CrmShared";
@@ -49,11 +49,11 @@ export default function IntegracionesPage() {
                 key={kpi.label}
                 className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <p className="text-xs font-medium text-slate-500">{kpi.label}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{kpi.value}</p>
+                <p className="app-kpi-label">{kpi.label}</p>
+                <p className="app-kpi-value mt-2">{kpi.value}</p>
                 <p
                   className={cn(
-                    "mt-1 text-xs font-medium",
+                    "app-kpi-change",
                     kpi.changePositive ? "text-emerald-600" : "text-orange-600",
                   )}
                 >
@@ -70,7 +70,7 @@ export default function IntegracionesPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar integración..."
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             />
           </div>
 
@@ -94,14 +94,14 @@ export default function IntegracionesPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                             {item.categoria}
                           </p>
-                          <h3 className="mt-0.5 text-sm font-bold text-slate-900">{item.nombre}</h3>
+                          <h3 className="mt-0.5 app-panel-title">{item.nombre}</h3>
                         </div>
                         <span
                           className={cn(
-                            "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold",
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
                             getIntegracionEstadoStyles(item.estado),
                           )}
                         >
@@ -110,7 +110,7 @@ export default function IntegracionesPage() {
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.descripcion}</p>
                       {item.ultimaSync && (
-                        <p className="mt-2 text-[11px] text-slate-400">Última sync: {item.ultimaSync}</p>
+                        <p className="mt-2 text-xs text-slate-400">Última sync: {item.ultimaSync}</p>
                       )}
                       <Button
                         type="button"

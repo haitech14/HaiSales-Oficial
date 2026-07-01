@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
@@ -112,7 +112,7 @@ export default function AlmacenesPage() {
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       className={cn(
-                        "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+                        "app-tab",
                         activeTab === tab.id
                           ? "border-blue-600 text-blue-600"
                           : "border-transparent text-slate-500 hover:text-slate-800",
@@ -122,7 +122,7 @@ export default function AlmacenesPage() {
                       {tab.count !== null && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            "app-tab-badge",
                             activeTab === tab.id
                               ? "bg-blue-50 text-blue-600"
                               : "bg-slate-100 text-slate-500",
@@ -182,9 +182,9 @@ export default function AlmacenesPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1200px] text-left text-sm">
+                <table className="app-table-body w-full min-w-[1200px] text-left">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="app-table-head-row">
                       <th className="px-4 py-3">Fecha</th>
                       <th className="px-4 py-3">Movimiento</th>
                       <th className="px-4 py-3">Producto</th>

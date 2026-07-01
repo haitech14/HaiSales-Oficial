@@ -1,4 +1,4 @@
-import {
+﻿import {
   BellRing,
   Download,
   FileBarChart,
@@ -42,11 +42,11 @@ function AgingDonutChart() {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center">
-          <span className="text-[11px] font-bold leading-tight text-slate-900">{totalLabel}</span>
-          <span className="text-[10px] text-slate-500">Total</span>
+          <span className="text-sm font-bold leading-tight text-slate-900">{totalLabel}</span>
+          <span className="app-panel-meta">Total</span>
         </div>
       </div>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+      <ul className="app-panel-list min-w-0 flex-1">
         {agingDistribution.map((segment) => (
           <li key={segment.label} className="flex items-center justify-between gap-2 text-slate-600">
             <span className="flex items-center gap-1.5 truncate">
@@ -96,14 +96,14 @@ export function CuentasPorCobrarRightPanel({ className }: { className?: string }
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="text-sm font-bold text-slate-900">Antigüedad de saldos</h3>
+          <h3 className="app-panel-title">Antigüedad de saldos</h3>
           <div className="mt-4">
             <AgingDonutChart />
           </div>
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Top clientes por saldo</h3>
+          <h3 className="app-panel-title">Top clientes por saldo</h3>
           <ul className="mt-3 space-y-3">
             {topClientesPorSaldo.map((client) => (
               <li key={client.name}>
@@ -128,7 +128,7 @@ export function CuentasPorCobrarRightPanel({ className }: { className?: string }
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-bold text-slate-900">Acciones rápidas</h3>
+          <h3 className="app-panel-title">Acciones rápidas</h3>
           <ul className="mt-3 space-y-2">
             {quickActions.map((action) => {
               const Icon = action.icon;

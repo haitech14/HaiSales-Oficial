@@ -1,4 +1,4 @@
-import {
+﻿import {
   Bar,
   CartesianGrid,
   Cell,
@@ -41,7 +41,7 @@ function DonutCard({
 }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+      <h3 className="app-panel-title">{title}</h3>
       <div className="mt-3 flex items-center gap-4">
         <div className="relative h-32 w-32 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -58,7 +58,7 @@ function DonutCard({
             <span className="text-[10px] text-slate-500">{totalLabel}</span>
           </div>
         </div>
-        <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+        <ul className="app-panel-list min-w-0 flex-1">
           {data.map((item) => (
             <li key={item.name} className="flex items-center justify-between gap-2 text-slate-600">
               <span className="flex items-center gap-1.5 truncate">
@@ -94,7 +94,7 @@ function MiniDonut({
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+      <h3 className="app-panel-title">{title}</h3>
       <div className="mt-3 flex items-center gap-4">
         <div className="h-24 w-24 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -135,7 +135,7 @@ function RankingTable({
 }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+      <h3 className="app-panel-title">{title}</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
@@ -182,7 +182,7 @@ export function DashboardGeneralView() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Resumen financiero</h3>
+              <h3 className="app-panel-title">Resumen financiero</h3>
               <p className="text-xs text-slate-500">Ingresos, gastos y utilidad neta</p>
             </div>
             <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
@@ -218,7 +218,7 @@ export function DashboardGeneralView() {
 
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-bold text-slate-900">Evolución de la utilidad neta</h3>
+            <h3 className="app-panel-title">Evolución de la utilidad neta</h3>
             <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
               Mensual
               <ChevronDown className="h-3.5 w-3.5" />
@@ -242,7 +242,7 @@ export function DashboardGeneralView() {
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900">Indicadores financieros</h3>
+          <h3 className="app-panel-title">Indicadores financieros</h3>
           <ul className="mt-3 space-y-2.5">
             {indicadoresFinancieros.map((item) => (
               <li key={item.label} className="flex items-center justify-between gap-2 text-xs">
@@ -281,7 +281,7 @@ export function DashboardGeneralView() {
 
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-bold text-slate-900">Flujo de caja</h3>
+            <h3 className="app-panel-title">Flujo de caja</h3>
             <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
               Mensual
               <ChevronDown className="h-3.5 w-3.5" />
