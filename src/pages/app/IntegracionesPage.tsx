@@ -1,0 +1,144 @@
+import { useState } from "react";
+import { Plug, Search } from "lucide-react";
+import { toast } from "sonner";
+import { AppPageHeader } from "@/components/app/CrmShared";
+import { ConectarIntegracionModal } from "@/components/app/ConectarIntegracionModal";
+import { Button } from "@/components/ui/button";
+import {
+  getIntegracionEstadoStyles,
+  integraciones,
+  integracionesKpis,
+  type IntegracionItem,
+} from "@/lib/integraciones-mock-data";
+import { cn } from "@/lib/utils";
+
+export default function IntegracionesPage() {
+  const [search, setSearch] = useState("");
+  const [selectedIntegracion, setSelectedIntegracion] = useState<IntegracionItem | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const filtered = integraciones.filter((item) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      item.nombre.toLowerCase().includes(query) ||
+      item.descripcion.toLowerCase().includes(query) ||
+      item.categoria.toLowerCase().includes(query)
+    );
+  });
+
+  const openConnect = (item: IntegracionItem) => {
+    setSelectedIntegracion(item);
+    setModalOpen(true);
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <AppPageHeader
+        title="Integraciones"
+        subtitle="Conecta HaiSales con SUNAT, mensajería, bancos, e-commerce y tu ERP."
+        actionLabel="+ Nueva integración"
+        onActionClick={() => toast.info("Próximamente: catálogo de integraciones")}
+      />
+
+      <div className="flex-1 overflow-auto p-6">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {integracionesKpis.map((kpi) => (
+              <div
+                key={kpi.label}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <p className="text-xs font-medium text-slate-500">{kpi.label}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{kpi.value}</p>
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    kpi.changePositive ? "text-emerald-600" : "text-orange-600",
+                  )}
+                >
+                  {kpi.change}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar integración..."
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {filtered.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                >
+                  <div className="flex items-start gap-4">
+                    <span
+                      className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                        item.iconBg,
+                      )}
+                    >
+                      <Icon className={cn("h-5 w-5", item.iconColor)} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {item.categoria}
+                          </p>
+                          <h3 className="mt-0.5 text-sm font-bold text-slate-900">{item.nombre}</h3>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold",
+                            getIntegracionEstadoStyles(item.estado),
+                          )}
+                        >
+                          {item.estado}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.descripcion}</p>
+                      {item.ultimaSync && (
+                        <p className="mt-2 text-[11px] text-slate-400">Última sync: {item.ultimaSync}</p>
+                      )}
+                      <Button
+                        type="button"
+                        variant={item.estado === "Conectado" ? "outline" : "default"}
+                        size="sm"
+                        className={cn(
+                          "mt-4 h-8 gap-2 text-xs",
+                          item.estado !== "Conectado" && "bg-blue-600 hover:bg-blue-500",
+                        )}
+                        onClick={() => openConnect(item)}
+                      >
+                        <Plug className="h-3.5 w-3.5" />
+                        {item.estado === "Conectado" ? "Reconfigurar" : "Conectar"}
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <ConectarIntegracionModal
+        integracion={selectedIntegracion}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
+    </div>
+  );
+}
