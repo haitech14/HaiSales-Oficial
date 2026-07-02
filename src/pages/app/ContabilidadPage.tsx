@@ -10,6 +10,8 @@ import {
   Star,
 } from "lucide-react";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { ContabilidadRightPanel } from "@/components/app/ContabilidadRightPanel";
 import { NuevoAsientoContableModal } from "@/components/app/NuevoAsientoContableModal";
 import { Button } from "@/components/ui/button";
@@ -33,7 +35,7 @@ export default function ContabilidadPage() {
     isFetching,
     refresh,
   } = useContabilidad();
-  const [panelHidden, setPanelHidden] = useState(false);
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [asientoOpen, setAsientoOpen] = useState(false);
 
   const tabsWithCounts = contabilidadTabs.map((tab) => ({
@@ -49,8 +51,8 @@ export default function ContabilidadPage() {
         title="Contabilidad / Finanzas"
         subtitle="Gestiona asientos contables, libros, balances, resultados y conciliaciones desde un solo módulo."
         showPanelToggle
-        panelHidden={panelHidden}
-        onTogglePanel={() => setPanelHidden((current) => !current)}
+        panelHidden={!isPanelVisible}
+        onTogglePanel={togglePanel}
         actionLabel="Nuevo asiento"
         showActionDropdown
         onActionClick={() => setAsientoOpen(true)}
@@ -66,7 +68,7 @@ export default function ContabilidadPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-6">
+          <div className="space-y-5 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi) => (
                 <CrmKpiCard key={kpi.label} {...kpi} />
@@ -75,7 +77,7 @@ export default function ContabilidadPage() {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {tabsWithCounts.map((tab) => (
                     <button
                       key={tab.id}
@@ -157,7 +159,7 @@ export default function ContabilidadPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1120px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1120px]">
                   <thead>
                     <tr className="app-table-head-row">
                       <th className="px-4 py-3">Fecha</th>
@@ -261,7 +263,13 @@ export default function ContabilidadPage() {
           </div>
         </div>
 
-        {!panelHidden && <ContabilidadRightPanel className="hidden xl:block" />}
+        <AppRightPanelSlot
+          panelHidden={panelHidden}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        >
+          <ContabilidadRightPanel />
+        </AppRightPanelSlot>
       </div>
     </div>
   );

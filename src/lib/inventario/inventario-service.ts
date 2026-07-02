@@ -270,7 +270,7 @@ export async function fetchInventarioSnapshot(userId: string | null): Promise<In
     return buildSnapshot(mockRecords.map(mapMockToProduct), "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("productos")
     .select("*")
     .eq("user_id", userId)

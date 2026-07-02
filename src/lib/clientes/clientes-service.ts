@@ -93,7 +93,7 @@ export async function fetchClientesSnapshot(userId: string | null): Promise<Clie
     return buildSnapshot(mockClients.map(mapMockToClient), "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("clientes")
     .select("*")
     .eq("user_id", userId)
@@ -119,6 +119,69 @@ export async function fetchClientesSnapshot(userId: string | null): Promise<Clie
   }
 
   return buildSnapshot(data.map(mapRowToClient), "supabase");
+}
+
+const SEGMENT_TO_DB: Record<string, string> = {
+  corporativo: "Corporativo",
+  pyme: "PYME",
+  minorista: "Minorista",
+  prospecto: "Prospecto",
+  otros: "Otros",
+};
+
+function parseDistrito(value: string) {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export async function createCliente(
+  userId: string,
+  form: import("@/lib/clientes-form-data").NuevoClienteFormState,
+  esBorrador = false,
+) {
+  const ejecutivo =
+    form.ejecutivo
+      .split("-")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ") || "Sin asignar";
+
+  const { data, error } = await supabase
+    .from("clientes")
+    .insert({
+      user_id: userId,
+      razon_social: form.razonSocial.trim(),
+      ruc: form.rucDni.trim() || null,
+      telefono: form.telefono.trim() || null,
+      email: form.correo.trim() || null,
+      direccion: form.direccionFiscal.trim() || null,
+      contacto_nombre: form.contactoPrincipal.trim() || null,
+      segmento: SEGMENT_TO_DB[form.segmento] ?? "Otros",
+      estado_comercial:
+        form.estadoInicial === "prospecto"
+          ? "prospecto"
+          : form.estadoInicial === "inactivo"
+            ? "inactivo"
+            : "activo",
+      ejecutivo_nombre: ejecutivo,
+      ejecutivo_iniciales: ejecutivo
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join(""),
+      distrito: form.distrito ? parseDistrito(form.distrito) : null,
+      activo: !esBorrador,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapRowToClient(data);
 }
 
 export { clientesTabs, getClientStatusStyles, getSegmentStyles } from "@/lib/clientes-mock-data";

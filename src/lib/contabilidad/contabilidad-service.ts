@@ -135,7 +135,7 @@ export async function fetchContabilidadSnapshot(
     return buildSnapshot(mockRecords, "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("asientos_contables")
     .select("*, asiento_lineas(*)")
     .eq("user_id", userId)

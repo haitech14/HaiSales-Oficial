@@ -4,7 +4,6 @@ import {
   ChevronRight,
   CreditCard,
   HelpCircle,
-  LayoutDashboard,
   Inbox,
   LayoutGrid,
   Package,
@@ -15,6 +14,7 @@ import {
   Target,
   TrendingUp,
   Truck,
+  User,
   Users,
   Wallet,
   Warehouse,
@@ -33,14 +33,13 @@ export type NavSection = {
   items: NavItem[];
 };
 
+export const inboxNavItem: NavItem = {
+  label: "Inbox",
+  href: "/app/inbox",
+  icon: Inbox,
+};
+
 export const appNavSections: NavSection[] = [
-  {
-    title: "Inicio",
-    items: [
-      { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
-      { label: "Inbox", href: "/app/inbox", icon: Inbox },
-    ],
-  },
   {
     title: "Comercial",
     items: [
@@ -76,9 +75,9 @@ export const appNavSections: NavSection[] = [
   {
     title: "Configuración",
     items: [
-      { label: "Usuarios", href: "/app/usuarios", icon: Users },
+      { label: "Usuarios", href: "/app/usuarios", icon: User },
       { label: "Integraciones", href: "/app/integraciones", icon: Plug },
-      { label: "Parámetros", href: "/app/parametros", icon: Settings },
+      { label: "Configuración", href: "/app/parametros", icon: Settings },
     ],
   },
 ];

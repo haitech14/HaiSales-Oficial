@@ -16,8 +16,8 @@ function buildGuiaNumber(serie: string): string {
   return `${serie.replace("F", "T")}-${seq}`;
 }
 
-export function generateGuiaRemisionPdf(data: NuevaVentaFormData): void {
-  const doc = createPdfDocument();
+export async function generateGuiaRemisionPdf(data: NuevaVentaFormData): Promise<void> {
+  const doc = await createPdfDocument();
   const number = buildGuiaNumber(data.serie);
   const subtotal = data.cantidad * data.precioUnitario;
 

@@ -74,7 +74,7 @@ export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDa
     return buildSnapshotWithSource(conversations, "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("inbox_conversations")
     .select("*")
     .eq("user_id", userId)

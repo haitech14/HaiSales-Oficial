@@ -1,40 +1,18 @@
 import { useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { appNavSections } from "@/lib/app-navigation";
+import { Link } from "react-router-dom";
+import { BarChart3, ChevronsLeft, ChevronsRight, Menu } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { AppSidebarContent } from "@/components/layout/AppSidebarContent";
 import { cn } from "@/lib/utils";
 
-function isNavItemActive(href: string | undefined, pathname: string, searchParams: URLSearchParams): boolean {
-  if (!href) return false;
-
-  const [path, query = ""] = href.split("?");
-  if (pathname !== path) return false;
-
-  if (query) {
-    const expected = new URLSearchParams(query);
-    for (const [key, value] of expected.entries()) {
-      if (searchParams.get(key) !== value) return false;
-    }
-    return true;
-  }
-
-  if (pathname === "/app/dashboard") {
-    return !searchParams.get("mode") && (!searchParams.get("tab") || searchParams.get("tab") === "resumen");
-  }
-
-  return true;
-}
-
 export function AppSidebar() {
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside
       className={cn(
-        "flex h-screen shrink-0 flex-col bg-[#0b1220] transition-[width] duration-200",
-        collapsed ? "w-[72px]" : "w-[284px]",
+        "hidden h-screen shrink-0 flex-col bg-[#0b1220] transition-[width] duration-200 md:flex",
+        collapsed ? "w-[72px]" : "w-[300px]",
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-4">
@@ -54,69 +32,43 @@ export function AppSidebar() {
         </button>
       </div>
 
-      {!collapsed && (
-        <div className="mx-3 mb-4 rounded-xl border border-white/[0.08] bg-white/[0.04] p-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-              HS
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-white">HAITECH S.A.C.</p>
-              <p className="mt-0.5 text-xs text-slate-500">RUC 20600123456</p>
-            </div>
-            <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
-          </div>
-        </div>
-      )}
-
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
-        {appNavSections.map((section) => (
-          <div key={section.title}>
-            {!collapsed && <p className="app-sidebar-section">{section.title}</p>}
-            <ul className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = isNavItemActive(item.href, location.pathname, searchParams);
-
-                return (
-                  <li key={item.label}>
-                    <Link
-                      to={item.href ?? "#"}
-                      title={collapsed ? item.label : undefined}
-                      className={cn(
-                        "app-sidebar-link",
-                        isActive
-                          ? "bg-blue-600 font-semibold text-white"
-                          : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
-                        collapsed && "justify-center px-2",
-                      )}
-                    >
-                      <item.icon
-                        className={cn("mt-0.5 h-4 w-4 shrink-0", collapsed && "mt-0")}
-                        strokeWidth={isActive ? 2 : 1.75}
-                      />
-                      {!collapsed && (
-                        <>
-                          <span className="app-sidebar-label">{item.label}</span>
-                          {item.badge !== undefined && (
-                            <span
-                              className={cn(
-                                "app-sidebar-badge",
-                                isActive ? "bg-white/20 text-white" : "bg-white/[0.08] text-slate-400",
-                              )}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+      <AppSidebarContent collapsed={collapsed} showBrand={false} />
     </aside>
+  );
+}
+
+type AppMobileHeaderProps = {
+  onOpenMenu: () => void;
+};
+
+export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
+  return (
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#0b1220] px-4 md:hidden">
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-white"
+        aria-label="Abrir menú"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      <span className="text-sm font-bold text-white">HaiSales</span>
+      <div className="h-10 w-10" aria-hidden="true" />
+    </header>
+  );
+}
+
+type AppMobileNavProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-[min(100vw,300px)] border-none p-0 md:hidden">
+        <AppSidebarContent onNavigate={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   );
 }

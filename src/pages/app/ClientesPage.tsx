@@ -14,6 +14,8 @@ import {
   Users,
 } from "lucide-react";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { ClientesRightPanel } from "@/components/app/ClientesRightPanel";
 import { NuevoClienteModal } from "@/components/app/NuevoClienteModal";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -39,8 +41,10 @@ export default function ClientesPage() {
     isLoading,
     isFetching,
     refresh,
+    createCliente,
+    isCreating,
   } = useClientes();
-  const [panelHidden, setPanelHidden] = useState(false);
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevoClienteOpen, setNuevoClienteOpen] = useState(false);
 
   const tabsWithCounts = clientesTabs.map((tab) => ({
@@ -56,8 +60,8 @@ export default function ClientesPage() {
         title="Clientes / Empresas"
         subtitle="Administra clientes, contactos, RUC, direcciones, historial comercial y estado financiero."
         showPanelToggle
-        panelHidden={panelHidden}
-        onTogglePanel={() => setPanelHidden((current) => !current)}
+        panelHidden={!isPanelVisible}
+        onTogglePanel={togglePanel}
         actionLabel="+ Nuevo cliente"
         showActionDropdown
         onActionClick={() => setNuevoClienteOpen(true)}
@@ -71,7 +75,7 @@ export default function ClientesPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-6">
+          <div className="space-y-5 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi, index) => {
                 const Icon = kpiIcons[index];
@@ -94,7 +98,7 @@ export default function ClientesPage() {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {tabsWithCounts.map((tab) => (
                     <button
                       key={tab.id}
@@ -180,7 +184,7 @@ export default function ClientesPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1060px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1060px]">
                   <thead>
                     <tr className="app-table-head-row">
                       <th className="px-4 py-3">Fecha alta</th>
@@ -300,10 +304,21 @@ export default function ClientesPage() {
           </div>
         </div>
 
-        {!panelHidden && <ClientesRightPanel className="hidden xl:block" />}
+        <AppRightPanelSlot
+          panelHidden={panelHidden}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        >
+          <ClientesRightPanel />
+        </AppRightPanelSlot>
       </div>
 
-      <NuevoClienteModal open={nuevoClienteOpen} onOpenChange={setNuevoClienteOpen} />
+      <NuevoClienteModal
+        open={nuevoClienteOpen}
+        onOpenChange={setNuevoClienteOpen}
+        onSubmit={(form, mode) => createCliente({ form, esBorrador: mode === "draft" })}
+        isSubmitting={isCreating}
+      />
     </div>
   );
 }

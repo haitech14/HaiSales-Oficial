@@ -11,8 +11,10 @@ import {
   Star,
 } from "lucide-react";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { NuevaVentaModal } from "@/components/app/NuevaVentaModal";
 import { VentasRightPanel } from "@/components/app/VentasRightPanel";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useVentas } from "@/hooks/useVentas";
@@ -35,8 +37,10 @@ export default function VentasPage() {
     isLoading,
     isFetching,
     refresh,
+    createVenta,
+    isCreating,
   } = useVentas();
-  const [panelHidden, setPanelHidden] = useState(false);
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
 
   const tabsWithCounts = ventasTabs.map((tab) => ({
@@ -52,14 +56,19 @@ export default function VentasPage() {
         title="Ventas"
         subtitle="Emite, valida y controla comprobantes electrónicos conectados a ventas y contabilidad."
         showPanelToggle
-        panelHidden={panelHidden}
-        onTogglePanel={() => setPanelHidden((current) => !current)}
+        panelHidden={!isPanelVisible}
+        onTogglePanel={togglePanel}
         actionLabel="Nueva venta"
         showActionDropdown
         onActionClick={() => setNuevaVentaOpen(true)}
       />
 
-      <NuevaVentaModal open={nuevaVentaOpen} onOpenChange={setNuevaVentaOpen} />
+      <NuevaVentaModal
+        open={nuevaVentaOpen}
+        onOpenChange={setNuevaVentaOpen}
+        onRegister={createVenta}
+        isSubmitting={isCreating}
+      />
 
       {snapshot?.source === "supabase" && (
         <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-2 text-xs text-emerald-700">
@@ -69,7 +78,7 @@ export default function VentasPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-6">
+          <div className="space-y-5 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi) => (
                 <CrmKpiCard key={kpi.label} {...kpi} />
@@ -78,7 +87,7 @@ export default function VentasPage() {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {tabsWithCounts.map((tab) => (
                     <button
                       key={tab.id}
@@ -156,7 +165,7 @@ export default function VentasPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1080px]">
                   <thead>
                     <tr className="app-table-head-row">
                       <th className="px-4 py-3">Fecha</th>
@@ -279,7 +288,13 @@ export default function VentasPage() {
           </div>
         </div>
 
-        {!panelHidden && <VentasRightPanel className="hidden xl:block" />}
+        <AppRightPanelSlot
+          panelHidden={panelHidden}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        >
+          <VentasRightPanel />
+        </AppRightPanelSlot>
       </div>
     </div>
   );

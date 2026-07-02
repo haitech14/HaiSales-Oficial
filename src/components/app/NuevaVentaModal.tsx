@@ -16,9 +16,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { generateComprobantePdf } from "@/lib/pdf/generate-comprobante-pdf";
-import { generateGuiaRemisionPdf } from "@/lib/pdf/generate-guia-remision-pdf";
-import { generateProformaPdf } from "@/lib/pdf/generate-proforma-pdf";
 import {
   ventaClientes,
   ventaContactos,
@@ -42,6 +39,8 @@ import { toast } from "sonner";
 type NuevaVentaModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRegister?: (form: NuevaVentaFormData) => Promise<void>;
+  isSubmitting?: boolean;
 };
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -122,7 +121,12 @@ function SelectField({
   );
 }
 
-export function NuevaVentaModal({ open, onOpenChange }: NuevaVentaModalProps) {
+export function NuevaVentaModal({
+  open,
+  onOpenChange,
+  onRegister,
+  isSubmitting = false,
+}: NuevaVentaModalProps) {
   const [form, setForm] = useState<NuevaVentaFormData>(defaultNuevaVentaForm);
 
   const totals = useMemo(
@@ -160,23 +164,33 @@ export function NuevaVentaModal({ open, onOpenChange }: NuevaVentaModalProps) {
     setForm(defaultNuevaVentaForm);
   };
 
-  const handleRegistrar = () => {
-    generateComprobantePdf(form);
-    toast.success("Venta registrada y comprobante PDF generado.");
-    handleClose();
+  const handleRegistrar = async () => {
+    try {
+      if (onRegister) {
+        await onRegister(form);
+      }
+      const { generateComprobantePdf } = await import("@/lib/pdf/generate-comprobante-pdf");
+      await generateComprobantePdf(form);
+      toast.success("Venta registrada y comprobante PDF generado.");
+      handleClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo registrar la venta");
+    }
   };
 
   const handleBorrador = () => {
     toast.success("Borrador guardado correctamente.");
   };
 
-  const handleProforma = () => {
-    generateProformaPdf(form);
+  const handleProforma = async () => {
+    const { generateProformaPdf } = await import("@/lib/pdf/generate-proforma-pdf");
+    await generateProformaPdf(form);
     toast.success("Proforma PDF generada.");
   };
 
-  const handleGuiaRemision = () => {
-    generateGuiaRemisionPdf(form);
+  const handleGuiaRemision = async () => {
+    const { generateGuiaRemisionPdf } = await import("@/lib/pdf/generate-guia-remision-pdf");
+    await generateGuiaRemisionPdf(form);
     toast.success("Guía de remisión PDF generada.");
   };
 

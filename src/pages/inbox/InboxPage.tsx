@@ -3,16 +3,17 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  Loader2,
   PanelRightClose,
   PanelRightOpen,
   Plus,
-  RefreshCw,
   Search,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { InboxAnalyticsSidebar } from "@/components/inbox/InboxAnalyticsSidebar";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { InboxChannelIntegrations } from "@/components/inbox/InboxChannelIntegrations";
 import { InboxConversationTable } from "@/components/inbox/InboxConversationTable";
 import { InboxKpiCards } from "@/components/inbox/InboxKpiCards";
@@ -32,6 +33,12 @@ import { INBOX_CHANNEL_ORDER, inboxChannelMeta, inboxTabs } from "@/lib/inbox/ch
 import type { InboxChannel } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
+const InboxAnalyticsSidebar = lazy(() =>
+  import("@/components/inbox/InboxAnalyticsSidebar").then((module) => ({
+    default: module.InboxAnalyticsSidebar,
+  })),
+);
+
 const PAGE_SIZE = 10;
 
 export default function InboxPage() {
@@ -42,14 +49,13 @@ export default function InboxPage() {
     setFilters,
     advisors,
     channelConnections,
-    showSidebar,
-    setShowSidebar,
     isLoading,
     isFetching,
     refresh,
     lastUpdatedAt,
   } = useInbox();
 
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [campanaOpen, setCampanaOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -98,17 +104,17 @@ export default function InboxPage() {
               variant="outline"
               size="sm"
               className="h-9"
-              onClick={() => setShowSidebar((current) => !current)}
+              onClick={togglePanel}
             >
-              {showSidebar ? (
+              {isPanelVisible ? (
                 <>
                   <PanelRightClose className="mr-2 h-4 w-4" />
-                  Ocultar panel
+                  <span className="hidden sm:inline">Ocultar panel</span>
                 </>
               ) : (
                 <>
                   <PanelRightOpen className="mr-2 h-4 w-4" />
-                  Mostrar panel
+                  <span className="hidden sm:inline">Mostrar panel</span>
                 </>
               )}
             </Button>
@@ -152,6 +158,7 @@ export default function InboxPage() {
           <div className="min-w-0 space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
+                <div className="flex gap-2 overflow-x-auto pb-1">
                 {inboxTabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -170,6 +177,7 @@ export default function InboxPage() {
                     )}
                   </button>
                 ))}
+                </div>
                 <div className="ml-auto flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs">
                     Guardar vista
@@ -286,16 +294,28 @@ export default function InboxPage() {
             </div>
           </div>
 
-          {showSidebar && (
-            <InboxAnalyticsSidebar
-              stageStats={snapshot.stageStats}
-              advisorStats={snapshot.advisorStats}
-              pending={snapshot.pending}
-              updatedAt={lastUpdatedAt}
-              onRefresh={() => void refresh()}
-              isRefreshing={isFetching}
-            />
-          )}
+          <AppRightPanelSlot
+            panelHidden={panelHidden}
+            mobileOpen={mobileOpen}
+            onMobileOpenChange={setMobileOpen}
+          >
+            <Suspense
+              fallback={
+                <div className="flex h-full min-h-[240px] items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                </div>
+              }
+            >
+              <InboxAnalyticsSidebar
+                stageStats={snapshot.stageStats}
+                advisorStats={snapshot.advisorStats}
+                pending={snapshot.pending}
+                updatedAt={lastUpdatedAt}
+                onRefresh={() => void refresh()}
+                isRefreshing={isFetching}
+              />
+            </Suspense>
+          </AppRightPanelSlot>
         </div>
       </div>
 

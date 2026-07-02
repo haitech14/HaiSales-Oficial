@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
@@ -14,6 +15,20 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+  },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "data-vendor": ["@tanstack/react-query", "@supabase/supabase-js"],
+          charts: ["recharts"],
+          pdf: ["jspdf"],
+          canvas: ["html2canvas"],
+        },
+      },
+    },
   },
   plugins: [
     react(),
@@ -32,7 +47,10 @@ export default defineConfig({
       },
       workbox: { globPatterns: ["**/*.{js,css,html,ico,png,svg}"] },
     }),
-  ],
+    process.env.ANALYZE === "true"
+      ? visualizer({ filename: "dist/stats.html", gzipSize: true, open: false })
+      : undefined,
+  ].filter(Boolean),
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },

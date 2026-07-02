@@ -1,8 +1,9 @@
-import { jsPDF } from "jspdf";
+import type { jsPDF } from "jspdf";
 import { formatVentaCurrency } from "@/lib/nueva-venta-types";
 
-export function createPdfDocument(): jsPDF {
-  return new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+export async function createPdfDocument(): Promise<jsPDF> {
+  const { jsPDF: JsPDF } = await import("jspdf");
+  return new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 }
 
 export function downloadPdf(doc: jsPDF, filename: string): void {

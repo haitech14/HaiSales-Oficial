@@ -23,8 +23,8 @@ function getComprobanteTitle(tipo: string): string {
   return "FACTURA ELECTRÓNICA";
 }
 
-export function generateComprobantePdf(data: NuevaVentaFormData): void {
-  const doc = createPdfDocument();
+export async function generateComprobantePdf(data: NuevaVentaFormData): Promise<void> {
+  const doc = await createPdfDocument();
   const number = buildComprobanteNumber(data.serie);
   const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
   const title = getComprobanteTitle(data.tipoComprobante);

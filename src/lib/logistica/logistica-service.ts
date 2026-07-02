@@ -250,7 +250,7 @@ export async function fetchLogisticaSnapshot(userId: string | null): Promise<Log
     return buildSnapshot(mockOrders.map(mapMockToOrder), "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("ordenes_compra")
     .select("*")
     .eq("user_id", userId)

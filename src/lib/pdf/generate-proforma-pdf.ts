@@ -18,8 +18,8 @@ function buildProformaNumber(): string {
   return `PRO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${seq}`;
 }
 
-export function generateProformaPdf(data: NuevaVentaFormData): void {
-  const doc = createPdfDocument();
+export async function generateProformaPdf(data: NuevaVentaFormData): Promise<void> {
+  const doc = await createPdfDocument();
   const number = buildProformaNumber();
   const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
 

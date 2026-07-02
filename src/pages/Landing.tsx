@@ -1,38 +1,45 @@
+import { lazy, Suspense } from "react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
-
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingPromoBanner } from "@/components/landing/LandingPromoBanner";
-
 import { LandingValueHero } from "@/components/landing/LandingValueHero";
-
 import { LandingProductShowcase } from "@/components/landing/LandingProductShowcase";
-
 import { LandingGrowthShowcase } from "@/components/landing/LandingGrowthShowcase";
-import { LandingPlatformShowcase } from "@/components/landing/LandingPlatformShowcase";
-
-import { LandingClosingSections } from "@/components/landing/LandingClosingSections";
-
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { Loader2 } from "lucide-react";
 
+const LandingPlatformShowcase = lazy(() =>
+  import("@/components/landing/LandingPlatformShowcase").then((module) => ({
+    default: module.LandingPlatformShowcase,
+  })),
+);
+const LandingClosingSections = lazy(() =>
+  import("@/components/landing/LandingClosingSections").then((module) => ({
+    default: module.LandingClosingSections,
+  })),
+);
 
+function SectionFallback() {
+  return (
+    <div className="flex min-h-[240px] items-center justify-center bg-[#050816]">
+      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+    </div>
+  );
+}
 
 const Landing = () => {
-
   return (
-
     <div className="min-h-screen overflow-x-hidden">
-
       <div className="bg-[#050816]">
-
         <LandingHeader />
-
         <LandingHero />
-
       </div>
 
       <LandingValueHero />
 
-      <LandingPlatformShowcase />
+      <Suspense fallback={<SectionFallback />}>
+        <LandingPlatformShowcase />
+      </Suspense>
 
       <LandingPromoBanner compact />
 
@@ -40,17 +47,13 @@ const Landing = () => {
 
       <LandingGrowthShowcase />
 
-      <LandingClosingSections />
+      <Suspense fallback={<SectionFallback />}>
+        <LandingClosingSections />
+      </Suspense>
 
       <LandingFooter />
-
     </div>
-
   );
-
 };
 
-
-
 export default Landing;
-

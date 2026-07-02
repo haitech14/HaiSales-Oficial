@@ -55,18 +55,19 @@ export function AppPageHeader({
   onActionClick,
 }: AppPageHeaderProps) {
   return (
-    <header className="border-b border-slate-200 bg-white px-6 py-4">
+    <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="app-page-title">{title}</h1>
           <p className="app-page-subtitle">{subtitle}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {showDateRange && (
-            <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
+            <Button variant="outline" size="sm" className="hidden h-9 gap-2 border-slate-200 text-slate-600 sm:inline-flex">
               <Calendar className="h-4 w-4" />
-              01/06/2026 - 30/06/2026
+              <span className="hidden md:inline">01/06/2026 - 30/06/2026</span>
+              <span className="md:hidden">Jun 2026</span>
               <ChevronDown className="h-3.5 w-3.5 opacity-70" />
             </Button>
           )}
@@ -74,7 +75,7 @@ export function AppPageHeader({
           {showFiltersButton && (
             <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
               <Filter className="h-4 w-4" />
-              {filtersButtonLabel}
+              <span className="hidden sm:inline">{filtersButtonLabel}</span>
             </Button>
           )}
 
@@ -84,10 +85,12 @@ export function AppPageHeader({
               variant="outline"
               size="sm"
               onClick={onTogglePanel}
-              className="hidden h-9 gap-2 border-slate-200 text-slate-600 xl:inline-flex"
+              className="h-9 gap-2 border-slate-200 text-slate-600"
             >
               <PanelRightClose className="h-4 w-4" />
-              {panelHidden ? panelToggleLabelHidden : panelToggleLabel}
+              <span className="hidden sm:inline">
+                {panelHidden ? panelToggleLabelHidden : panelToggleLabel}
+              </span>
             </Button>
           )}
           <button
@@ -156,10 +159,11 @@ export function AppPageHeader({
             <Button
               type="button"
               onClick={onActionClick}
-              className="h-9 gap-2 bg-blue-600 px-4 text-sm font-semibold hover:bg-blue-500"
+              className="h-9 gap-2 bg-blue-600 px-3 text-sm font-semibold hover:bg-blue-500 sm:px-4"
             >
               <Plus className="h-4 w-4" />
-              {actionLabel}
+              <span className="hidden sm:inline">{actionLabel}</span>
+              <span className="sm:hidden">Nuevo</span>
               {showActionDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-80" />}
             </Button>
           )}

@@ -1,3 +1,4 @@
+import type { jsPDF } from "jspdf";
 import type { NuevaOrdenCompraFormData } from "@/lib/nueva-orden-compra-types";
 import { calculateOrdenCompraTotals, formatOrdenCurrency } from "@/lib/nueva-orden-compra-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
@@ -17,7 +18,7 @@ function buildOrdenNumber(): string {
 }
 
 function drawSupplierBlock(
-  doc: ReturnType<typeof createPdfDocument>,
+  doc: jsPDF,
   y: number,
   proveedor: string,
   ruc: string,
@@ -43,7 +44,7 @@ function drawSupplierBlock(
 }
 
 function drawOrdenMetaBlock(
-  doc: ReturnType<typeof createPdfDocument>,
+  doc: jsPDF,
   y: number,
   data: NuevaOrdenCompraFormData,
 ): number {
@@ -62,8 +63,8 @@ function drawOrdenMetaBlock(
   return y + 16;
 }
 
-export function generateOrdenCompraPdf(data: NuevaOrdenCompraFormData): string {
-  const doc = createPdfDocument();
+export async function generateOrdenCompraPdf(data: NuevaOrdenCompraFormData): Promise<string> {
+  const doc = await createPdfDocument();
   const number = buildOrdenNumber();
   const fecha = new Date().toLocaleDateString("es-PE");
   const { subtotal, igv, total } = calculateOrdenCompraTotals(data.items);

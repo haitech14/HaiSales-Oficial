@@ -41,7 +41,6 @@ import {
   type NuevaOrdenCompraFormData,
   type OrdenCompraItem,
 } from "@/lib/nueva-orden-compra-types";
-import { generateOrdenCompraPdf } from "@/lib/pdf/generate-orden-compra-pdf";
 import { cn } from "@/lib/utils";
 
 function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
@@ -193,9 +192,10 @@ export function NuevaOrdenCompraModal({
     setForm(defaultNuevaOrdenCompraForm);
   };
 
-  const handleCreatePdf = (mode: "create" | "approval" | "draft") => {
+  const handleCreatePdf = async (mode: "create" | "approval" | "draft") => {
     if (mode !== "draft") {
-      const number = generateOrdenCompraPdf(form);
+      const { generateOrdenCompraPdf } = await import("@/lib/pdf/generate-orden-compra-pdf");
+      const number = await generateOrdenCompraPdf(form);
       toast.success(
         mode === "approval"
           ? `Orden ${number} enviada a aprobación y PDF generado.`

@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchClientesSnapshot } from "@/lib/clientes/clientes-service";
+import type { NuevoClienteFormState } from "@/lib/clientes-form-data";
+import { createCliente, fetchClientesSnapshot } from "@/lib/clientes/clientes-service";
 import type { ClientRecord } from "@/lib/clientes-mock-data";
 
 const CLIENTES_QUERY_KEY = ["clientes", "snapshot"] as const;
@@ -51,6 +52,14 @@ export function useClientes() {
     queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
   }, [queryClient]);
 
+  const createMutation = useMutation({
+    mutationFn: ({ form, esBorrador }: { form: NuevoClienteFormState; esBorrador: boolean }) => {
+      if (!user?.id) throw new Error("Debes iniciar sesión para crear clientes");
+      return createCliente(user.id, form, esBorrador);
+    },
+    onSuccess: () => invalidate(),
+  });
+
   return {
     snapshot: data,
     filteredClients,
@@ -62,6 +71,8 @@ export function useClientes() {
     isFetching,
     refresh,
     invalidate,
+    createCliente: createMutation.mutateAsync,
+    isCreating: createMutation.isPending,
     lastUpdatedAt: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
   };
 }

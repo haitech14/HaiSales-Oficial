@@ -10,6 +10,8 @@ import {
   Star,
 } from "lucide-react";
 import { AppPageHeader, CrmKpiCard, CrmRightPanel } from "@/components/app/CrmShared";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { NuevaVentaModal } from "@/components/app/NuevaVentaModal";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,7 @@ export default function VentasCrmPage() {
     isFetching,
     refresh,
   } = useCrm();
-  const [panelHidden, setPanelHidden] = useState(false);
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
 
   const tabsWithCounts = pipelineTabs.map((tab) => ({
@@ -50,8 +52,8 @@ export default function VentasCrmPage() {
         title="Leads"
         subtitle="Gestiona oportunidades, actividades comerciales, cotizaciones y cierres de venta de principio a fin."
         showPanelToggle
-        panelHidden={panelHidden}
-        onTogglePanel={() => setPanelHidden((current) => !current)}
+        panelHidden={!isPanelVisible}
+        onTogglePanel={togglePanel}
         actionLabel="Nueva venta"
         onActionClick={() => setNuevaVentaOpen(true)}
       />
@@ -66,7 +68,7 @@ export default function VentasCrmPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-6">
+          <div className="space-y-5 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi) => (
                 <CrmKpiCard key={kpi.label} {...kpi} />
@@ -75,7 +77,7 @@ export default function VentasCrmPage() {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {tabsWithCounts.map((tab) => (
                     <button
                       key={tab.id}
@@ -153,7 +155,7 @@ export default function VentasCrmPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-left text-xs">
+                <table className="w-full min-w-[720px] text-left text-xs sm:min-w-[980px]">
                   <thead>
                     <tr className="app-table-head-row">
                       <th className="px-4 py-2.5">Fecha</th>
@@ -270,7 +272,13 @@ export default function VentasCrmPage() {
           </div>
         </div>
 
-        {!panelHidden && <CrmRightPanel className="hidden xl:block" />}
+        <AppRightPanelSlot
+          panelHidden={panelHidden}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        >
+          <CrmRightPanel />
+        </AppRightPanelSlot>
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -181,19 +179,19 @@
   }
 
   .app-sidebar-section {
-    @apply mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+    @apply mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500;
   }
 
   .app-sidebar-link {
-    @apply flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-xs leading-snug transition;
+    @apply flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] leading-tight transition;
   }
 
   .app-sidebar-label {
-    @apply min-w-0 flex-1 leading-snug;
+    @apply min-w-0 flex-1 text-left leading-tight;
   }
 
   .app-sidebar-badge {
-    @apply mt-0.5 shrink-0 self-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none;
+    @apply ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums;
   }
 }
 

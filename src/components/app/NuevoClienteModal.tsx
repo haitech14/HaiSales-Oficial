@@ -141,9 +141,13 @@ const infoFeatures = [
 export function NuevoClienteModal({
   open,
   onOpenChange,
+  onSubmit,
+  isSubmitting = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmit?: (form: NuevoClienteFormState, mode: "draft" | "create") => Promise<void>;
+  isSubmitting?: boolean;
 }) {
   const [form, setForm] = useState<NuevoClienteFormState>(defaultNuevoClienteForm);
 
@@ -156,13 +160,20 @@ export function NuevoClienteModal({
     setForm(defaultNuevoClienteForm);
   };
 
-  const handleSubmit = (mode: "draft" | "create") => {
-    if (mode === "create") {
-      toast.success("Cliente creado correctamente");
-    } else {
-      toast.success("Borrador guardado");
+  const handleSubmit = async (mode: "draft" | "create") => {
+    try {
+      if (onSubmit) {
+        await onSubmit(form, mode);
+      }
+      if (mode === "create") {
+        toast.success("Cliente creado correctamente");
+      } else {
+        toast.success("Borrador guardado");
+      }
+      handleClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el cliente");
     }
-    handleClose();
   };
 
   return (

@@ -22,118 +22,190 @@ function formatConversationDate(isoDate: string) {
   }
 }
 
+function InboxConversationCards({ conversations }: { conversations: InboxConversation[] }) {
+  if (conversations.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+        No hay conversaciones con los filtros seleccionados.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 md:hidden">
+      {conversations.map((conversation) => (
+        <article
+          key={conversation.id}
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <ChannelIcon channel={conversation.channel} size="sm" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">
+                  {conversation.contact.name}
+                </p>
+                <p className="truncate text-xs text-slate-500">{conversation.contact.identifier}</p>
+              </div>
+            </div>
+            <span
+              className={cn(
+                "shrink-0 text-xs font-medium",
+                conversation.status === "activa" ? "text-emerald-600" : "text-slate-400",
+              )}
+            >
+              {conversation.status === "activa" ? "Activa" : "Cerrada"}
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-start gap-2">
+            <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-600">
+              {conversation.lastMessage}
+            </p>
+            {conversation.isRead && (
+              <CheckCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className={cn(
+                "inline-flex rounded-full px-2 py-0.5 font-medium",
+                inboxStageMeta[conversation.stage].badgeClass,
+              )}
+            >
+              {inboxStageMeta[conversation.stage].label}
+            </span>
+            <span className={cn("font-semibold capitalize", inboxPriorityMeta[conversation.priority])}>
+              {conversation.priority}
+            </span>
+            <span className="text-slate-400">{conversation.advisor}</span>
+            <span className="ml-auto text-slate-400">
+              {formatConversationDate(conversation.lastMessageAt)}
+            </span>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function InboxConversationTable({ conversations }: { conversations: InboxConversation[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Fecha
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Contacto
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Identificador
-            </TableHead>
-            <TableHead className="min-w-[220px] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Último mensaje
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Etapa
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Prioridad
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Asesor
-            </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Estado
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {conversations.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={8} className="py-10 text-center text-sm text-slate-500">
-                No hay conversaciones con los filtros seleccionados.
-              </TableCell>
+    <>
+      <InboxConversationCards conversations={conversations} />
+
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Fecha
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Contacto
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Identificador
+              </TableHead>
+              <TableHead className="min-w-[220px] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Último mensaje
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Etapa
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Prioridad
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Asesor
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Estado
+              </TableHead>
             </TableRow>
-          ) : (
-            conversations.map((conversation) => (
-              <TableRow key={conversation.id} className="hover:bg-slate-50/60">
-                <TableCell className="whitespace-nowrap text-xs text-slate-600">
-                  {formatConversationDate(conversation.lastMessageAt)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <ChannelIcon channel={conversation.channel} size="sm" />
-                    <span className="text-sm font-medium text-slate-900">
-                      {conversation.contact.name}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-[160px] truncate text-xs text-slate-500">
-                  {conversation.contact.identifier}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-start gap-2">
-                    <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-600">
-                      {conversation.lastMessage}
-                    </p>
-                    {conversation.isRead && (
-                      <CheckCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                      inboxStageMeta[conversation.stage].badgeClass,
-                    )}
-                  >
-                    {inboxStageMeta[conversation.stage].label}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      "text-xs font-semibold capitalize",
-                      inboxPriorityMeta[conversation.priority],
-                    )}
-                  >
-                    {conversation.priority}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
-                      {conversation.advisorInitials}
-                    </span>
-                    <span className="text-xs text-slate-700">{conversation.advisor}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <ChannelIcon channel={conversation.channel} size="sm" />
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        conversation.status === "activa" ? "text-emerald-600" : "text-slate-400",
-                      )}
-                    >
-                      {conversation.status === "activa" ? "Activa" : "Cerrada"}
-                    </span>
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {conversations.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-slate-500">
+                  No hay conversaciones con los filtros seleccionados.
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ) : (
+              conversations.map((conversation) => (
+                <TableRow key={conversation.id} className="hover:bg-slate-50/60">
+                  <TableCell className="whitespace-nowrap text-xs text-slate-600">
+                    {formatConversationDate(conversation.lastMessageAt)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <ChannelIcon channel={conversation.channel} size="sm" />
+                      <span className="text-sm font-medium text-slate-900">
+                        {conversation.contact.name}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[160px] truncate text-xs text-slate-500">
+                    {conversation.contact.identifier}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-start gap-2">
+                      <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-slate-600">
+                        {conversation.lastMessage}
+                      </p>
+                      {conversation.isRead && (
+                        <CheckCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                        inboxStageMeta[conversation.stage].badgeClass,
+                      )}
+                    >
+                      {inboxStageMeta[conversation.stage].label}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold capitalize",
+                        inboxPriorityMeta[conversation.priority],
+                      )}
+                    >
+                      {conversation.priority}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
+                        {conversation.advisorInitials}
+                      </span>
+                      <span className="text-xs text-slate-700">{conversation.advisor}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <ChannelIcon channel={conversation.channel} size="sm" />
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          conversation.status === "activa" ? "text-emerald-600" : "text-slate-400",
+                        )}
+                      >
+                        {conversation.status === "activa" ? "Activa" : "Cerrada"}
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

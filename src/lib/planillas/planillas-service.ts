@@ -178,7 +178,7 @@ export async function fetchPlanillasSnapshot(userId: string | null): Promise<Pla
     return buildSnapshot(mockWorkers.map(mapMockToWorker), "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("trabajadores")
     .select("*")
     .eq("user_id", userId)

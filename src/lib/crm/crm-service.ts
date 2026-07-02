@@ -215,7 +215,7 @@ export async function fetchCrmSnapshot(userId: string | null): Promise<CrmSnapsh
     return buildSnapshot(mockOpportunities, "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("oportunidades")
     .select("*")
     .eq("user_id", userId)

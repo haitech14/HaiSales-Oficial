@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { seedDemoDataForUser } from "@/lib/seed-demo";
+import { calculateVentaTotals } from "@/lib/nueva-venta-types";
 import {
   ventasKpis as staticKpis,
   ventasRecords as mockRecords,
@@ -114,7 +115,7 @@ export async function fetchVentasSnapshot(userId: string | null): Promise<Ventas
     return buildSnapshot(mockRecords, "mock");
   }
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("ventas")
     .select("*")
     .eq("user_id", userId)
@@ -140,6 +141,67 @@ export async function fetchVentasSnapshot(userId: string | null): Promise<Ventas
   }
 
   return buildSnapshot(data.map(mapRowToVenta), "supabase");
+}
+
+const TIPO_TO_DB: Record<string, string> = {
+  "Factura Electrónica (01)": "factura",
+  "Boleta de Venta (03)": "boleta",
+  "Nota de Crédito (07)": "nota_credito",
+};
+
+function parseFechaEmision(value: string) {
+  const [day, month, year] = value.split("/");
+  if (day && month && year) {
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function createVentaFromForm(userId: string, form: import("@/lib/nueva-venta-types").NuevaVentaFormData) {
+  const { subtotal, igv, total } = calculateVentaTotals(form.cantidad, form.precioUnitario);
+  const numero = `VTA-${Date.now().toString().slice(-8)}`;
+  const codigoComprobante = `${form.serie}-${Math.floor(Math.random() * 90000 + 10000)}`;
+  const tipo = TIPO_TO_DB[form.tipoComprobante] ?? "factura";
+
+  const { data: venta, error } = await supabase
+    .from("ventas")
+    .insert({
+      user_id: userId,
+      numero,
+      fecha: parseFechaEmision(form.fechaEmision),
+      estado: "confirmada",
+      subtotal,
+      igv,
+      total,
+      tipo_comprobante: tipo,
+      codigo_comprobante: codigoComprobante,
+      estado_sunat: "pendiente",
+      vendedor_nombre: form.vendedor,
+      vendedor_iniciales: form.vendedorInitials,
+      cliente_nombre: form.cliente,
+      cliente_ruc: form.clienteRuc || null,
+      notas: form.oportunidad ? `Oportunidad: ${form.oportunidad}` : null,
+    })
+    .select("*")
+    .single();
+
+  if (error || !venta) {
+    throw new Error(error?.message ?? "No se pudo registrar la venta");
+  }
+
+  const { error: itemError } = await supabase.from("venta_items").insert({
+    venta_id: venta.id,
+    descripcion: form.producto || "Producto o servicio",
+    cantidad: form.cantidad,
+    precio_unitario: form.precioUnitario,
+    subtotal,
+  });
+
+  if (itemError) {
+    throw new Error(itemError.message);
+  }
+
+  return mapRowToVenta(venta);
 }
 
 export {

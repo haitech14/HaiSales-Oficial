@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchVentasSnapshot } from "@/lib/ventas/ventas-service";
+import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
+import { createVentaFromForm, fetchVentasSnapshot } from "@/lib/ventas/ventas-service";
 import type { VentaRecord } from "@/lib/ventas-mock-data";
 
 const VENTAS_QUERY_KEY = ["ventas", "snapshot"] as const;
@@ -51,6 +52,14 @@ export function useVentas() {
     queryClient.invalidateQueries({ queryKey: VENTAS_QUERY_KEY });
   }, [queryClient]);
 
+  const createMutation = useMutation({
+    mutationFn: (form: NuevaVentaFormData) => {
+      if (!user?.id) throw new Error("Debes iniciar sesión para registrar ventas");
+      return createVentaFromForm(user.id, form);
+    },
+    onSuccess: () => invalidate(),
+  });
+
   return {
     snapshot: data,
     filteredRecords,
@@ -62,6 +71,8 @@ export function useVentas() {
     isFetching,
     refresh,
     invalidate,
+    createVenta: createMutation.mutateAsync,
+    isCreating: createMutation.isPending,
     lastUpdatedAt: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
   };
 }

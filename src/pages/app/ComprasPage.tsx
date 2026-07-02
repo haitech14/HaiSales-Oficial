@@ -19,6 +19,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { LogisticaOrderDetailSheet } from "@/components/app/LogisticaOrderDetailSheet";
 import { LogisticaRightPanel } from "@/components/app/LogisticaRightPanel";
 import { NuevaOrdenCompraModal } from "@/components/app/NuevaOrdenCompraModal";
@@ -51,7 +53,7 @@ export default function ComprasPage() {
     fetchDetail,
   } = useLogistica();
 
-  const [panelHidden, setPanelHidden] = useState(false);
+  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevaOrdenOpen, setNuevaOrdenOpen] = useState(false);
 
   return (
@@ -60,8 +62,8 @@ export default function ComprasPage() {
         title="Compras"
         subtitle="Gestiona requisiciones, órdenes de compra, proveedores y aprobaciones de compra."
         showPanelToggle
-        panelHidden={panelHidden}
-        onTogglePanel={() => setPanelHidden((current) => !current)}
+        panelHidden={!isPanelVisible}
+        onTogglePanel={togglePanel}
         actionLabel="+ Nueva orden"
         onActionClick={() => setNuevaOrdenOpen(true)}
       />
@@ -74,7 +76,7 @@ export default function ComprasPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-6">
+          <div className="space-y-5 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi, index) => {
                 const Icon = kpiIcons[index];
@@ -97,7 +99,7 @@ export default function ComprasPage() {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 overflow-x-auto pb-1">
                   {comprasTabs.map((tab) => {
                     const count = snapshot?.tabCounts[tab.id] ?? tab.count;
                     return (
@@ -187,7 +189,7 @@ export default function ComprasPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="app-table-body w-full min-w-[1100px] text-left">
+                  <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1100px]">
                     <thead>
                       <tr className="app-table-head-row">
                         <th className="px-4 py-3">Fecha</th>
@@ -336,17 +338,22 @@ export default function ComprasPage() {
           </div>
         </div>
 
-        {!panelHidden && snapshot && (
-          <LogisticaRightPanel
-            className="hidden xl:block"
-            ordersByStatus={snapshot.ordersByStatus}
-            purchasesBySupplier={snapshot.purchasesBySupplier}
-            logisticsRisks={snapshot.logisticsRisks}
-            totalRecords={snapshot.totalRecords}
-            onRefresh={() => void refresh()}
-            isRefreshing={isFetching}
-          />
-        )}
+        <AppRightPanelSlot
+          panelHidden={panelHidden}
+          mobileOpen={mobileOpen}
+          onMobileOpenChange={setMobileOpen}
+        >
+          {snapshot && (
+            <LogisticaRightPanel
+              ordersByStatus={snapshot.ordersByStatus}
+              purchasesBySupplier={snapshot.purchasesBySupplier}
+              logisticsRisks={snapshot.logisticsRisks}
+              totalRecords={snapshot.totalRecords}
+              onRefresh={() => void refresh()}
+              isRefreshing={isFetching}
+            />
+          )}
+        </AppRightPanelSlot>
       </div>
 
       <LogisticaOrderDetailSheet

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSupabaseError } from "@/lib/authErrors";
+import { prefetchAppRoutes } from "@/lib/prefetch-app-routes";
 import { cn } from "@/lib/utils";
 
 const promoFeatures = [
@@ -72,9 +73,15 @@ function LoginPromoPanel() {
             <img
               src="/mockups.png"
               alt="Vista previa de HaiSales en escritorio y móvil"
+              width={620}
+              height={420}
               className="relative z-10 mx-auto w-full max-w-[620px]"
               loading="eager"
+              fetchPriority="high"
               decoding="async"
+              onError={(event) => {
+                event.currentTarget.src = "/placeholder.svg";
+              }}
             />
           </div>
         </div>
@@ -114,6 +121,7 @@ function LoginFormPanel() {
       }
 
       toast.success("Sesión iniciada correctamente");
+      prefetchAppRoutes();
       navigate("/app/dashboard");
     } catch (error) {
       toast.error(formatSupabaseError(error));

@@ -65,11 +65,17 @@ export function LandingHero() {
         <div className="relative w-full lg:-mr-7 xl:-mr-9">
           <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-blue-500/10 blur-3xl" />
           <img
-            src="/mockups.png"
+            src="/placeholder.svg"
             alt="Vista previa de HaiSales en escritorio y móvil"
+            width={960}
+            height={640}
             className="relative z-10 mx-auto block h-auto w-full min-w-0 origin-center rounded-2xl shadow-2xl shadow-black/50 lg:mx-0 lg:scale-[1.07] lg:origin-center xl:scale-[1.09] 2xl:scale-[1.11]"
             loading="eager"
+            fetchPriority="high"
             decoding="async"
+            onError={(event) => {
+              event.currentTarget.src = "/placeholder.svg";
+            }}
           />
         </div>
       </div>
