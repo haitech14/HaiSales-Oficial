@@ -1,11 +1,10 @@
 ﻿import { useMemo, useState } from "react";
-import { Calendar, ChevronDown, Filter, MoreHorizontal, Search } from "lucide-react";
+import { Calendar, ChevronDown, Filter, Loader2, MoreHorizontal, Search } from "lucide-react";
 import { CrmKpiCard } from "@/components/app/CrmShared";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useDashboard } from "@/hooks/useDashboard";
 import {
-  dashboardKpis,
-  dashboardRecords,
   dashboardTabs,
   formatAmountCell,
   getDashboardStatusStyles,
@@ -20,11 +19,13 @@ type DashboardDetalladoViewProps = {
 
 export function DashboardDetalladoView({ activeTab, onTabChange }: DashboardDetalladoViewProps) {
   const [search, setSearch] = useState("");
+  const { snapshot, isLoading } = useDashboard();
 
   const filteredRecords = useMemo(() => {
+    const records = snapshot?.records ?? [];
     const query = search.trim().toLowerCase();
 
-    return dashboardRecords.filter((item) => {
+    return records.filter((item) => {
       const matchesTab = activeTab === "resumen" || item.tab === activeTab;
       const matchesSearch =
         !query ||
@@ -35,12 +36,18 @@ export function DashboardDetalladoView({ activeTab, onTabChange }: DashboardDeta
 
       return matchesTab && matchesSearch;
     });
-  }, [activeTab, search]);
+  }, [activeTab, search, snapshot?.records]);
 
+  const dashboardKpis = snapshot?.kpis ?? [];
   const detailTabs = dashboardTabs.filter((tab) => tab.id !== "reportes");
 
   return (
     <div className="space-y-5">
+      {snapshot?.source === "supabase" && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+          Actividad agregada desde Supabase
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {dashboardKpis.map((kpi) => (
           <CrmKpiCard key={kpi.label} {...kpi} />

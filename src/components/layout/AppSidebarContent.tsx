@@ -1,6 +1,8 @@
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { BarChart3, ChevronDown } from "lucide-react";
 import { appNavSections, inboxNavItem } from "@/lib/app-navigation";
+import { filterNavSectionsByRole } from "@/lib/auth/roles";
+import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 
 function isNavItemActive(href: string | undefined, pathname: string, searchParams: URLSearchParams): boolean {
@@ -41,6 +43,9 @@ export function AppSidebarContent({
 }: AppSidebarContentProps) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { role } = useUserRole();
+  const navSections = filterNavSectionsByRole(appNavSections, role);
+  const showInbox = role !== "contador";
 
   return (
     <div className={cn("flex h-full flex-col bg-[#0b1220]", className)}>
@@ -71,32 +76,34 @@ export function AppSidebarContent({
       )}
 
       <nav className="flex-1 space-y-5 overflow-y-auto overflow-x-hidden px-3 pb-4">
-        <ul className="space-y-0.5">
-          <li>
-            <Link
-              to={inboxNavItem.href ?? "#"}
-              title={collapsed ? inboxNavItem.label : undefined}
-              onClick={onNavigate}
-              className={cn(
-                "app-sidebar-link",
-                isNavItemActive(inboxNavItem.href, location.pathname, searchParams)
-                  ? "bg-blue-600 font-semibold text-white"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
-                collapsed && "justify-center px-2",
-              )}
-            >
-              <inboxNavItem.icon
-                className="h-4 w-4 shrink-0"
-                strokeWidth={
-                  isNavItemActive(inboxNavItem.href, location.pathname, searchParams) ? 2 : 1.75
-                }
-              />
-              {!collapsed && <span className="app-sidebar-label">{inboxNavItem.label}</span>}
-            </Link>
-          </li>
-        </ul>
+        {showInbox && (
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                to={inboxNavItem.href ?? "#"}
+                title={collapsed ? inboxNavItem.label : undefined}
+                onClick={onNavigate}
+                className={cn(
+                  "app-sidebar-link",
+                  isNavItemActive(inboxNavItem.href, location.pathname, searchParams)
+                    ? "bg-blue-600 font-semibold text-white"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
+                  collapsed && "justify-center px-2",
+                )}
+              >
+                <inboxNavItem.icon
+                  className="h-4 w-4 shrink-0"
+                  strokeWidth={
+                    isNavItemActive(inboxNavItem.href, location.pathname, searchParams) ? 2 : 1.75
+                  }
+                />
+                {!collapsed && <span className="app-sidebar-label">{inboxNavItem.label}</span>}
+              </Link>
+            </li>
+          </ul>
+        )}
 
-        {appNavSections.map((section) => (
+        {navSections.map((section) => (
           <div key={section.title}>
             {!collapsed && <p className="app-sidebar-section">{section.title}</p>}
             <ul className="space-y-0.5">

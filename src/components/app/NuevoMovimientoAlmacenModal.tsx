@@ -114,9 +114,13 @@ const summaryFields = [
 export function NuevoMovimientoAlmacenModal({
   open,
   onOpenChange,
+  onRegister,
+  isSubmitting = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRegister?: (form: NuevoMovimientoFormState, esBorrador: boolean) => Promise<void>;
+  isSubmitting?: boolean;
 }) {
   const [form, setForm] = useState<NuevoMovimientoFormState>(defaultNuevoMovimientoForm);
 
@@ -137,7 +141,7 @@ export function NuevoMovimientoAlmacenModal({
     setForm(defaultNuevoMovimientoForm);
   };
 
-  const handleSubmit = (mode: "draft" | "create") => {
+  const handleSubmit = async (mode: "draft" | "create") => {
     if (mode === "create" && !form.productoSku.trim()) {
       toast.error("Busca o ingresa un producto / SKU");
       return;
@@ -147,8 +151,15 @@ export function NuevoMovimientoAlmacenModal({
       return;
     }
 
-    toast.success(mode === "create" ? "Movimiento registrado correctamente" : "Borrador guardado");
-    handleClose();
+    try {
+      if (onRegister) {
+        await onRegister(form, mode === "draft");
+      }
+      toast.success(mode === "create" ? "Movimiento registrado correctamente" : "Borrador guardado");
+      handleClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el movimiento");
+    }
   };
 
   return (
@@ -375,11 +386,12 @@ export function NuevoMovimientoAlmacenModal({
               type="button"
               variant="outline"
               className="border-blue-200 text-blue-600 hover:bg-blue-50"
+              disabled={isSubmitting}
               onClick={() => handleSubmit("draft")}
             >
               Guardar borrador
             </Button>
-            <Button type="submit" className="gap-2 bg-blue-600 hover:bg-blue-500">
+            <Button type="submit" className="gap-2 bg-blue-600 hover:bg-blue-500" disabled={isSubmitting}>
               <Save className="h-4 w-4" />
               Registrar movimiento
             </Button>

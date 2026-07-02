@@ -5,9 +5,19 @@ import {
   cajaBancosFlowByAccount,
   formatCajaAmount,
 } from "@/lib/caja-bancos-mock-data";
+import type { CajaBancosSnapshot } from "@/lib/caja-bancos/caja-bancos-service";
 import { cn } from "@/lib/utils";
 
-export function CajaBancosRightPanel({ className }: { className?: string }) {
+export function CajaBancosRightPanel({
+  className,
+  snapshot,
+}: {
+  className?: string;
+  snapshot?: CajaBancosSnapshot;
+}) {
+  const flowByAccount = snapshot?.flowByAccount ?? cajaBancosFlowByAccount;
+  const bankBalances = snapshot?.bankBalances ?? cajaBancosBankBalances;
+  const alerts = snapshot?.alerts ?? cajaBancosAlerts;
   return (
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
@@ -28,7 +38,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
               </div>
             </div>
             <ul className="app-panel-list min-w-0 flex-1">
-              {cajaBancosFlowByAccount.map((item) => (
+              {flowByAccount.map((item) => (
                 <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="flex items-center gap-1.5 truncate">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
@@ -49,7 +59,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
             </button>
           </div>
           <ul className="mt-3 space-y-3">
-            {cajaBancosBankBalances.map((account) => (
+            {bankBalances.map((account) => (
               <li key={account.number}>
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <div className="min-w-0">
@@ -76,7 +86,7 @@ export function CajaBancosRightPanel({ className }: { className?: string }) {
             </button>
           </div>
           <ul className="mt-3 space-y-2">
-            {cajaBancosAlerts.map((alert) => (
+            {alerts.map((alert) => (
               <li
                 key={alert.label}
                 className={cn("rounded-lg border-l-4 px-3 py-2 text-xs font-medium", alert.color)}

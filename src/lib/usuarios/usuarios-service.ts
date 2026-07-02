@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { ROLE_LABELS, normalizeRole } from "@/lib/auth/roles";
 import {
   usuarios as mockUsuarios,
   usuariosKpis as staticKpis,
@@ -33,7 +34,7 @@ function mapProfileToUsuario(profile: ProfileRow, email?: string | null): Usuari
     avatarBg: "bg-blue-100",
     avatarColor: "text-blue-700",
     correo: email ?? "usuario@haisales.pe",
-    rol: "Administrador",
+    rol: ROLE_LABELS[normalizeRole((profile as { rol?: string }).rol)],
     sede: profile.company_name ?? "Principal",
     estado: "Activo" as UsuarioEstado,
     has2fa: false,

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useState } from "react";
 import {
   ArrowDownLeft,
   ArrowLeftRight,
@@ -6,6 +6,7 @@ import {
   Calendar,
   ChevronDown,
   Filter,
+  Loader2,
   MoreHorizontal,
   RefreshCw,
   Search,
@@ -17,14 +18,13 @@ import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { CajaBancosRightPanel } from "@/components/app/CajaBancosRightPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useCajaBancos } from "@/hooks/useCajaBancos";
 import {
-  cajaBancosKpis,
-  cajaBancosRecords,
   cajaBancosTabs,
   formatCajaAmount,
   getMovimientoEstadoStyles,
   type MovimientoTipo,
-} from "@/lib/caja-bancos-mock-data";
+} from "@/lib/caja-bancos/caja-bancos-service";
 import { cn } from "@/lib/utils";
 
 function OperacionBadge({ tipo }: { tipo: MovimientoTipo }) {
@@ -57,33 +57,24 @@ function OperacionBadge({ tipo }: { tipo: MovimientoTipo }) {
 }
 
 export default function CajaBancosPage() {
-  const [activeTab, setActiveTab] = useState("todos");
+  const {
+    snapshot,
+    filteredRecords,
+    activeTab,
+    setActiveTab,
+    search,
+    setSearch,
+    isLoading,
+    isFetching,
+    refresh,
+  } = useCajaBancos();
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
-  const [search, setSearch] = useState("");
 
-  const filteredRecords = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return cajaBancosRecords.filter((item) => {
-      const matchesTab =
-        activeTab === "todos" ||
-        (activeTab === "ingresos" && item.tipo === "ingreso") ||
-        (activeTab === "egresos" && item.tipo === "egreso") ||
-        (activeTab === "transferencias" && item.tipo === "transferencia") ||
-        (activeTab === "pendientes" && item.estado === "Pendiente") ||
-        (activeTab === "conciliados" && item.estado === "Conciliado");
-
-      const matchesSearch =
-        !query ||
-        item.concepto.toLowerCase().includes(query) ||
-        item.cuenta.toLowerCase().includes(query) ||
-        item.cuentaNumero.includes(query) ||
-        item.documento.toLowerCase().includes(query) ||
-        item.responsable.toLowerCase().includes(query);
-
-      return matchesTab && matchesSearch;
-    });
-  }, [activeTab, search]);
+  const kpis = snapshot?.kpis ?? [];
+  const tabs = cajaBancosTabs.map((tab) => ({
+    ...tab,
+    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+  }));
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -105,8 +96,13 @@ export default function CajaBancosPage() {
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
           <div className="space-y-5 p-4 sm:p-6">
+            {snapshot?.source === "supabase" && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+                Datos en vivo desde Supabase
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {cajaBancosKpis.map((kpi) => (
+              {kpis.map((kpi) => (
                 <CrmKpiCard key={kpi.label} {...kpi} />
               ))}
             </div>
@@ -114,7 +110,7 @@ export default function CajaBancosPage() {
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
                 <div className="flex gap-1 overflow-x-auto pb-1">
-                  {cajaBancosTabs.map((tab) => (
+                  {tabs.map((tab) => (
                     <button
                       key={tab.id}
                       type="button"
@@ -305,7 +301,7 @@ export default function CajaBancosPage() {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
         >
-          <CajaBancosRightPanel />
+          <CajaBancosRightPanel snapshot={snapshot} />
         </AppRightPanelSlot>
       </div>
     </div>

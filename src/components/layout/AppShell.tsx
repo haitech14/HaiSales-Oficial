@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+import { SupabaseHealthBanner } from "@/components/layout/SupabaseHealthBanner";
 import { AppMobileHeader, AppMobileNav, AppSidebar } from "./AppSidebar";
 
 export function AppShell() {
@@ -12,6 +13,7 @@ export function AppShell() {
       <AppMobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
+        <SupabaseHealthBanner />
         <ErrorBoundary fallbackTitle="Error en el módulo">
           <Outlet />
         </ErrorBoundary>

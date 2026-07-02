@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchAlmacenesSnapshot } from "@/lib/almacenes/almacenes-service";
+import {
+  createMovimientoAlmacen,
+  fetchAlmacenesSnapshot,
+} from "@/lib/almacenes/almacenes-service";
+import type { NuevoMovimientoFormState } from "@/lib/almacenes-form-data";
 import type { KardexMovement } from "@/lib/almacenes-mock-data";
 
 const QUERY_KEY = ["almacenes", "snapshot"] as const;
@@ -16,6 +20,16 @@ export function useAlmacenes() {
     queryKey: [...QUERY_KEY, user?.id ?? "guest"],
     queryFn: () => fetchAlmacenesSnapshot(user?.id ?? null),
     staleTime: 30_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: ({ form, esBorrador }: { form: NuevoMovimientoFormState; esBorrador?: boolean }) => {
+      if (!user?.id) throw new Error("Debes iniciar sesión");
+      return createMovimientoAlmacen(user.id, form, esBorrador);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
   });
 
   const filteredMovements = useMemo(() => {
@@ -59,6 +73,8 @@ export function useAlmacenes() {
     isFetching,
     refresh,
     invalidate,
+    createMovimiento: createMutation.mutateAsync,
+    isCreatingMovimiento: createMutation.isPending,
     lastUpdatedAt: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
   };
 }

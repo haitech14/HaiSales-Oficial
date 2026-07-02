@@ -15,6 +15,7 @@ const Landing = lazy(() => import("@/pages/Landing"));
 const Login = lazy(() => import("@/pages/Login"));
 const AppIndexPage = lazy(() => import("@/pages/app/AppIndexPage"));
 const AppPlaceholderPage = lazy(() => import("@/pages/app/AppPlaceholderPage"));
+const ParametrosPage = lazy(() => import("@/pages/app/ParametrosPage"));
 const ClientesPage = lazy(() => import("@/pages/app/ClientesPage"));
 const InventarioPage = lazy(() => import("@/pages/app/InventarioPage"));
 const ComprasPage = lazy(() => import("@/pages/app/ComprasPage"));
@@ -41,7 +42,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const placeholderRoutes = ["parametros"];
+const placeholderRoutes: string[] = [];
 
 export default function App() {
   return (
@@ -92,6 +93,7 @@ export default function App() {
                     <Route path="integraciones" element={<IntegracionesPage />} />
                     <Route path="planillas" element={<PlanillasPage />} />
                     <Route path="usuarios" element={<UsuariosPage />} />
+                    <Route path="parametros" element={<ParametrosPage />} />
                     <Route path="cotizaciones" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="oportunidades" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="comprobantes" element={<Navigate to="/app/ventas" replace />} />
