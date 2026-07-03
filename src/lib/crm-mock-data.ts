@@ -18,6 +18,39 @@ export type Opportunity = {
   probability: number;
   owner: string;
   ownerInitials: string;
+  fechaIso?: string;
+  intereses?: string;
+  ciudad?: string;
+};
+
+export type ProspectDetail = {
+  codigo: string;
+  clienteNombre: string;
+  clienteRuc: string;
+  titulo: string;
+  subtitulo: string;
+  valor: number;
+  etapa: OpportunityStage;
+  pipelineStage: string;
+  probabilidad: number;
+  responsable: string;
+  responsableIniciales: string;
+  fechaOportunidad: string;
+  horaOportunidad: string;
+  fechaCierreEstimada: string | null;
+  statusBadge?: "Ganada" | "Cerrada";
+  cliente: {
+    telefono: string | null;
+    correo: string | null;
+    direccion: string | null;
+    ciudad: string | null;
+    tipoCliente: string | null;
+    segmento: string | null;
+    estadoComercial: string | null;
+    ejecutivo: string | null;
+    observaciones: string | null;
+  } | null;
+  ventasRecientes: Array<{ codigo: string; fecha: string; total: number }>;
 };
 
 export const crmKpis = [

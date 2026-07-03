@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchDashboardSnapshot } from "@/lib/dashboard/dashboard-service";
+import { useAppPeriod } from "@/hooks/useAppPeriod";
+import { buildSnapshot, fetchDashboardSnapshot } from "@/lib/dashboard/dashboard-service";
 import type { DashboardRecord, DashboardTabId } from "@/lib/dashboard-mock-data";
+import { isIsoDateInRange, parseDisplayDateToIso } from "@/lib/period-filter";
 
 const QUERY_KEY = ["dashboard", "snapshot"] as const;
 
 export function useDashboard() {
   const { user } = useAuth();
+  const { range } = useAppPeriod();
   const [activeTab, setActiveTab] = useState<DashboardTabId>("resumen");
   const [search, setSearch] = useState("");
 
@@ -17,11 +20,25 @@ export function useDashboard() {
     staleTime: 30_000,
   });
 
+  const periodRecords = useMemo(() => {
+    if (!data) return [] as DashboardRecord[];
+
+    return data.records.filter((item) => {
+      const itemIso = parseDisplayDateToIso(item.date);
+      return isIsoDateInRange(itemIso, range);
+    });
+  }, [data, range]);
+
+  const displaySnapshot = useMemo(() => {
+    if (!data) return data;
+    return buildSnapshot(periodRecords, data.source);
+  }, [data, periodRecords]);
+
   const filteredRecords = useMemo(() => {
     if (!data) return [] as DashboardRecord[];
     const query = search.trim().toLowerCase();
 
-    return data.records.filter((item) => {
+    return periodRecords.filter((item) => {
       const matchesTab = activeTab === "resumen" || item.tab === activeTab;
       const matchesSearch =
         !query ||
@@ -32,14 +49,14 @@ export function useDashboard() {
 
       return matchesTab && matchesSearch;
     });
-  }, [activeTab, data, search]);
+  }, [activeTab, data, periodRecords, search]);
 
   const refresh = useCallback(async () => {
     await refetch();
   }, [refetch]);
 
   return {
-    snapshot: data,
+    snapshot: displaySnapshot,
     filteredRecords,
     activeTab,
     setActiveTab,

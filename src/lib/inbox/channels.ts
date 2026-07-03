@@ -1,8 +1,9 @@
-import { Globe, Mail, MessageCircle, MessageSquare, Share2, Video } from "lucide-react";
-import type { InboxChannel, InboxStage } from "./types";
+import { Globe, Instagram, Mail, MessageCircle, MessageSquare, Share2, Video } from "lucide-react";
+import type { InboxChannel, InboxStage, InboxViewFilter } from "./types";
 
 export const INBOX_CHANNEL_ORDER: InboxChannel[] = [
   "whatsapp",
+  "instagram",
   "facebook",
   "messenger",
   "tiktok",
@@ -30,8 +31,18 @@ export const inboxChannelMeta: Record<
     bgLight: "bg-emerald-50",
     textColor: "text-emerald-700",
     icon: MessageCircle,
-    apiEnvKeys: ["VITE_WHATSAPP_API_URL", "VITE_WHATSAPP_ACCESS_TOKEN", "VITE_WHATSAPP_PHONE_NUMBER_ID"],
-    webhookPath: "/api/webhooks/whatsapp",
+    apiEnvKeys: ["VITE_WHATSAPP_API_URL", "VITE_WHATSAPP_ACCESS_TOKEN", "VITE_WHATSAPP_PHONE_NUMBER_ID", "VITE_WHATSAPP_WEBHOOK_VERIFY_TOKEN"],
+    webhookPath: "/functions/v1/whatsapp-webhook",
+  },
+  instagram: {
+    label: "Instagram",
+    shortLabel: "IG",
+    color: "#e1306c",
+    bgLight: "bg-pink-50",
+    textColor: "text-pink-700",
+    icon: Instagram,
+    apiEnvKeys: ["VITE_INSTAGRAM_APP_ID", "VITE_INSTAGRAM_ACCESS_TOKEN"],
+    webhookPath: "/api/webhooks/instagram",
   },
   facebook: {
     label: "Facebook",
@@ -64,7 +75,7 @@ export const inboxChannelMeta: Record<
     webhookPath: "/api/webhooks/tiktok",
   },
   web: {
-    label: "Página Web",
+    label: "Web Chat",
     shortLabel: "WEB",
     color: "#6366f1",
     bgLight: "bg-indigo-50",
@@ -102,11 +113,13 @@ export const inboxPriorityMeta: Record<"alta" | "media" | "baja", string> = {
   baja: "text-emerald-600",
 };
 
-export const inboxTabs: { id: "todos" | InboxStage; label: string; count?: number }[] = [
-  { id: "todos", label: "Todos" },
-  { id: "nuevo", label: "Nuevos", count: 32 },
-  { id: "seguimiento", label: "En seguimiento", count: 68 },
-  { id: "cotizado", label: "Cotizados", count: 24 },
-  { id: "cerrado", label: "Cerrados", count: 40 },
-  { id: "perdido", label: "Perdidos", count: 22 },
+export const inboxViewTabs: { id: InboxViewFilter; label: string; count?: number }[] = [
+  { id: "all", label: "Todos", count: 128 },
+  { id: "unread", label: "No leídos", count: 16 },
+  { id: "team-chat", label: "Chat de equipo" },
+  { id: "whatsapp", label: "WhatsApp", count: 68 },
+  { id: "instagram", label: "Instagram", count: 24 },
+  { id: "facebook", label: "Facebook", count: 18 },
+  { id: "web", label: "Web Chat", count: 10 },
+  { id: "email", label: "Email", count: 8 },
 ];

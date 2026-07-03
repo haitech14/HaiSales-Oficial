@@ -3,11 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
-import { DashboardPageHeader, type DashboardMode } from "@/components/app/DashboardPageHeader";
+import { DashboardPageHeader, type DashboardView } from "@/components/app/DashboardPageHeader";
 import { DashboardRightPanel } from "@/components/app/DashboardRightPanel";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { dashboardTabs, type DashboardTabId } from "@/lib/dashboard-mock-data";
-import { reportesKpis } from "@/lib/dashboard-reportes-data";
+import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
+import { useAppPeriod } from "@/hooks/useAppPeriod";
 
 const DashboardGeneralView = lazy(() =>
   import("@/components/app/DashboardGeneralView").then((module) => ({
@@ -26,24 +27,16 @@ const DashboardReportesView = lazy(() =>
 );
 
 const validTabs = new Set<DashboardTabId>(dashboardTabs.map((tab) => tab.id));
-const validModes = new Set<DashboardMode>(["general", "detallado", "reportes"]);
 
-function parseMode(searchParams: URLSearchParams): DashboardMode {
+function parseView(searchParams: URLSearchParams): DashboardView {
   const mode = searchParams.get("mode");
-  const tab = searchParams.get("tab");
-
-  if (mode && validModes.has(mode as DashboardMode)) {
-    return mode as DashboardMode;
-  }
-  if (tab === "reportes") {
-    return "reportes";
-  }
-  return "general";
+  if (mode === "reportes") return "reportes";
+  if (mode === "resumen" || mode === "detallado") return "resumen";
+  return "dashboard";
 }
 
 function parseTab(searchParams: URLSearchParams): DashboardTabId {
   const tab = searchParams.get("tab");
-
   if (tab && validTabs.has(tab as DashboardTabId) && tab !== "reportes") {
     return tab as DashboardTabId;
   }
@@ -60,31 +53,19 @@ function ViewFallback() {
 
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [mode, setMode] = useState<DashboardMode>(() => parseMode(searchParams));
+  const view = parseView(searchParams);
   const [activeTab, setActiveTab] = useState<DashboardTabId>(() => parseTab(searchParams));
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
+  const { data: analytics } = useDashboardAnalytics();
+  const { range } = useAppPeriod();
 
   useEffect(() => {
-    setMode(parseMode(searchParams));
     setActiveTab(parseTab(searchParams));
   }, [searchParams]);
 
-  const handleModeChange = (nextMode: DashboardMode) => {
-    setMode(nextMode);
-
-    const params: Record<string, string> = {};
-    if (nextMode !== "general") {
-      params.mode = nextMode;
-    }
-    if (nextMode === "detallado" && activeTab !== "resumen") {
-      params.tab = activeTab;
-    }
-    setSearchParams(params);
-  };
-
   const handleTabChange = (tab: DashboardTabId) => {
     setActiveTab(tab);
-    const params: Record<string, string> = { mode: "detallado" };
+    const params: Record<string, string> = { mode: "resumen" };
     if (tab !== "resumen") {
       params.tab = tab;
     }
@@ -93,22 +74,25 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <DashboardPageHeader mode={mode} onModeChange={handleModeChange} />
+      <DashboardPageHeader view={view} />
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
           <div className="space-y-5 p-4 sm:p-6">
             <Suspense fallback={<ViewFallback />}>
-              {mode === "general" && <DashboardGeneralView />}
+              {view === "dashboard" && <DashboardGeneralView />}
 
-              {mode === "detallado" && (
+              {view === "resumen" && (
                 <DashboardDetalladoView activeTab={activeTab} onTabChange={handleTabChange} />
               )}
 
-              {mode === "reportes" && (
+              {view === "reportes" && (
                 <>
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+                    Reportes y gráficos del periodo <span className="font-semibold">{range.label}</span>
+                  </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {reportesKpis.map((kpi) => (
+                    {(analytics?.reportesKpis ?? []).map((kpi) => (
                       <CrmKpiCard key={kpi.label} {...kpi} />
                     ))}
                   </div>
@@ -119,7 +103,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {mode === "detallado" && (
+        {view === "resumen" && (
           <AppRightPanelSlot
             panelHidden={panelHidden}
             mobileOpen={mobileOpen}
@@ -130,7 +114,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {mode === "detallado" && !isPanelVisible && (
+      {view === "resumen" && !isPanelVisible && (
         <button
           type="button"
           onClick={togglePanel}

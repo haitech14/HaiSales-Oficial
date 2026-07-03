@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
 import {
-  Calendar,
   ChevronDown,
+  FileSpreadsheet,
   FileText,
   Filter,
   Loader2,
@@ -10,8 +10,11 @@ import {
   Search,
   Star,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AppPeriodFilter } from "@/components/app/AppPeriodFilter";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { ImportVentasReporteModal } from "@/components/app/ImportVentasReporteModal";
 import { NuevaVentaModal } from "@/components/app/NuevaVentaModal";
 import { VentasRightPanel } from "@/components/app/VentasRightPanel";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -20,11 +23,15 @@ import { Button } from "@/components/ui/button";
 import { useVentas } from "@/hooks/useVentas";
 import {
   formatCurrency,
+  formatPeriodMonth,
+  formatPeriodMonthShort,
+  getBusinessStatusStyles,
   getDocumentTypeStyles,
   getSunatStatusStyles,
   ventasTabs,
 } from "@/lib/ventas/ventas-service";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function VentasPage() {
   const {
@@ -39,13 +46,19 @@ export default function VentasPage() {
     refresh,
     createVenta,
     isCreating,
+    importVentasReporte,
+    isImporting,
+    importVentasLegacyDb,
+    isImportingLegacyDb,
+    downloadComprobantePdf,
   } = useVentas();
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const tabsWithCounts = ventasTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   const totalRecords = snapshot?.totalRecords ?? filteredRecords.length;
@@ -53,8 +66,9 @@ export default function VentasPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <AppPageHeader
-        title="Ventas"
+        title="Comprobantes"
         subtitle="Emite, valida y controla comprobantes electrónicos conectados a ventas y contabilidad."
+        showDateRange
         showPanelToggle
         panelHidden={!isPanelVisible}
         onTogglePanel={togglePanel}
@@ -68,6 +82,15 @@ export default function VentasPage() {
         onOpenChange={setNuevaVentaOpen}
         onRegister={createVenta}
         isSubmitting={isCreating}
+      />
+
+      <ImportVentasReporteModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={importVentasReporte}
+        onImportLegacyDb={importVentasLegacyDb}
+        isImporting={isImporting}
+        isImportingLegacyDb={isImportingLegacyDb}
       />
 
       {snapshot?.source === "supabase" && (
@@ -115,11 +138,21 @@ export default function VentasPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 pb-2">
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2 border-slate-200 text-slate-600"
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    Importar reporte
+                  </Button>
+                  <button type="button" className="app-toolbar-link">
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <button type="button" className="app-toolbar-link">
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
                   </button>
@@ -133,21 +166,14 @@ export default function VentasPage() {
                     type="search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Buscar por cliente, RUC, serie, correlativo..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    placeholder="Buscar por cliente, RUC, serie, forma de pago..."
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Tipo: Todos
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
+                <AppPeriodFilter />
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
                   Estado SUNAT: Todos
                   <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Rango de fechas
                 </Button>
                 <button
                   type="button"
@@ -165,38 +191,52 @@ export default function VentasPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1080px]">
+                <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1280px]">
                   <thead>
                     <tr className="app-table-head-row">
-                      <th className="px-4 py-3">Fecha</th>
-                      <th className="px-4 py-3">Comprobante</th>
-                      <th className="px-4 py-3">Cliente</th>
-                      <th className="px-4 py-3">RUC</th>
-                      <th className="px-4 py-3">Importe</th>
-                      <th className="px-4 py-3">Estado SUNAT</th>
-                      <th className="px-4 py-3">CDR</th>
-                      <th className="px-4 py-3">Vendedor</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
+                      <th className="app-table-cell">Fecha</th>
+                      <th className="app-table-cell">Periodo</th>
+                      <th className="app-table-cell">Comprobante</th>
+                      <th className="app-table-cell">Cliente</th>
+                      <th className="app-table-cell">RUC</th>
+                      <th className="app-table-cell">Importe</th>
+                      <th className="app-table-cell">Forma de pago</th>
+                      <th className="app-table-cell">Estado</th>
+                      <th className="app-table-cell">Estado SUNAT</th>
+                      <th className="app-table-cell">CDR</th>
+                      <th className="app-table-cell">Vendedor</th>
+                      <th className="app-table-cell text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                        <td colSpan={12} className="px-4 py-12 text-center text-slate-500">
                           <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
                           Cargando comprobantes...
                         </td>
                       </tr>
                     ) : (
-                    filteredRecords.map((item) => (
+                    filteredRecords.map((item) => {
+                      const businessStatus = item.businessStatus ?? "Activa";
+                      return (
                       <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <p className="font-medium text-slate-800">{item.date}</p>
-                          <p className="text-xs text-slate-400">{item.time}</p>
+                          <p className="app-table-meta">{item.time}</p>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell text-slate-700">
+                          {item.periodMonth ? (
+                            <span title={formatPeriodMonth(item.periodMonth)}>
+                              {formatPeriodMonthShort(item.periodMonth)}
+                            </span>
+                          ) : (
+                            <span className="app-table-meta">—</span>
+                          )}
+                        </td>
+                        <td className="app-table-cell">
                           <div className="flex items-start gap-2">
-                            <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                             <div>
                               <a
                                 href="#"
@@ -204,47 +244,64 @@ export default function VentasPage() {
                               >
                                 {item.documentCode}
                               </a>
-                              <p className="text-xs text-slate-400">{item.documentType}</p>
+                              <p className="app-table-meta">{item.documentType}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 font-medium text-slate-800">{item.client}</td>
-                        <td className="px-4 py-3.5 text-slate-600">{item.ruc}</td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-900">{formatCurrency(item.amount)}</td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                              getSunatStatusStyles(item.status),
-                            )}
-                          >
+                        <td className="app-table-cell font-medium text-slate-800">{item.client}</td>
+                        <td className="app-table-cell text-slate-600">{item.ruc}</td>
+                        <td className="app-table-cell font-semibold text-slate-900">
+                          <span className={cn(businessStatus === "Anulada" && "text-slate-400 line-through")}>
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </td>
+                        <td className="app-table-cell">
+                          {item.formaPago ? (
+                            <div>
+                              <p className="text-slate-700">{item.formaPago}</p>
+                              {item.cuentaCobro && (
+                                <p className="app-table-meta">{item.cuentaCobro}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="app-table-meta">—</span>
+                          )}
+                        </td>
+                        <td className="app-table-cell">
+                          <span className={cn("app-table-badge", getBusinessStatusStyles(businessStatus))}>
+                            {businessStatus}
+                          </span>
+                        </td>
+                        <td className="app-table-cell">
+                          <span className={cn("app-table-badge", getSunatStatusStyles(item.status))}>
                             {item.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5">
-                          {item.hasCdr ? (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-500"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              CDR
-                            </button>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                        <td className="app-table-cell">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void downloadComprobantePdf(item.id).then((ok) => {
+                                if (!ok) toast.error("No hay ítems para generar el PDF");
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-500"
+                          >
+                            <FileText className="h-3 w-3" />
+                            PDF
+                          </button>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7">
-                              <AvatarFallback className="bg-blue-100 text-[11px] font-semibold text-blue-700">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback className="bg-blue-100 text-[10px] font-semibold text-blue-700">
                                 {item.sellerInitials}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-slate-700">{item.seller}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="app-table-cell text-right">
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -254,36 +311,14 @@ export default function VentasPage() {
                           </button>
                         </td>
                       </tr>
-                    )))}
+                    );
+                    })
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>Mostrando 1 a {filteredRecords.length} de {totalRecords} registros</p>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100">
-                    33
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination shownCount={filteredRecords.length} totalCount={totalRecords} />
             </section>
           </div>
         </div>
@@ -293,7 +328,7 @@ export default function VentasPage() {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
         >
-          <VentasRightPanel />
+          <VentasRightPanel snapshot={snapshot} />
         </AppRightPanelSlot>
       </div>
     </div>

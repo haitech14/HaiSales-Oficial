@@ -258,6 +258,18 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+export function formatProductCurrency(amount: number, currency = "PEN"): string {
+  if (amount <= 0) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: currency === "USD" ? "USD" : "PEN",
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function getProductStatusStyles(status: ProductStatus): string {
   switch (status) {
     case "Activo":

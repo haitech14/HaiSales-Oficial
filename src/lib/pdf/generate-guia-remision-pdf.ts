@@ -1,6 +1,7 @@
 import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
 import { formatVentaCurrency } from "@/lib/nueva-venta-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
+import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
   createPdfDocument,
   downloadPdf,
@@ -16,13 +17,16 @@ function buildGuiaNumber(serie: string): string {
   return `${serie.replace("F", "T")}-${seq}`;
 }
 
-export async function generateGuiaRemisionPdf(data: NuevaVentaFormData): Promise<void> {
+export async function generateGuiaRemisionPdf(
+  data: NuevaVentaFormData,
+  emisor: EmpresaEmisor = empresaEmisor,
+): Promise<void> {
   const doc = await createPdfDocument();
   const number = buildGuiaNumber(data.serie);
   const subtotal = data.cantidad * data.precioUnitario;
 
   let y = drawPdfHeader(doc, "GUÍA DE REMISIÓN ELECTRÓNICA", number, data.fechaEmision);
-  y = drawCompanyBlock(doc, y, empresaEmisor);
+  y = drawCompanyBlock(doc, y, emisor);
   y = drawClientBlock(doc, y, data.cliente, data.clienteRuc, data.contacto);
 
   doc.setDrawColor(226, 232, 240);
@@ -41,7 +45,7 @@ export async function generateGuiaRemisionPdf(data: NuevaVentaFormData): Promise
   doc.setTextColor(30, 41, 59);
   doc.text("Motivo: Venta", 18, y + 12);
   doc.text("Modalidad: Transporte público", 18, y + 17);
-  doc.text(`Punto de partida: ${empresaEmisor.direccion.substring(0, 38)}`, 18, y + 22);
+  doc.text(`Punto de partida: ${emisor.direccion.substring(0, 38)}`, 18, y + 22);
   doc.text("Punto de llegada: Dirección del cliente", 18, y + 27);
 
   doc.text("Transportista: Por asignar", 112, y + 12);

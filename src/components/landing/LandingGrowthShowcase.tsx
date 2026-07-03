@@ -1,4 +1,7 @@
 ﻿import {
+  HAISALES_ICON_SRC,
+} from "@/components/landing/HaiSalesLogo";
+import {
   BarChart3,
   Bell,
   Calendar,
@@ -139,10 +142,13 @@ function CrmDashboardPreview() {
         {/* Sidebar */}
         <aside className="hidden w-[148px] shrink-0 bg-[#0c1a32] px-3 py-4 lg:block">
           <div className="flex items-center gap-2 px-1">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
-              <BarChart3 className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-            </span>
-            <span className="text-xs font-bold text-white">HaiSales</span>
+            <img
+              src={HAISALES_ICON_SRC}
+              alt="HaiSales"
+              className="h-7 w-7 rounded-md object-cover object-left"
+              width={28}
+              height={28}
+            />
           </div>
           <nav className="mt-5 space-y-0.5">
             {sidebarNav.map((item) => (

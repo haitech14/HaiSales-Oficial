@@ -2,6 +2,7 @@ import type { jsPDF } from "jspdf";
 import type { NuevaOrdenCompraFormData } from "@/lib/nueva-orden-compra-types";
 import { calculateOrdenCompraTotals, formatOrdenCurrency } from "@/lib/nueva-orden-compra-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
+import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
   createPdfDocument,
   downloadPdf,
@@ -63,14 +64,17 @@ function drawOrdenMetaBlock(
   return y + 16;
 }
 
-export async function generateOrdenCompraPdf(data: NuevaOrdenCompraFormData): Promise<string> {
+export async function generateOrdenCompraPdf(
+  data: NuevaOrdenCompraFormData,
+  emisor: EmpresaEmisor = empresaEmisor,
+): Promise<string> {
   const doc = await createPdfDocument();
   const number = buildOrdenNumber();
   const fecha = new Date().toLocaleDateString("es-PE");
   const { subtotal, igv, total } = calculateOrdenCompraTotals(data.items);
 
   let y = drawPdfHeader(doc, "ORDEN DE COMPRA", number, fecha);
-  y = drawCompanyBlock(doc, y, empresaEmisor);
+  y = drawCompanyBlock(doc, y, emisor);
   y = drawSupplierBlock(doc, y, data.proveedor, data.ruc);
   y = drawOrdenMetaBlock(doc, y, data);
 

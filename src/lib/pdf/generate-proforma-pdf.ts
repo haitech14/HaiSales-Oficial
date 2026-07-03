@@ -1,6 +1,7 @@
 import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
 import { calculateVentaTotals } from "@/lib/nueva-venta-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
+import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
   createPdfDocument,
   downloadPdf,
@@ -18,13 +19,16 @@ function buildProformaNumber(): string {
   return `PRO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${seq}`;
 }
 
-export async function generateProformaPdf(data: NuevaVentaFormData): Promise<void> {
+export async function generateProformaPdf(
+  data: NuevaVentaFormData,
+  emisor: EmpresaEmisor = empresaEmisor,
+): Promise<void> {
   const doc = await createPdfDocument();
   const number = buildProformaNumber();
   const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
 
   let y = drawPdfHeader(doc, "PROFORMA", number, data.fechaEmision);
-  y = drawCompanyBlock(doc, y, empresaEmisor);
+  y = drawCompanyBlock(doc, y, emisor);
   y = drawClientBlock(doc, y, data.cliente, data.clienteRuc, data.contacto);
 
   doc.setFontSize(8);

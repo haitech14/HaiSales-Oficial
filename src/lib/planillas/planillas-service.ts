@@ -1,11 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { CreateTrabajadorInput } from "@/lib/planillas-form-data";
-import {
-  planillasKpis as staticKpis,
-  workers as mockWorkers,
-  type WorkerRecord,
-} from "@/lib/planillas-mock-data";
+import { planillasKpis as staticKpis } from "@/lib/planillas-mock-data";
 import {
   estadoDbToUi,
   estadoUiToDb,
@@ -56,10 +52,6 @@ function mapRowToWorker(row: TrabajadorRow): PlanillasWorker {
     responsable: row.supervisor ?? "—",
     esBorrador: row.es_borrador,
   };
-}
-
-function mapMockToWorker(record: WorkerRecord): PlanillasWorker {
-  return { ...record };
 }
 
 function buildTabCounts(workers: PlanillasWorker[]): Record<string, number | null> {
@@ -140,42 +132,9 @@ function parseFechaIngreso(value: string): string | null {
   return null;
 }
 
-async function seedTrabajadoresForUser(userId: string) {
-  for (const mock of mockWorkers) {
-    const estadoKey = mock.estado === "Activo"
-      ? "activo"
-      : mock.estado === "Vacaciones"
-        ? "vacaciones"
-        : mock.estado === "Cesado"
-          ? "cesado"
-          : "asistencia_pendiente";
-
-    await supabase.from("trabajadores").insert({
-      user_id: userId,
-      codigo: mock.id,
-      dni: mock.dni,
-      nombres_apellidos: mock.nombre,
-      cargo: mock.cargo,
-      area: mock.area,
-      sueldo_basico: mock.sueldo,
-      supervisor: mock.responsable,
-      estado: estadoKey,
-      asistencia_dias: mock.asistenciaDias,
-      asistencia_total: mock.asistenciaTotal,
-      dni_validado: true,
-      es_borrador: false,
-      activo: mock.estado !== "Cesado",
-      turno: "Diurno",
-      hora_entrada: "08:00:00",
-      hora_salida: "17:00:00",
-      dias_laborables: "Lun - Vie",
-    });
-  }
-}
-
 export async function fetchPlanillasSnapshot(userId: string | null): Promise<PlanillasSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockWorkers.map(mapMockToWorker), "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -186,24 +145,10 @@ export async function fetchPlanillasSnapshot(userId: string | null): Promise<Pla
 
   if (error) {
     console.warn("[planillas] Error al cargar trabajadores:", error.message);
-    return buildSnapshot(mockWorkers.map(mapMockToWorker), "mock");
+    return buildSnapshot([], "supabase");
   }
 
-  if (!data || data.length === 0) {
-    await seedTrabajadoresForUser(userId);
-    const retry = await supabase
-      .from("trabajadores")
-      .select("*")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
-
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockWorkers.map(mapMockToWorker), "mock");
-    }
-    data = retry.data;
-  }
-
-  return buildSnapshot(data.map(mapRowToWorker), "supabase");
+  return buildSnapshot((data ?? []).map(mapRowToWorker), "supabase");
 }
 
 export async function validateTrabajadorDni(userId: string, dni: string) {

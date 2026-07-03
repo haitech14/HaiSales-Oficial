@@ -1,17 +1,14 @@
 ﻿import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Building2,
   Check,
   CreditCard,
   Headphones,
   Lock,
   RefreshCw,
-  Rocket,
   Star,
-  Store,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import {
   Accordion,
@@ -19,102 +16,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  billingOptions,
+  buildCheckoutPath,
+  formatPlanPrice,
+  getCurrencySuffix,
+  pricingPlans,
+  type BillingCycle,
+  type Currency,
+  type PricingPlan,
+} from "@/lib/pricing/plans";
 import { cn } from "@/lib/utils";
-
-/* ── Pricing ── */
-
-type Currency = "pen" | "usd";
-type BillingCycle = "monthly" | "quarterly" | "semiannual" | "annual";
-
-interface PlanFeature {
-  label: string;
-  included: boolean;
-}
-
-interface PricingPlan {
-  name: string;
-  subtitle: string;
-  monthlyPricePen: number;
-  icon: LucideIcon;
-  highlighted?: boolean;
-  features: PlanFeature[];
-}
-
-const billingOptions: { id: BillingCycle; label: string; discount: number }[] = [
-  { id: "monthly", label: "Mensual", discount: 0 },
-  { id: "quarterly", label: "03 meses -10%", discount: 0.1 },
-  { id: "semiannual", label: "06 meses -15%", discount: 0.15 },
-  { id: "annual", label: "Anual -20%", discount: 0.2 },
-];
-
-const PEN_TO_USD_RATE = 3.75;
-
-const pricingPlans: PricingPlan[] = [
-  {
-    name: "Microempresa",
-    subtitle: "Ideal para empezar y organizar tu negocio",
-    monthlyPricePen: 99,
-    icon: Store,
-    features: [
-      { label: "100 Documentos / mes", included: true },
-      { label: "01 Establecimiento", included: true },
-      { label: "01 Almacén", included: true },
-      { label: "02 Usuarios", included: true },
-      { label: "1,000 Productos", included: true },
-      { label: "Certificado digital", included: true },
-      { label: "Todos los módulos", included: true },
-      { label: "Web", included: true },
-      { label: "Android", included: true },
-      { label: "iOS", included: true },
-      { label: "Videotutoriales", included: true },
-      { label: "Asesoría personalizada", included: true },
-      { label: "Soporte personalizado", included: true },
-    ],
-  },
-  {
-    name: "Emprendedor",
-    subtitle: "Para negocios en crecimiento que buscan más control",
-    monthlyPricePen: 149,
-    icon: Rocket,
-    highlighted: true,
-    features: [
-      { label: "300 Documentos / mes", included: true },
-      { label: "02 Establecimientos", included: true },
-      { label: "02 Almacenes", included: true },
-      { label: "04 Usuarios", included: true },
-      { label: "5,000 Productos", included: true },
-      { label: "Certificado digital", included: true },
-      { label: "Todos los módulos", included: true },
-      { label: "Web", included: true },
-      { label: "Android", included: true },
-      { label: "iOS", included: true },
-      { label: "Videotutoriales", included: true },
-      { label: "Asesoría personalizada", included: true },
-      { label: "Soporte personalizado", included: false },
-    ],
-  },
-  {
-    name: "Corporativo",
-    subtitle: "Para empresas que buscan escalar y soporte prioritario",
-    monthlyPricePen: 199,
-    icon: Building2,
-    features: [
-      { label: "Documentos ilimitados", included: true },
-      { label: "04 Establecimientos", included: true },
-      { label: "04 Almacenes", included: true },
-      { label: "08 Usuarios", included: true },
-      { label: "10,000 Productos", included: true },
-      { label: "Certificado digital", included: true },
-      { label: "Todos los módulos", included: true },
-      { label: "Web", included: true },
-      { label: "Android", included: true },
-      { label: "iOS", included: true },
-      { label: "Videotutoriales", included: true },
-      { label: "Asesoría personalizada", included: true },
-      { label: "Soporte personalizado", included: true },
-    ],
-  },
-];
 
 const trustFeatures = [
   {
@@ -138,22 +50,6 @@ const trustFeatures = [
     description: "Tus datos y los de tu empresa siempre protegidos.",
   },
 ];
-
-function getDiscount(cycle: BillingCycle) {
-  return billingOptions.find((option) => option.id === cycle)?.discount ?? 0;
-}
-
-function formatPrice(monthlyPricePen: number, cycle: BillingCycle, currency: Currency) {
-  let price = monthlyPricePen * (1 - getDiscount(cycle));
-  if (currency === "usd") {
-    price = price / PEN_TO_USD_RATE;
-  }
-  return price.toFixed(2);
-}
-
-function getCurrencySuffix(currency: Currency) {
-  return currency === "pen" ? "S/" : "USD";
-}
 
 function FeatureIcon({ included, dark = false }: { included: boolean; dark?: boolean }) {
   if (included) {
@@ -251,16 +147,126 @@ function QuoteIcon() {
   );
 }
 
+function PricingPlanCard({
+  plan,
+  billingCycle,
+  currency,
+  featured = false,
+}: {
+  plan: PricingPlan;
+  billingCycle: BillingCycle;
+  currency: Currency;
+  featured?: boolean;
+}) {
+  const price = formatPlanPrice(plan.monthlyPricePen, billingCycle, currency);
+  const currencySuffix = getCurrencySuffix(currency);
+
+  return (
+    <div className={cn("relative flex flex-col", featured && "pt-4")}>
+      {featured && (
+        <div className="absolute -top-0 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-bold tracking-wide text-white shadow-lg shadow-blue-600/25">
+          <Star className="h-3 w-3 fill-white" />
+          Más popular
+        </div>
+      )}
+
+      <article
+        className={cn(
+          "flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_40px_rgba(15,23,42,0.1)]",
+          featured && "border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_20px_50px_rgba(37,99,235,0.12)]",
+        )}
+      >
+        <div className="flex flex-1 flex-col p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm shadow-blue-600/20">
+              <plan.icon className="h-5 w-5 text-white" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 pt-0.5">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                {plan.name}
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm">{plan.subtitle}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 border-b border-slate-100 pb-5">
+            <div className="flex items-end gap-1">
+              <span className="font-bold leading-none tracking-tight text-slate-900 text-3xl sm:text-4xl">
+                {price}
+              </span>
+              <span className="mb-1 text-xs font-medium text-slate-400">{currencySuffix}</span>
+              <span className="mb-1 text-sm text-slate-400">/mes</span>
+            </div>
+            <p className="mt-1.5 text-xs text-slate-400">+IGV / Mensual</p>
+          </div>
+
+          <ul className="mt-5 flex flex-1 flex-col gap-2.5">
+            {plan.includesLabel && (
+              <li className="flex items-start gap-2.5 text-xs font-medium text-slate-800 sm:text-[13px]">
+                <FeatureIcon included />
+                {plan.includesLabel}
+              </li>
+            )}
+            {plan.features.map((feature) => (
+              <li
+                key={feature.label}
+                className={cn(
+                  "flex items-start gap-2.5 text-xs sm:text-[13px]",
+                  feature.included ? "text-slate-700" : "text-slate-400",
+                )}
+              >
+                <FeatureIcon included={feature.included} />
+                {feature.label}
+              </li>
+            ))}
+          </ul>
+
+          <div className={cn("mt-6 space-y-2", featured && "sm:max-w-md")}>
+            <Link
+              to="/login"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
+            >
+              Probar Gratis 14 días
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to={buildCheckoutPath(plan.slug, billingCycle, currency)}
+              className="flex w-full items-center justify-center rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Comprar ahora
+            </Link>
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 function PricingSection() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("annual");
   const [currency, setCurrency] = useState<Currency>("pen");
 
+  const entryPlan = pricingPlans.find((plan) => plan.slug === "microempresa");
+  const featuredPlan = pricingPlans.find((plan) => plan.slug === "emprendedor");
+  const corporatePlan = pricingPlans.find((plan) => plan.slug === "corporativo");
+
+  if (!entryPlan || !featuredPlan || !corporatePlan) {
+    return null;
+  }
+
   return (
-    <div id="precios" className="rounded-3xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 py-10 sm:px-8 sm:py-12 lg:px-10 lg:py-14">
+    <section
+      id="planes"
+      className="relative overflow-hidden bg-slate-50 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+    >
+      <div className="pointer-events-none absolute -left-32 top-20 h-96 w-96 rounded-full bg-blue-100/60 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-blue-50 blur-[100px]" />
+
+      <div className="relative z-10 mx-auto max-w-7xl">
       {/* Header */}
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 sm:text-[11px]">
-          <Star className="h-3 w-3 fill-blue-600 text-blue-600" />
+          <Star className="h-3 w-3 fill-blue-500 text-blue-500" />
           Promoción hasta el 31 de mayo del 2025
         </span>
 
@@ -295,191 +301,57 @@ function PricingSection() {
 
       {/* Currency */}
       <div className="mt-4 flex justify-center">
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setCurrency("pen")}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
-                currency === "pen"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900",
-              )}
-            >
-              Soles (S/)
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrency("usd")}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
-                currency === "usd"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900",
-              )}
-            >
-              Dólares (USD)
-            </button>
-          </div>
-          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
-            <Lock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            Todos los planes incluyen actualizaciones, mejoras y respaldo de datos.
-          </p>
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setCurrency("pen")}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
+              currency === "pen" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
+            )}
+          >
+            Soles (S/)
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrency("usd")}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
+              currency === "usd" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
+            )}
+          >
+            Dólares (USD)
+          </button>
         </div>
       </div>
 
-      {/* Cards */}
-      <div className="mt-10 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3 lg:items-center lg:gap-5">
-        {pricingPlans.map((plan) => {
-          const price = formatPrice(plan.monthlyPricePen, billingCycle, currency);
-          const currencySuffix = getCurrencySuffix(currency);
-          const isHighlighted = plan.highlighted;
-
-          return (
-            <div
-              key={plan.name}
-              className={cn("relative flex flex-col", isHighlighted && "pt-4 lg:z-10")}
-            >
-              {isHighlighted && (
-                <div className="absolute -top-0 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-bold tracking-wide text-white shadow-lg shadow-blue-600/40">
-                  <Star className="h-3 w-3 fill-white" />
-                  Más popular
-                </div>
-              )}
-
-              <article
-                className={cn(
-                  "flex h-full flex-col overflow-hidden rounded-2xl border transition-shadow",
-                  isHighlighted
-                    ? "border-blue-500/60 bg-gradient-to-b from-slate-900 via-slate-900 to-blue-950 shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_20px_60px_rgba(37,99,235,0.25)] lg:scale-[1.04]"
-                    : "border-slate-200 bg-white shadow-[0_4px_24px_rgba(15,23,42,0.06)] hover:shadow-[0_8px_32px_rgba(15,23,42,0.08)]",
-                )}
-              >
-                <div className="flex flex-1 flex-col p-5 sm:p-6">
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm",
-                        isHighlighted
-                          ? "bg-blue-600 shadow-blue-600/40 ring-2 ring-blue-400/30"
-                          : "bg-blue-600 shadow-blue-600/20",
-                      )}
-                    >
-                      <plan.icon className="h-5 w-5 text-white" strokeWidth={1.75} />
-                    </span>
-                    <div className="min-w-0 pt-0.5">
-                      <h3
-                        className={cn(
-                          "text-sm font-bold sm:text-base",
-                          isHighlighted ? "text-white" : "text-slate-900",
-                        )}
-                      >
-                        {plan.name}
-                      </h3>
-                      <p
-                        className={cn(
-                          "mt-1 text-xs leading-relaxed sm:text-sm",
-                          isHighlighted ? "text-slate-400" : "text-slate-500",
-                        )}
-                      >
-                        {plan.subtitle}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className={cn(
-                      "mt-6 border-b pb-5",
-                      isHighlighted ? "border-slate-700/80" : "border-slate-100",
-                    )}
-                  >
-                    <div className="flex items-end gap-1">
-                      <span
-                        className={cn(
-                          "text-3xl font-bold leading-none tracking-tight sm:text-4xl",
-                          isHighlighted ? "text-white" : "text-slate-900",
-                        )}
-                      >
-                        {price}
-                      </span>
-                      <span
-                        className={cn(
-                          "mb-1 text-xs font-medium",
-                          isHighlighted ? "text-blue-300" : "text-slate-400",
-                        )}
-                      >
-                        {currencySuffix}
-                      </span>
-                      <span
-                        className={cn(
-                          "mb-1 text-sm",
-                          isHighlighted ? "text-slate-400" : "text-slate-400",
-                        )}
-                      >
-                        /mes
-                      </span>
-                    </div>
-                    <p className={cn("mt-1.5 text-xs", isHighlighted ? "text-slate-500" : "text-slate-400")}>
-                      +IGV / Mensual
-                    </p>
-                  </div>
-
-                  <ul className="mt-5 flex flex-1 flex-col gap-2.5">
-                    {plan.features.map((feature) => (
-                      <li
-                        key={feature.label}
-                        className={cn(
-                          "flex items-start gap-2.5 text-xs sm:text-[13px]",
-                          feature.included
-                            ? isHighlighted
-                              ? "text-slate-200"
-                              : "text-slate-700"
-                            : isHighlighted
-                              ? "text-slate-500"
-                              : "text-slate-400",
-                        )}
-                      >
-                        <FeatureIcon included={feature.included} dark={isHighlighted} />
-                        {feature.label}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <a
-                    href="#contacto"
-                    className={cn(
-                      "mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition",
-                      isHighlighted
-                        ? "bg-blue-600 shadow-lg shadow-blue-600/30 hover:bg-blue-500"
-                        : "bg-blue-600 shadow-lg shadow-blue-600/20 hover:bg-blue-500",
-                    )}
-                  >
-                    Seleccionar plan
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </div>
-              </article>
-            </div>
-          );
-        })}
+      <div className="mt-10 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3 lg:gap-6">
+        <PricingPlanCard plan={entryPlan} billingCycle={billingCycle} currency={currency} />
+        <PricingPlanCard
+          plan={featuredPlan}
+          billingCycle={billingCycle}
+          currency={currency}
+          featured
+        />
+        <PricingPlanCard plan={corporatePlan} billingCycle={billingCycle} currency={currency} />
       </div>
 
       {/* Trust footer */}
-      <div className="mt-10 grid grid-cols-1 gap-6 border-t border-slate-200 pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+      <div className="mt-12 grid grid-cols-1 gap-6 border-t border-slate-200 pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
         {trustFeatures.map((item) => (
           <div key={item.title} className="flex gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100">
               <item.icon className="h-5 w-5 text-blue-600" strokeWidth={1.75} />
             </span>
             <div>
-              <p className="app-panel-title">{item.title}</p>
+              <p className="text-sm font-semibold text-slate-900">{item.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.description}</p>
             </div>
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -562,12 +434,14 @@ function FaqSection() {
 
 export function LandingClosingSections() {
   return (
-    <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <PricingSection />
-        <TestimonialsSection />
-        <FaqSection />
-      </div>
-    </section>
+    <>
+      <PricingSection />
+      <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <TestimonialsSection />
+          <FaqSection />
+        </div>
+      </section>
+    </>
   );
 }

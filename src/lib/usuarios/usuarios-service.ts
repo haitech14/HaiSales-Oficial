@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { ROLE_LABELS, normalizeRole } from "@/lib/auth/roles";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
-  usuarios as mockUsuarios,
   usuariosKpis as staticKpis,
   type UsuarioEstado,
   type UsuarioRecord,
@@ -49,8 +49,11 @@ function buildSnapshot(users: UsuarioRecord[], source: "supabase" | "mock"): Usu
   return {
     users,
     kpis: staticKpis.map((kpi, index) => {
-      if (index === 0) return { ...kpi, value: String(activos || users.length) };
-      return kpi;
+      if (index === 0) return withRealKpi(kpi, String(activos || users.length));
+      if (index === 1) return withRealKpi(kpi, String(invitados));
+      if (index === 2) return withRealKpi(kpi, String(users.length));
+      if (index === 3) return withRealKpi(kpi, String(inactivos));
+      return withRealKpi(kpi, "0");
     }),
     tabCounts: {
       todos: null,
@@ -65,7 +68,7 @@ function buildSnapshot(users: UsuarioRecord[], source: "supabase" | "mock"): Usu
 
 export async function fetchUsuariosSnapshot(userId: string | null, email?: string | null): Promise<UsuariosSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockUsuarios, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -76,12 +79,11 @@ export async function fetchUsuariosSnapshot(userId: string | null, email?: strin
 
   if (error || !data) {
     console.warn("[usuarios] Error al cargar perfil:", error?.message);
-    return buildSnapshot(mockUsuarios, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const currentUser = mapProfileToUsuario(data, email);
-  const team = mockUsuarios.filter((user) => user.correo !== currentUser.correo);
-  return buildSnapshot([currentUser, ...team], "supabase");
+  return buildSnapshot([currentUser], "supabase");
 }
 
 export { getUsuarioEstadoStyles } from "@/lib/usuarios-mock-data";

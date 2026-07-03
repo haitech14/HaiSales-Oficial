@@ -3,13 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import {
   inventarioKpis as staticKpis,
-  inventarioRecords as mockRecords,
-  inventoryAlerts as staticAlerts,
-  stockByCategory as staticStockByCategory,
-  topRotationProducts as staticTopRotation,
 } from "@/lib/inventario-mock-data";
 import type {
-  DbProductType,
   InventarioProduct,
   InventarioSnapshot,
 } from "@/lib/inventario/types";
@@ -74,35 +69,17 @@ function mapRowToProduct(row: ProductoRow): InventarioProduct {
     sku: row.sku ?? `PROD-${row.id.slice(0, 8).toUpperCase()}`,
     name: row.nombre,
     description: row.descripcion ?? "",
+    marca: row.marca_modelo ?? "—",
     category: row.categoria ?? "General",
     warehouse: tipo === "service" ? "—" : row.almacen ?? "Almacén Central",
     stock: row.stock,
     unit,
     cost: Number(row.costo ?? 0),
     price: Number(row.precio),
+    moneda: row.moneda ?? "PEN",
     status: computeStatus(row),
     type: tipo,
     ...visuals,
-  };
-}
-
-function mapMockToProduct(record: (typeof mockRecords)[number]): InventarioProduct {
-  return {
-    id: record.id,
-    sku: record.sku,
-    name: record.name,
-    description: record.description,
-    category: record.category,
-    warehouse: record.warehouse,
-    stock: record.stock,
-    unit: record.unit,
-    cost: record.cost,
-    price: record.price,
-    status: record.status,
-    type: record.type,
-    icon: record.icon,
-    iconBg: record.iconBg,
-    iconColor: record.iconColor,
   };
 }
 
@@ -125,35 +102,39 @@ function buildKpis(products: InventarioProduct[]) {
   const stockBajo = products.filter((p) => p.status === "Stock bajo").length;
   const sinMovimiento = products.filter((p) => p.status === "Sin movimiento").length;
 
+  if (products.length === 0) {
+    return staticKpis.map((kpi, index) => {
+      if (index === 0) return { ...kpi, value: "0" };
+      if (index === 1) return { ...kpi, value: "S/ 0" };
+      if (index === 2) return { ...kpi, value: "0", change: "Sin alertas", changePositive: true };
+      if (index === 3) return { ...kpi, value: "0x" };
+      return kpi;
+    });
+  }
+
   return staticKpis.map((kpi, index) => {
     if (index === 0) {
       return {
         ...kpi,
-        value: activos > 0 ? activos.toLocaleString("es-PE") : kpi.value,
+        value: activos.toLocaleString("es-PE"),
       };
     }
     if (index === 1) {
       return {
         ...kpi,
-        value:
-          stockValorizado > 0
-            ? `S/ ${Math.round(stockValorizado).toLocaleString("es-PE")}`
-            : kpi.value,
+        value: `S/ ${Math.round(stockValorizado).toLocaleString("es-PE")}`,
       };
     }
     if (index === 2) {
       return {
         ...kpi,
-        change: stockBajo > 0 ? `+${stockBajo} vs. mes anterior` : kpi.change,
-        changePositive: false,
-        value: String(stockBajo || kpi.value),
+        change: stockBajo > 0 ? `+${stockBajo} vs. mes anterior` : "Sin alertas",
+        changePositive: stockBajo === 0,
+        value: String(stockBajo),
       };
     }
     if (index === 3) {
-      const rotation =
-        products.length > 0
-          ? `${(Math.min(6, 2 + products.length * 0.3)).toFixed(1)}x`
-          : kpi.value;
+      const rotation = `${(Math.min(6, 2 + products.length * 0.3)).toFixed(1)}x`;
       return { ...kpi, value: rotation };
     }
     return kpi;
@@ -170,7 +151,7 @@ function buildStockByCategory(products: InventarioProduct[]) {
   const totalStock = entries.reduce((sum, [, count]) => sum + count, 0) || 1;
   const colors = ["#3b82f6", "#f97316", "#38bdf8", "#22c55e"];
 
-  if (entries.length === 0) return staticStockByCategory;
+  if (entries.length === 0) return [];
 
   return entries.map(([label, count], index) => ({
     label,
@@ -186,7 +167,7 @@ function buildTopRotation(products: InventarioProduct[]) {
     .sort((a, b) => b.stock - a.stock)
     .slice(0, 5);
 
-  if (sorted.length === 0) return staticTopRotation;
+  if (sorted.length === 0) return [];
 
   const maxStock = sorted[0]?.stock ?? 1;
   return sorted.map((product, index) => ({
@@ -201,7 +182,13 @@ function buildAlerts(products: InventarioProduct[]) {
   const sinMovimiento = products.filter((p) => p.status === "Sin movimiento").length;
   const proximosVencer = products.filter((p) => p.stock > 0 && p.stock <= 5).length;
 
-  if (products.length === 0) return staticAlerts;
+  if (products.length === 0) {
+    return [
+      { label: "Stock bajo", count: 0, color: "bg-red-500", width: "0%" },
+      { label: "Sin movimiento (90+ días)", count: 0, color: "bg-orange-500", width: "0%" },
+      { label: "Próximos a vencer", count: 0, color: "bg-amber-400", width: "0%" },
+    ];
+  }
 
   const max = Math.max(stockBajo, sinMovimiento, proximosVencer, 1);
 
@@ -227,7 +214,11 @@ function buildAlerts(products: InventarioProduct[]) {
   ];
 }
 
-function buildSnapshot(products: InventarioProduct[], source: "supabase" | "mock"): InventarioSnapshot {
+function buildSnapshot(
+  products: InventarioProduct[],
+  source: "supabase" | "mock",
+  importError?: string,
+): InventarioSnapshot {
   return {
     products,
     kpis: buildKpis(products),
@@ -237,65 +228,67 @@ function buildSnapshot(products: InventarioProduct[], source: "supabase" | "mock
     inventoryAlerts: buildAlerts(products),
     totalRecords: products.length,
     source,
+    importError,
   };
 }
 
-async function seedProductsForUser(userId: string) {
-  for (const mock of mockRecords) {
-    const tipo: DbProductType = mock.type;
-    const daysAgo =
-      mock.status === "Sin movimiento" ? 120 : mock.status === "Stock bajo" ? 14 : 3;
-
-    await supabase.from("productos").insert({
-      user_id: userId,
-      sku: mock.sku,
-      nombre: mock.name,
-      descripcion: mock.description,
-      categoria: mock.category,
-      almacen: mock.warehouse === "—" ? "Almacén Central" : mock.warehouse,
-      costo: mock.cost,
-      precio: mock.price,
-      stock: mock.stock,
-      unidad: mock.unit === "servicio" ? "und" : mock.unit === "kits" ? "kit" : "und",
-      tipo,
-      stock_minimo: mock.status === "Stock bajo" ? 15 : 10,
-      activo: mock.status !== "Sin movimiento",
-      ultimo_movimiento_at: new Date(Date.now() - daysAgo * 86400000).toISOString(),
-    });
-  }
-}
-
-export async function fetchInventarioSnapshot(userId: string | null): Promise<InventarioSnapshot> {
-  if (!userId) {
-    return buildSnapshot(mockRecords.map(mapMockToProduct), "mock");
-  }
-
+async function loadProductosForUser(userId: string) {
   const { data, error } = await supabase
     .from("productos")
     .select("*")
     .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(5000);
 
   if (error) {
     console.warn("[inventario] Error al cargar productos:", error.message);
-    return buildSnapshot(mockRecords.map(mapMockToProduct), "mock");
+    return { rows: [] as ProductoRow[], error: error.message };
   }
 
-  if (!data || data.length === 0) {
-    await seedProductsForUser(userId);
-    const retry = await supabase
-      .from("productos")
-      .select("*")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
+  return { rows: data ?? [], error: undefined as string | undefined };
+}
 
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockRecords.map(mapMockToProduct), "mock");
+async function importLegacyProductosIfNeeded(userId: string): Promise<{ count: number; error?: string }> {
+  const { data, error } = await supabase.rpc("import_productos_legacy_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn("[inventario] Import legacy:", error.message);
+    return { count: 0, error: error.message };
+  }
+
+  return { count: typeof data === "number" ? data : 0 };
+}
+
+export async function fetchInventarioSnapshot(userId: string | null): Promise<InventarioSnapshot> {
+  if (!userId) {
+    return buildSnapshot([], "supabase");
+  }
+
+  const initial = await loadProductosForUser(userId);
+  if (initial.error && initial.rows.length === 0) {
+    return buildSnapshot([], "supabase", initial.error);
+  }
+
+  let rows = initial.rows;
+  let importError: string | undefined;
+
+  if (rows.length === 0) {
+    const imported = await importLegacyProductosIfNeeded(userId);
+    importError = imported.error;
+
+    const retry = await loadProductosForUser(userId);
+    rows = retry.rows;
+    importError = importError ?? retry.error;
+
+    if (rows.length === 0 && !importError && imported.count === 0) {
+      importError =
+        "No hay productos en tu cuenta ni en el catálogo legacy. Aplica las migraciones de Supabase (supabase db push).";
     }
-    data = retry.data;
   }
 
-  return buildSnapshot(data.map(mapRowToProduct), "supabase");
+  return buildSnapshot(rows.map(mapRowToProduct), "supabase", importError);
 }
 
 async function generateNextSku(userId: string) {
@@ -394,6 +387,7 @@ export async function createProductosBulk(
 
 export {
   formatCurrency,
+  formatProductCurrency,
   getProductStatusStyles,
   isLowStock,
 } from "@/lib/inventario-mock-data";

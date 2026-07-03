@@ -1,10 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
-import { calculateVentaTotals } from "@/lib/nueva-venta-types";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
   ventasKpis as staticKpis,
-  ventasRecords as mockRecords,
   ventasTabs,
   type VentaDocumentType,
   type VentaRecord,
@@ -49,9 +47,20 @@ function formatDateParts(iso: string, hora?: string | null) {
   };
 }
 
+function periodMonthFromIso(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+function extractPaymentMeta(notas?: string | null) {
+  const formaPago = notas?.match(/Forma de pago: ([^·]+)/)?.[1]?.trim();
+  const cuentaCobro = notas?.match(/Cuenta: ([^·]+)/)?.[1]?.trim();
+  return { formaPago, cuentaCobro };
+}
+
 function mapRowToVenta(row: VentaRow): VentaRecord {
   const { date, time } = formatDateParts(row.fecha, row.hora_emision);
   const seller = row.vendedor_nombre ?? "Sin asignar";
+  const paymentMeta = extractPaymentMeta(row.notas);
   return {
     id: row.id,
     date,
@@ -62,10 +71,19 @@ function mapRowToVenta(row: VentaRow): VentaRecord {
     ruc: row.cliente_ruc ?? "—",
     amount: Number(row.total),
     status: SUNAT_FROM_DB[row.estado_sunat] ?? "Pendiente",
+    businessStatus: row.estado === "anulada" ? "Anulada" : "Activa",
+    periodMonth: periodMonthFromIso(row.fecha),
+    formaPago: paymentMeta.formaPago,
+    cuentaCobro: paymentMeta.cuentaCobro,
     hasCdr: row.tiene_cdr,
     seller,
     sellerInitials: row.vendedor_iniciales ?? seller.slice(0, 2).toUpperCase(),
+    fechaIso: row.fecha,
   };
+}
+
+export function buildVentasSnapshotFromRecords(records: VentaRecord[]): VentasSnapshot {
+  return buildSnapshot(records, "supabase");
 }
 
 function buildSnapshot(records: VentaRecord[], source: "supabase" | "mock"): VentasSnapshot {
@@ -74,30 +92,33 @@ function buildSnapshot(records: VentaRecord[], source: "supabase" | "mock"): Ven
   const notas = records.filter((r) => r.documentType === "Nota de crédito").length;
   const pendientes = records.filter((r) => r.status === "Pendiente").length;
   const rechazados = records.filter((r) => r.status === "Rechazado").length;
-  const totalFacturado = records.reduce((sum, r) => sum + r.amount, 0);
+  const anulados = records.filter((r) => r.businessStatus === "Anulada").length;
+  const totalFacturado = records
+    .filter((r) => r.businessStatus !== "Anulada")
+    .reduce((sum, r) => sum + r.amount, 0);
 
   const tabCounts: Record<string, number | null> = {
     todos: null,
     facturas,
     boletas,
     notas,
+    anulados,
     pendientes,
     rechazados,
   };
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0) return { ...kpi, value: String(records.length || kpi.value) };
+    if (index === 0) return withRealKpi(kpi, String(records.length));
     if (index === 1) {
-      return {
-        ...kpi,
-        value:
-          totalFacturado > 0
-            ? `S/ ${Math.round(totalFacturado).toLocaleString("es-PE")}`
-            : kpi.value,
-      };
+      return withRealKpi(
+        kpi,
+        totalFacturado > 0
+          ? `S/ ${Math.round(totalFacturado).toLocaleString("es-PE")}`
+          : "S/ 0",
+      );
     }
-    if (index === 2) return { ...kpi, value: String(pendientes || kpi.value) };
-    if (index === 3) return { ...kpi, value: String(rechazados || kpi.value) };
+    if (index === 2) return withRealKpi(kpi, String(pendientes));
+    if (index === 3) return withRealKpi(kpi, String(rechazados));
     return kpi;
   });
 
@@ -110,9 +131,53 @@ function buildSnapshot(records: VentaRecord[], source: "supabase" | "mock"): Ven
   };
 }
 
+async function importLegacyVentasIfNeeded(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("import_ventas_legacy_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn("[ventas] Import legacy:", error.message);
+    return false;
+  }
+
+  const ventasImported = typeof data === "number" && data > 0;
+  await importVentaItemsLegacyIfNeeded(userId);
+  return ventasImported;
+}
+
+export async function importVentaItemsLegacyIfNeeded(userId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("import_venta_items_legacy_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn("[ventas] Import ítems legacy:", error.message);
+    return 0;
+  }
+
+  return typeof data === "number" ? data : 0;
+}
+
+export async function importVentaItemsLegacyFromDatabase(userId: string): Promise<number> {
+  return importVentaItemsLegacyIfNeeded(userId);
+}
+
+export async function importVentasLegacyFromDatabase(userId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("import_ventas_legacy_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data === "number" ? data : 0;
+}
+
 export async function fetchVentasSnapshot(userId: string | null): Promise<VentasSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -123,21 +188,49 @@ export async function fetchVentasSnapshot(userId: string | null): Promise<Ventas
 
   if (error) {
     console.warn("[ventas] Error al cargar ventas:", error.message);
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   if (!data || data.length === 0) {
-    await seedDemoDataForUser(userId);
-    const retry = await supabase
-      .from("ventas")
-      .select("*")
-      .eq("user_id", userId)
-      .order("fecha", { ascending: false });
+    const imported = await importLegacyVentasIfNeeded(userId);
+    if (imported) {
+      const retry = await supabase
+        .from("ventas")
+        .select("*")
+        .eq("user_id", userId)
+        .order("fecha", { ascending: false });
 
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockRecords, "mock");
+      if (!retry.error && retry.data?.length) {
+        return buildSnapshot(retry.data.map(mapRowToVenta), "supabase");
+      }
     }
-    data = retry.data;
+
+    const itemsImported = await importVentaItemsLegacyIfNeeded(userId);
+    if (itemsImported > 0) {
+      const retry = await supabase
+        .from("ventas")
+        .select("*")
+        .eq("user_id", userId)
+        .order("fecha", { ascending: false });
+
+      if (!retry.error && retry.data?.length) {
+        return buildSnapshot(retry.data.map(mapRowToVenta), "supabase");
+      }
+    }
+
+    return buildSnapshot([], "supabase");
+  }
+
+  await importVentaItemsLegacyIfNeeded(userId);
+
+  const { data: refreshed, error: refreshError } = await supabase
+    .from("ventas")
+    .select("*")
+    .eq("user_id", userId)
+    .order("fecha", { ascending: false });
+
+  if (!refreshError && refreshed?.length) {
+    return buildSnapshot(refreshed.map(mapRowToVenta), "supabase");
   }
 
   return buildSnapshot(data.map(mapRowToVenta), "supabase");
@@ -206,6 +299,9 @@ export async function createVentaFromForm(userId: string, form: import("@/lib/nu
 
 export {
   formatCurrency,
+  formatPeriodMonth,
+  formatPeriodMonthShort,
+  getBusinessStatusStyles,
   getDocumentTypeStyles,
   getSunatStatusStyles,
   ventasTabs,

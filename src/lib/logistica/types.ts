@@ -70,11 +70,69 @@ export type LogisticsRisk = {
 
 export type LogisticaSnapshot = {
   orders: PurchaseOrder[];
+  guias: GuiaRemision[];
   kpis: LogisticaKpi[];
+  guiasKpis: LogisticaKpi[];
   tabCounts: Record<string, number | null>;
+  guiaTabCounts: Record<string, number | null>;
   ordersByStatus: OrderStatusCount[];
   purchasesBySupplier: SupplierPurchase[];
   logisticsRisks: LogisticsRisk[];
   totalRecords: number;
+  totalGuias: number;
   source: "supabase" | "mock";
+};
+
+export type GuiaEstado = "Emitida" | "En tránsito" | "Entregada" | "Anulada";
+
+export type GuiaEditableField =
+  | "sucursal"
+  | "destinatario"
+  | "ruc"
+  | "conductor"
+  | "placa"
+  | "comprobante"
+  | "estado";
+
+export const GUIA_ESTADO_OPTIONS: GuiaEstado[] = ["Emitida", "En tránsito", "Entregada", "Anulada"];
+
+export type GuiaRemisionItem = {
+  id: string;
+  codigo?: string | null;
+  descripcion: string;
+  cantidad: number;
+  unidad: string;
+  pesoUnitario?: number | null;
+};
+
+export type GuiaRemision = {
+  id: string;
+  codigoGuia: string;
+  fecha: string;
+  hora: string;
+  fechaTraslado: string;
+  motivoTraslado: string;
+  destinatario: string;
+  ruc: string;
+  contacto: string;
+  telefono: string;
+  dni: string;
+  sucursal: string;
+  direccionDestino: string;
+  observacion?: string | null;
+  conductor: string;
+  placa?: string | null;
+  bultos?: number | null;
+  pesoTotal?: number | null;
+  comprobanteRelacionado?: string | null;
+  estado: GuiaEstado;
+  periodoMes: string;
+  itemsCount: number;
+};
+
+export type GuiaRemisionDetail = GuiaRemision & {
+  items: GuiaRemisionItem[];
+  observacion?: string | null;
+  direccionPartida?: string | null;
+  createdAt: string;
 };

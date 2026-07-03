@@ -118,6 +118,9 @@ CREATE TABLE IF NOT EXISTS public.empresa_config (
   igv_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 18,
   serie_factura TEXT DEFAULT 'F001',
   serie_boleta TEXT DEFAULT 'B001',
+  setup_completed BOOLEAN NOT NULL DEFAULT false,
+  contador_nombre TEXT,
+  contador_email TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

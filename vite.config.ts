@@ -5,6 +5,7 @@ import { visualizer } from "rollup-plugin-visualizer";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     host: "0.0.0.0",
     port: 8080,
@@ -35,7 +36,7 @@ export default defineConfig({
     VitePWA({
       devOptions: { enabled: false },
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico"],
+      includeAssets: ["favicon.ico.png", "haisaleslogo.png"],
       manifest: {
         name: "HaiSales",
         short_name: "HaiSales",
@@ -43,7 +44,10 @@ export default defineConfig({
         theme_color: "#0F766E",
         background_color: "#0f172a",
         display: "standalone",
-        icons: [{ src: "favicon.ico", sizes: "64x64", type: "image/x-icon" }],
+        icons: [
+          { src: "favicon.ico.png", sizes: "192x192", type: "image/png" },
+          { src: "haisaleslogo.png", sizes: "512x512", type: "image/png" },
+        ],
       },
       workbox: { globPatterns: ["**/*.{js,css,html,ico,png,svg}"] },
     }),
@@ -51,7 +55,15 @@ export default defineConfig({
       ? visualizer({ filename: "dist/stats.html", gzipSize: true, open: false })
       : undefined,
   ].filter(Boolean),
+  optimizeDeps: {
+    include: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
+  },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      react: path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+    },
+    dedupe: ["react", "react-dom"],
   },
 });

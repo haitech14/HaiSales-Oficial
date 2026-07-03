@@ -1,5 +1,6 @@
 export type VentaDocumentType = "Factura" | "Boleta" | "Nota de crédito";
 export type VentaSunatStatus = "Aceptado" | "Pendiente" | "Rechazado";
+export type VentaBusinessStatus = "Activa" | "Anulada";
 
 export type VentaRecord = {
   id: string;
@@ -11,9 +12,14 @@ export type VentaRecord = {
   ruc: string;
   amount: number;
   status: VentaSunatStatus;
+  businessStatus?: VentaBusinessStatus;
+  periodMonth?: string;
+  formaPago?: string;
+  cuentaCobro?: string;
   hasCdr: boolean;
   seller: string;
   sellerInitials: string;
+  fechaIso?: string;
 };
 
 export const ventasKpis = [
@@ -56,6 +62,7 @@ export const ventasTabs = [
   { id: "facturas", label: "Facturas", count: 144 },
   { id: "boletas", label: "Boletas", count: 98 },
   { id: "notas", label: "Notas crédito", count: 28 },
+  { id: "anulados", label: "Anulados", count: 0 },
   { id: "pendientes", label: "Pendientes", count: 12 },
   { id: "rechazados", label: "Rechazados", count: 3 },
 ];
@@ -71,6 +78,8 @@ export const ventasRecords: VentaRecord[] = [
     ruc: "20547896321",
     amount: 4850,
     status: "Aceptado",
+    businessStatus: "Activa",
+    periodMonth: "2026-03",
     hasCdr: true,
     seller: "Jhelcen Romero",
     sellerInitials: "JR",
@@ -222,6 +231,25 @@ export function getSunatStatusStyles(status: VentaSunatStatus): string {
     case "Rechazado":
       return "border-red-200 bg-red-50 text-red-700";
   }
+}
+
+export function getBusinessStatusStyles(status: VentaBusinessStatus): string {
+  return status === "Anulada"
+    ? "border-red-200 bg-red-50 text-red-700 line-through"
+    : "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+export function formatPeriodMonth(periodMonth: string): string {
+  const [year, month] = periodMonth.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleDateString("es-PE", { month: "long", year: "numeric" });
+}
+
+export function formatPeriodMonthShort(periodMonth: string): string {
+  const [year, month] = periodMonth.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  const label = date.toLocaleDateString("es-PE", { month: "short", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export function getDocumentTypeStyles(type: VentaDocumentType): string {

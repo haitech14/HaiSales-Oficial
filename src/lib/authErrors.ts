@@ -1,12 +1,14 @@
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase-env";
+
 export function getSupabaseConfigError(): string | null {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const url = getSupabaseUrl();
+  const key = getSupabasePublishableKey();
 
   if (!url || url.includes("your-project")) {
-    return "Falta VITE_SUPABASE_URL en .env";
+    return "Falta VITE_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_URL en .env";
   }
   if (!key || key.includes("your_publishable")) {
-    return "Falta VITE_SUPABASE_PUBLISHABLE_KEY en .env";
+    return "Falta VITE_SUPABASE_PUBLISHABLE_KEY o NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY en .env";
   }
   return null;
 }

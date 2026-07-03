@@ -1,16 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
-  cajaBancosAlerts,
-  cajaBancosBankBalances,
-  cajaBancosFlowByAccount,
   cajaBancosKpis as staticKpis,
-  cajaBancosRecords as mockRecords,
   cajaBancosTabs,
   type CajaBancosRecord,
   type MovimientoEstado,
   type MovimientoTipo,
 } from "@/lib/caja-bancos-mock-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
+import { withRealKpi } from "@/lib/kpi-utils";
 
 type CuentaRow = {
   id: string;
@@ -36,13 +32,32 @@ type MovimientoRow = {
   cuentas_tesoreria?: { nombre: string; numero_cuenta: string | null } | null;
 };
 
+export type CajaBancosFlowItem = {
+  label: string;
+  percent: number;
+  color: string;
+  amount: number;
+};
+
+export type CajaBancosBankBalance = {
+  name: string;
+  number: string;
+  balance: number;
+  percent: number;
+};
+
+export type CajaBancosAlert = {
+  label: string;
+  color: string;
+};
+
 export type CajaBancosSnapshot = {
   records: CajaBancosRecord[];
   kpis: typeof staticKpis;
   tabCounts: Record<string, number | null>;
-  flowByAccount: typeof cajaBancosFlowByAccount;
-  bankBalances: typeof cajaBancosBankBalances;
-  alerts: typeof cajaBancosAlerts;
+  flowByAccount: CajaBancosFlowItem[];
+  bankBalances: CajaBancosBankBalance[];
+  alerts: CajaBancosAlert[];
   totalRecords: number;
   source: "supabase" | "mock";
 };
@@ -85,43 +100,48 @@ function mapRowToRecord(row: MovimientoRow): CajaBancosRecord {
   };
 }
 
-async function seedTesoreriaDemo(userId: string) {
-  const { data: existing } = await supabase
-    .from("cuentas_tesoreria" as "almacenes")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1);
+function computeFlowByAccount(records: CajaBancosRecord[]): CajaBancosFlowItem[] {
+  const totals = new Map<string, number>();
+  const colors = ["#3b82f6", "#8b5cf6", "#22c55e", "#f97316"];
 
-  if (existing?.length) return;
-
-  const cuentas = [
-    { nombre: "BCP Soles", numero_cuenta: "191-2345678-0-45", tipo: "banco", banco: "BCP", saldo_actual: 202170 },
-    { nombre: "BBVA Soles", numero_cuenta: "0011-0123-4567890123", tipo: "banco", banco: "BBVA", saldo_actual: 98540 },
-    { nombre: "Caja Chica", numero_cuenta: "CAJA-01", tipo: "caja", saldo_actual: 2500 },
-  ];
-
-  for (const cuenta of cuentas) {
-    const { data: inserted } = await supabase
-      .from("cuentas_tesoreria" as "almacenes")
-      .insert({ user_id: userId, ...cuenta } as never)
-      .select("id, saldo_actual")
-      .single();
-
-    if (!inserted) continue;
-
-    await supabase.from("movimientos_tesoreria" as "almacenes").insert({
-      user_id: userId,
-      cuenta_id: (inserted as { id: string }).id,
-      tipo: "ingreso",
-      documento: "INI-0001",
-      concepto: "Saldo inicial demo",
-      monto_ingreso: cuenta.saldo_actual,
-      saldo_posterior: cuenta.saldo_actual,
-      estado: "conciliado",
-      responsable_nombre: "Jhelcen Romero",
-      responsable_iniciales: "JR",
-    } as never);
+  for (const record of records) {
+    const flow = (record.ingreso ?? 0) + (record.egreso ?? 0);
+    totals.set(record.cuenta, (totals.get(record.cuenta) ?? 0) + flow);
   }
+
+  const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
+  return [...totals.entries()].map(([label, amount], index) => ({
+    label,
+    amount,
+    percent: total > 0 ? Math.round((amount / total) * 100) : 0,
+    color: colors[index % colors.length],
+  }));
+}
+
+function computeBankBalances(cuentas: CuentaRow[]): CajaBancosBankBalance[] {
+  const saldoTotal = cuentas.reduce((sum, cuenta) => sum + Number(cuenta.saldo_actual), 0);
+
+  return cuentas.map((cuenta) => {
+    const balance = Number(cuenta.saldo_actual);
+    return {
+      name: cuenta.nombre,
+      number: cuenta.numero_cuenta ?? "—",
+      balance,
+      percent: saldoTotal > 0 ? Math.round((balance / saldoTotal) * 100) : 0,
+    };
+  });
+}
+
+function computeAlerts(records: CajaBancosRecord[]): CajaBancosAlert[] {
+  const pendientes = records.filter((record) => record.estado === "Pendiente").length;
+  if (pendientes === 0) return [];
+
+  return [
+    {
+      label: `${pendientes} movimiento${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de conciliar`,
+      color: "border-l-orange-500 bg-orange-50 text-orange-800",
+    },
+  ];
 }
 
 function buildSnapshot(records: CajaBancosRecord[], cuentas: CuentaRow[], source: "supabase" | "mock"): CajaBancosSnapshot {
@@ -135,28 +155,27 @@ function buildSnapshot(records: CajaBancosRecord[], cuentas: CuentaRow[], source
   const totalEgresos = records.reduce((sum, r) => sum + (r.egreso ?? 0), 0);
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0 && saldoTotal > 0) {
-      return { ...kpi, value: `S/ ${Math.round(saldoTotal).toLocaleString("es-PE")}` };
+    if (index === 0) {
+      return withRealKpi(
+        kpi,
+        saldoTotal > 0 ? `S/ ${Math.round(saldoTotal).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 1 && totalIngresos > 0) {
-      return { ...kpi, value: `S/ ${Math.round(totalIngresos).toLocaleString("es-PE")}` };
+    if (index === 1) {
+      return withRealKpi(
+        kpi,
+        totalIngresos > 0 ? `S/ ${Math.round(totalIngresos).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 2 && totalEgresos > 0) {
-      return { ...kpi, value: `S/ ${Math.round(totalEgresos).toLocaleString("es-PE")}` };
+    if (index === 2) {
+      return withRealKpi(
+        kpi,
+        totalEgresos > 0 ? `S/ ${Math.round(totalEgresos).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 3) return { ...kpi, value: String(pendientes || kpi.value) };
-    return kpi;
+    if (index === 3) return withRealKpi(kpi, String(pendientes));
+    return withRealKpi(kpi, "0");
   });
-
-  const bankBalances = cuentas.length
-    ? cuentas.map((c) => ({
-        bank: c.nombre,
-        account: c.numero_cuenta ?? "—",
-        balance: `S/ ${Number(c.saldo_actual).toLocaleString("es-PE")}`,
-        change: "Actualizado",
-        positive: true,
-      }))
-    : cajaBancosBankBalances;
 
   return {
     records,
@@ -169,9 +188,9 @@ function buildSnapshot(records: CajaBancosRecord[], cuentas: CuentaRow[], source
       pendientes,
       conciliados,
     },
-    flowByAccount: cajaBancosFlowByAccount,
-    bankBalances,
-    alerts: cajaBancosAlerts,
+    flowByAccount: computeFlowByAccount(records),
+    bankBalances: computeBankBalances(cuentas),
+    alerts: computeAlerts(records),
     totalRecords: records.length,
     source,
   };
@@ -179,7 +198,7 @@ function buildSnapshot(records: CajaBancosRecord[], cuentas: CuentaRow[], source
 
 export async function fetchCajaBancosSnapshot(userId: string | null): Promise<CajaBancosSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockRecords, [], "mock");
+    return buildSnapshot([], [], "supabase");
   }
 
   const movimientosResult = await supabase
@@ -188,14 +207,14 @@ export async function fetchCajaBancosSnapshot(userId: string | null): Promise<Ca
     .eq("user_id", userId)
     .order("fecha", { ascending: false })
     .order("hora", { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (movimientosResult.error) {
     console.warn("[caja-bancos] Error:", movimientosResult.error.message);
-    return buildSnapshot(mockRecords, [], "mock");
+    return buildSnapshot([], [], "supabase");
   }
 
-  let movimientos = (movimientosResult.data ?? []) as unknown as MovimientoRow[];
+  const movimientos = (movimientosResult.data ?? []) as unknown as MovimientoRow[];
 
   const cuentasResult = await supabase
     .from("cuentas_tesoreria" as "almacenes")
@@ -203,29 +222,10 @@ export async function fetchCajaBancosSnapshot(userId: string | null): Promise<Ca
     .eq("user_id", userId)
     .eq("activo", true);
 
-  let cuentas = (cuentasResult.data ?? []) as unknown as CuentaRow[];
-
-  if (!movimientos.length || !cuentas.length) {
-    await seedDemoDataForUser(userId);
-    await seedTesoreriaDemo(userId);
-
-    const retryMov = await supabase
-      .from("movimientos_tesoreria" as "almacenes")
-      .select("*, cuentas_tesoreria(nombre, numero_cuenta)")
-      .eq("user_id", userId)
-      .order("fecha", { ascending: false })
-      .limit(100);
-    const retryCuentas = await supabase
-      .from("cuentas_tesoreria" as "almacenes")
-      .select("id, nombre, numero_cuenta, saldo_actual")
-      .eq("user_id", userId);
-
-    movimientos = (retryMov.data ?? []) as unknown as MovimientoRow[];
-    cuentas = (retryCuentas.data ?? []) as unknown as CuentaRow[];
-  }
+  const cuentas = (cuentasResult.data ?? []) as unknown as CuentaRow[];
 
   if (!movimientos.length) {
-    return buildSnapshot(mockRecords, cuentas, cuentas.length ? "supabase" : "mock");
+    return buildSnapshot([], cuentas, "supabase");
   }
 
   return buildSnapshot(movimientos.map(mapRowToRecord), cuentas, "supabase");

@@ -6,26 +6,23 @@ import {
   Filter,
   LineChart,
   Loader2,
-  MoreHorizontal,
   RefreshCw,
   Search,
   Star,
   UserCheck,
   Users,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { ClientesRightPanel } from "@/components/app/ClientesRightPanel";
+import { ClientesTableHeader } from "@/components/app/ClientesTableHeader";
+import { ClientesTableRow } from "@/components/app/ClientesTableRow";
 import { NuevoClienteModal } from "@/components/app/NuevoClienteModal";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useClientes } from "@/hooks/useClientes";
-import {
-  clientesTabs,
-  getClientStatusStyles,
-  getSegmentStyles,
-} from "@/lib/clientes/clientes-service";
+import { clientesTabs } from "@/lib/clientes/clientes-service";
 import { cn } from "@/lib/utils";
 
 const kpiIcons = [UserCheck, Users, AlertTriangle, LineChart];
@@ -43,13 +40,21 @@ export default function ClientesPage() {
     refresh,
     createCliente,
     isCreating,
+    updateClienteField,
+    lastUpdatedAt,
+    columnFilterOptions,
+    columnFilters,
+    setColumnFilter,
+    sortField,
+    sortDirection,
+    handleSort,
   } = useClientes();
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevoClienteOpen, setNuevoClienteOpen] = useState(false);
 
   const tabsWithCounts = clientesTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   const totalRecords = snapshot?.totalRecords ?? filteredClients.length;
@@ -130,14 +135,14 @@ export default function ClientesPage() {
                 <div className="flex items-center gap-2 pb-2">
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
@@ -153,7 +158,7 @@ export default function ClientesPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por razón social, RUC, contacto, teléfono..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -184,122 +189,247 @@ export default function ClientesPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1060px]">
+                <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[2000px]">
                   <thead>
                     <tr className="app-table-head-row">
-                      <th className="px-4 py-3">Fecha alta</th>
-                      <th className="px-4 py-3">RUC</th>
-                      <th className="px-4 py-3">Razón social</th>
-                      <th className="px-4 py-3">Contacto</th>
-                      <th className="px-4 py-3">Teléfono</th>
-                      <th className="px-4 py-3">Segmento</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3">Ejecutivo</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
+                      <ClientesTableHeader
+                        label="Fecha"
+                        columnKey="fechaAlta"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.fechaAlta}
+                        filterOptions={columnFilterOptions.fechaAlta}
+                        onFilterChange={(value) => setColumnFilter("fechaAlta", value)}
+                      />
+                      <ClientesTableHeader
+                        label="RUC"
+                        columnKey="ruc"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.ruc}
+                        filterOptions={columnFilterOptions.ruc}
+                        onFilterChange={(value) => setColumnFilter("ruc", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Razón social"
+                        columnKey="razonSocial"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.razonSocial}
+                        filterOptions={columnFilterOptions.razonSocial}
+                        onFilterChange={(value) => setColumnFilter("razonSocial", value)}
+                        className="w-[260px]"
+                        columnMinWidth="min-w-[260px]"
+                      />
+                      <ClientesTableHeader
+                        label="Tipo de Cliente"
+                        columnKey="tipoCliente"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.tipoCliente}
+                        filterOptions={columnFilterOptions.tipoCliente}
+                        onFilterChange={(value) => setColumnFilter("tipoCliente", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Equipo/interés"
+                        columnKey="equipoInteres"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.equipoInteres}
+                        filterOptions={columnFilterOptions.equipoInteres}
+                        onFilterChange={(value) => setColumnFilter("equipoInteres", value)}
+                        className="w-[220px]"
+                        columnMinWidth="min-w-[220px]"
+                      />
+                      <ClientesTableHeader
+                        label="Producción Mensual"
+                        columnKey="produccionMensual"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.produccionMensual}
+                        filterOptions={columnFilterOptions.produccionMensual}
+                        onFilterChange={(value) => setColumnFilter("produccionMensual", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Fecha Toner"
+                        columnKey="fechaToner"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.fechaToner}
+                        filterOptions={columnFilterOptions.fechaToner}
+                        onFilterChange={(value) => setColumnFilter("fechaToner", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Segmento"
+                        columnKey="segmento"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.segmento}
+                        filterOptions={columnFilterOptions.segmento}
+                        onFilterChange={(value) => setColumnFilter("segmento", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Contacto"
+                        columnKey="contacto"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.contacto}
+                        filterOptions={columnFilterOptions.contacto}
+                        onFilterChange={(value) => setColumnFilter("contacto", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Teléfono"
+                        columnKey="telefono"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.telefono}
+                        filterOptions={columnFilterOptions.telefono}
+                        onFilterChange={(value) => setColumnFilter("telefono", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Dirección"
+                        columnKey="direccion"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.direccion}
+                        filterOptions={columnFilterOptions.direccion}
+                        onFilterChange={(value) => setColumnFilter("direccion", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Ciudad"
+                        columnKey="ciudad"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.ciudad}
+                        filterOptions={columnFilterOptions.ciudad}
+                        onFilterChange={(value) => setColumnFilter("ciudad", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Provincia"
+                        columnKey="provincia"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.provincia}
+                        filterOptions={columnFilterOptions.provincia}
+                        onFilterChange={(value) => setColumnFilter("provincia", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Distrito"
+                        columnKey="distrito"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.distrito}
+                        filterOptions={columnFilterOptions.distrito}
+                        onFilterChange={(value) => setColumnFilter("distrito", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Correo"
+                        columnKey="correo"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.correo}
+                        filterOptions={columnFilterOptions.correo}
+                        onFilterChange={(value) => setColumnFilter("correo", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Cumpleaños"
+                        columnKey="cumpleanos"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.cumpleanos}
+                        filterOptions={columnFilterOptions.cumpleanos}
+                        onFilterChange={(value) => setColumnFilter("cumpleanos", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Última compra"
+                        columnKey="ultimaCompra"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.ultimaCompra}
+                        filterOptions={columnFilterOptions.ultimaCompra}
+                        onFilterChange={(value) => setColumnFilter("ultimaCompra", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Frecuencia compra"
+                        columnKey="frecuenciaCompra"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.frecuenciaCompra}
+                        filterOptions={columnFilterOptions.frecuenciaCompra}
+                        onFilterChange={(value) => setColumnFilter("frecuenciaCompra", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Ticket compra"
+                        columnKey="ticketCompra"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.ticketCompra}
+                        filterOptions={columnFilterOptions.ticketCompra}
+                        onFilterChange={(value) => setColumnFilter("ticketCompra", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Modelos interés"
+                        columnKey="modelosInteres"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.modelosInteres}
+                        filterOptions={columnFilterOptions.modelosInteres}
+                        onFilterChange={(value) => setColumnFilter("modelosInteres", value)}
+                      />
+                      <ClientesTableHeader
+                        label="Observaciones"
+                        columnKey="observaciones"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.observaciones}
+                        filterOptions={columnFilterOptions.observaciones}
+                        onFilterChange={(value) => setColumnFilter("observaciones", value)}
+                      />
+                      <th className="app-table-cell text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                        <td colSpan={22} className="px-4 py-12 text-center text-slate-500">
                           <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
                           Cargando clientes...
                         </td>
                       </tr>
                     ) : (
                     filteredClients.map((client) => (
-                      <tr
+                      <ClientesTableRow
                         key={client.id}
-                        className="border-b border-slate-100 transition hover:bg-slate-50/60"
-                      >
-                        <td className="px-4 py-3.5 font-medium text-slate-800">{client.fechaAlta}</td>
-                        <td className="px-4 py-3.5 text-slate-600">{client.ruc}</td>
-                        <td className="px-4 py-3.5">
-                          <p className="font-semibold text-slate-800">{client.razonSocial}</p>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <p className="font-medium text-slate-800">{client.contacto}</p>
-                          <p className="text-xs text-slate-400">{client.cargo}</p>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-600">{client.telefono}</td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                              getSegmentStyles(client.segmento),
-                            )}
-                          >
-                            {client.segmento}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                              getClientStatusStyles(client.estado),
-                            )}
-                          >
-                            {client.estado}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7">
-                              <AvatarFallback className="bg-blue-100 text-[11px] font-semibold text-blue-700">
-                                {client.ejecutivoInitials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-slate-700">{client.ejecutivo}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <button
-                            type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            aria-label="Más acciones"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
+                        client={client}
+                        onUpdateField={updateClienteField}
+                      />
                     )))}
                   </tbody>
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>
-                  Mostrando 1 a {filteredClients.length} de {totalRecords.toLocaleString("es-PE")} registros
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white"
-                  >
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                  >
-                    129
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination shownCount={filteredClients.length} totalCount={totalRecords} />
             </section>
           </div>
         </div>
@@ -309,7 +439,13 @@ export default function ClientesPage() {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
         >
-          <ClientesRightPanel />
+          <ClientesRightPanel
+            analytics={snapshot?.analytics ?? null}
+            totalClients={totalRecords}
+            lastUpdatedAt={lastUpdatedAt}
+            onRefresh={() => void refresh()}
+            isRefreshing={isFetching}
+          />
         </AppRightPanelSlot>
       </div>
 

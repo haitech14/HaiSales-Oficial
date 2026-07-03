@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { BarChart3, ChevronsLeft, ChevronsRight, Menu } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Menu } from "lucide-react";
+import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AppSidebarContent } from "@/components/layout/AppSidebarContent";
 import { cn } from "@/lib/utils";
@@ -12,16 +12,15 @@ export function AppSidebar() {
     <aside
       className={cn(
         "hidden h-screen shrink-0 flex-col bg-[#0b1220] transition-[width] duration-200 md:flex",
-        collapsed ? "w-[72px]" : "w-[300px]",
+        collapsed ? "w-[68px]" : "w-[248px]",
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-4 py-4">
-        <Link to="/app/dashboard" className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
-            <BarChart3 className="h-5 w-5 text-white" strokeWidth={2.5} />
-          </span>
-          {!collapsed && <span className="truncate text-base font-bold text-white">HaiSales</span>}
-        </Link>
+      <div className="flex items-center justify-between gap-2 px-3 py-3">
+        <HaiSalesLogo
+          to="/app/dashboard"
+          iconOnly={collapsed}
+          imageClassName={collapsed ? "h-8 w-8 object-cover object-left" : "h-10 max-w-[220px]"}
+        />
         <button
           type="button"
           onClick={() => setCollapsed((current) => !current)}
@@ -52,7 +51,7 @@ export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
       >
         <Menu className="h-5 w-5" />
       </button>
-      <span className="text-sm font-bold text-white">HaiSales</span>
+      <HaiSalesLogo to="/app/dashboard" iconOnly imageClassName="h-8 w-8 object-cover object-left" />
       <div className="h-10 w-10" aria-hidden="true" />
     </header>
   );
@@ -66,7 +65,7 @@ type AppMobileNavProps = {
 export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-[min(100vw,300px)] border-none p-0 md:hidden">
+      <SheetContent side="left" className="w-[min(100vw,248px)] border-none p-0 md:hidden">
         <AppSidebarContent onNavigate={() => onOpenChange(false)} />
       </SheetContent>
     </Sheet>

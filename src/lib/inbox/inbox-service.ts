@@ -1,15 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { buildInboxSnapshot, syncAllInboxProviders } from "@/lib/inbox/providers";
+import { buildInboxSnapshot } from "@/lib/inbox/providers";
 import type {
+  ChannelConnection,
   InboxChannel,
   InboxConversation,
+  InboxMessage,
   InboxPriority,
   InboxSnapshot,
   InboxStage,
   InboxStatus,
 } from "@/lib/inbox/types";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
 
 type InboxRow = Database["public"]["Tables"]["inbox_conversations"]["Row"];
 
@@ -19,9 +20,16 @@ export type InboxDataSnapshot = InboxSnapshot & {
 
 function mapRowToConversation(row: InboxRow): InboxConversation {
   const advisor = row.advisor_name ?? "Sin asignar";
+  const metadata = (row.metadata ?? {}) as Record<string, unknown>;
+  const connectionId = row.connection_id ?? undefined;
+  const sourcePhoneLabel =
+    typeof metadata.source_phone_label === "string" ? metadata.source_phone_label : undefined;
+
   return {
     id: row.id,
     channel: row.channel as InboxChannel,
+    connectionId: connectionId ?? undefined,
+    sourcePhoneLabel,
     externalId: row.external_id,
     contact: {
       name: row.contact_name,
@@ -37,6 +45,8 @@ function mapRowToConversation(row: InboxRow): InboxConversation {
     advisor,
     advisorInitials: row.advisor_initials ?? advisor.slice(0, 2).toUpperCase(),
     campaign: row.campaign ?? undefined,
+    isAssigned: advisor !== "Sin asignar",
+    contactType: "cliente",
   };
 }
 
@@ -70,8 +80,7 @@ function buildSnapshotWithSource(
 
 export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDataSnapshot> {
   if (!userId) {
-    const conversations = await syncAllInboxProviders();
-    return buildSnapshotWithSource(conversations, "mock");
+    return buildSnapshotWithSource([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -82,26 +91,91 @@ export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDa
 
   if (error) {
     console.warn("[inbox] Error al cargar conversaciones:", error.message);
-    const conversations = await syncAllInboxProviders();
-    return buildSnapshotWithSource(conversations, "mock");
+    return buildSnapshotWithSource([], "supabase");
   }
 
   if (!data || data.length === 0) {
-    await seedDemoDataForUser(userId);
-    const retry = await supabase
-      .from("inbox_conversations")
-      .select("*")
-      .eq("user_id", userId)
-      .order("last_message_at", { ascending: false });
-
-    if (retry.error || !retry.data?.length) {
-      const conversations = await syncAllInboxProviders();
-      return buildSnapshotWithSource(conversations, "mock");
-    }
-    data = retry.data;
+    return buildSnapshotWithSource([], "supabase");
   }
 
   return buildSnapshotWithSource(data.map(mapRowToConversation), "supabase");
+}
+
+export async function fetchInboxChannelConnections(userId: string): Promise<ChannelConnection[]> {
+  const { data, error } = await supabase
+    .from("inbox_channel_connections")
+    .select("channel, status, display_name, last_sync_at, error_message")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.warn("[inbox] Error al cargar conexiones:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => {
+    const config = (row.config ?? {}) as { phone_number_id?: string };
+    return {
+      id: row.id,
+      channel: row.channel as InboxChannel,
+      phoneNumberId: config.phone_number_id ?? row.external_account_id ?? undefined,
+      status: row.status as ChannelConnection["status"],
+      accountLabel: row.display_name ?? undefined,
+      lastSyncAt: row.last_sync_at ?? undefined,
+      errorMessage: row.error_message ?? undefined,
+    };
+  });
+}
+
+type MessageRow = Database["public"]["Tables"]["inbox_messages"]["Row"];
+
+function mapRowToMessage(row: MessageRow): InboxMessage {
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    direction: row.direction as InboxMessage["direction"],
+    body: row.body,
+    sentAt: row.sent_at,
+  };
+}
+
+export async function fetchInboxMessages(conversationId: string): Promise<InboxMessage[]> {
+  const { data, error } = await supabase
+    .from("inbox_messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("sent_at", { ascending: true });
+
+  if (error) {
+    console.warn("[inbox] Error al cargar mensajes:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map(mapRowToMessage);
+}
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const { error } = await supabase
+    .from("inbox_conversations")
+    .update({ is_read: true })
+    .eq("id", conversationId);
+
+  if (error) {
+    console.warn("[inbox] Error al marcar conversación leída:", error.message);
+  }
+}
+
+export async function sendInboxMessage(conversationId: string, body: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    body: { conversationId, body },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (data?.error) {
+    throw new Error(String(data.error));
+  }
 }
 
 export async function persistInboxConversations(

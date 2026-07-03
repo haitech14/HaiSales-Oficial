@@ -1,4 +1,4 @@
-﻿import { ArrowRight, Check, LayoutGrid } from "lucide-react";
+import { ArrowRight, Check, LayoutGrid } from "lucide-react";
 
 const trustPoints = [
   "Sin tarjeta de crédito",
@@ -33,14 +33,14 @@ export function LandingHero() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <a
-              href="#contacto"
+              href="#planes"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
             >
               Probar Gratis 14 días
               <ArrowRight className="h-4 w-4" />
             </a>
             <a
-              href="#precios"
+              href="#planes"
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/20 bg-transparent px-5 py-3 text-[13px] font-medium text-white transition hover:bg-white/5"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/25">
@@ -65,17 +65,14 @@ export function LandingHero() {
         <div className="relative w-full lg:-mr-7 xl:-mr-9">
           <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-blue-500/10 blur-3xl" />
           <img
-            src="/placeholder.svg"
-            alt="Vista previa de HaiSales en escritorio y móvil"
+            src="/mockups.png"
+            alt="Dashboard HaiSales en laptop y móvil con pipeline, ingresos y oportunidades"
             width={960}
             height={640}
             className="relative z-10 mx-auto block h-auto w-full min-w-0 origin-center rounded-2xl shadow-2xl shadow-black/50 lg:mx-0 lg:scale-[1.07] lg:origin-center xl:scale-[1.09] 2xl:scale-[1.11]"
             loading="eager"
             fetchPriority="high"
             decoding="async"
-            onError={(event) => {
-              event.currentTarget.src = "/placeholder.svg";
-            }}
           />
         </div>
       </div>

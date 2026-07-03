@@ -134,7 +134,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
             <div>
               <DialogTitle className="text-lg font-bold text-slate-900">Nuevo usuario</DialogTitle>
               <DialogDescription className="mt-0.5 text-sm text-slate-500">
-                Crea un acceso seguro y asigna rol, sede y permisos desde el inicio.
+                Crea un acceso seguro y asigna rol, sucursal y permisos desde el inicio.
               </DialogDescription>
             </div>
             <button
@@ -181,11 +181,11 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
               />
             </div>
             <div>
-              <FieldLabel required>Sede / sucursal</FieldLabel>
+              <FieldLabel required>Sucursal</FieldLabel>
               <SelectField
                 value={form.sede}
                 onChange={(value) => updateField("sede", value)}
-                placeholder="Seleccionar sede"
+                placeholder="Seleccionar sucursal"
                 options={usuarioSedes}
               />
             </div>

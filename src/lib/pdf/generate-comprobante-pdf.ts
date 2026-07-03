@@ -1,6 +1,7 @@
 import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
 import { calculateVentaTotals } from "@/lib/nueva-venta-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
+import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
   createPdfDocument,
   downloadPdf,
@@ -23,14 +24,17 @@ function getComprobanteTitle(tipo: string): string {
   return "FACTURA ELECTRÓNICA";
 }
 
-export async function generateComprobantePdf(data: NuevaVentaFormData): Promise<void> {
+export async function generateComprobantePdf(
+  data: NuevaVentaFormData,
+  emisor: EmpresaEmisor = empresaEmisor,
+): Promise<void> {
   const doc = await createPdfDocument();
   const number = buildComprobanteNumber(data.serie);
   const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
   const title = getComprobanteTitle(data.tipoComprobante);
 
   let y = drawPdfHeader(doc, title, number, data.fechaEmision);
-  y = drawCompanyBlock(doc, y, empresaEmisor);
+  y = drawCompanyBlock(doc, y, emisor);
   y = drawClientBlock(doc, y, data.cliente, data.clienteRuc, data.contacto);
 
   doc.setFontSize(8);

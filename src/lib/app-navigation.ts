@@ -5,19 +5,23 @@ import {
   CreditCard,
   HelpCircle,
   Inbox,
+  LayoutDashboard,
   LayoutGrid,
+  Megaphone,
   Package,
   Plug,
   Receipt,
   Settings,
   ShoppingCart,
+  Briefcase,
   Target,
-  TrendingUp,
   Truck,
   User,
   Users,
   Wallet,
   Warehouse,
+  Wrench,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,35 +37,71 @@ export type NavSection = {
   items: NavItem[];
 };
 
-export const inboxNavItem: NavItem = {
-  label: "Inbox",
-  href: "/app/inbox",
-  icon: Inbox,
+export type NavSubItem = {
+  label: string;
+  href: string;
+};
+
+export type NavGroup = {
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  items: NavSubItem[];
+};
+
+export const dashboardNavGroup: NavGroup = {
+  label: "Dashboard",
+  icon: LayoutDashboard,
+  href: "/app/dashboard",
+  items: [
+    { label: "Resumen", href: "/app/dashboard?mode=resumen" },
+    { label: "Reportes", href: "/app/dashboard?mode=reportes" },
+  ],
+};
+
+export const anunciosNavItem: NavItem = {
+  label: "Anuncios",
+  href: "/app/anuncios",
+  icon: Megaphone,
+};
+
+/** @deprecated Usar dashboardNavGroup */
+export const dashboardNavItem: NavItem = {
+  label: dashboardNavGroup.label,
+  href: dashboardNavGroup.href,
+  icon: dashboardNavGroup.icon,
 };
 
 export const appNavSections: NavSection[] = [
   {
     title: "Comercial",
     items: [
-      { label: "Pipeline", href: "/app/pipeline", icon: LayoutGrid, badge: 118 },
-      { label: "Leads", href: "/app/ventas-crm", icon: TrendingUp, badge: 21 },
-      { label: "Clientes / Empresas", href: "/app/clientes", icon: Building2, badge: "1,284" },
+      { label: "Inbox", href: "/app/inbox", icon: Inbox },
+      { label: "Pipeline", href: "/app/pipeline", icon: LayoutGrid },
+      { label: "Clientes / Empresas", href: "/app/clientes", icon: Building2 },
+      { label: "Alquileres", href: "/app/alquileres", icon: KeyRound },
+      {
+        label: "Planes de Mantenimiento y Suministro",
+        href: "/app/planes-mantenimiento-suministro",
+        icon: Wrench,
+      },
+      { label: "Servicios", href: "/app/servicios", icon: Briefcase },
     ],
   },
   {
     title: "Facturación",
     items: [
-      { label: "Facturación electrónica", href: "/app/ventas", icon: Receipt },
-      { label: "Cuentas por Cobrar", href: "/app/cuentas-cobrar", icon: CreditCard, badge: 45 },
+      { label: "Comprobantes", href: "/app/ventas", icon: Receipt },
+      { label: "Cuentas por Cobrar", href: "/app/cuentas-cobrar", icon: CreditCard },
     ],
   },
   {
     title: "Operación",
     items: [
-      { label: "Productos / Inventario", href: "/app/inventario", icon: Package, badge: "1,245" },
-      { label: "Compras", href: "/app/compras", icon: ShoppingCart, badge: 32 },
-      { label: "Logística", href: "/app/logistica", icon: Truck, badge: 18 },
-      { label: "Almacenes / Kardex", href: "/app/almacenes", icon: Warehouse, badge: 328 },
+      { label: "Productos / Inventario", href: "/app/inventario", icon: Package },
+      { label: "Compras", href: "/app/compras", icon: ShoppingCart },
+      { label: "Guías de Remisión / Envíos", href: "/app/logistica", icon: Truck },
+      { label: "Almacenes / Kardex", href: "/app/almacenes", icon: Warehouse },
     ],
   },
   {

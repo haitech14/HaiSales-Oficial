@@ -1,77 +1,73 @@
-import {
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  HelpCircle,
-  Loader2,
-  PanelRightClose,
-  PanelRightOpen,
-  Plus,
-  Search,
-} from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
-import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
-import { useAppRightPanel } from "@/hooks/useAppRightPanel";
+import { ChevronDown, Eye, EyeOff, Plug, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { DemoDataCleanupBanner } from "@/components/inbox/DemoDataCleanupBanner";
 import { InboxChannelIntegrations } from "@/components/inbox/InboxChannelIntegrations";
-import { InboxConversationTable } from "@/components/inbox/InboxConversationTable";
-import { InboxKpiCards } from "@/components/inbox/InboxKpiCards";
+import { InboxFilterBar } from "@/components/inbox/InboxFilterBar";
+import { InboxMessengerView } from "@/components/inbox/InboxMessengerView";
+import { InboxTeamChatView } from "@/components/inbox/InboxTeamChatView";
 import { NuevaCampanaWhatsAppModal } from "@/components/inbox/NuevaCampanaWhatsAppModal";
-import { ChannelIcon } from "@/components/inbox/ChannelIcon";
+import { WhatsAppNumberSelector } from "@/components/inbox/WhatsAppNumberSelector";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmpresaSetupStatus } from "@/hooks/useEmpresaConfig";
 import { useInbox } from "@/hooks/useInbox";
-import { INBOX_CHANNEL_ORDER, inboxChannelMeta, inboxTabs } from "@/lib/inbox/channels";
-import type { InboxChannel } from "@/lib/inbox/types";
-import { cn } from "@/lib/utils";
-
-const InboxAnalyticsSidebar = lazy(() =>
-  import("@/components/inbox/InboxAnalyticsSidebar").then((module) => ({
-    default: module.InboxAnalyticsSidebar,
-  })),
-);
-
-const PAGE_SIZE = 10;
+import { useTeamChat } from "@/hooks/useTeamChat";
+import { inboxViewTabs } from "@/lib/inbox/channels";
+import type { TeamChatChannel } from "@/lib/inbox/team-chat-data";
+import type { InboxViewFilter } from "@/lib/inbox/types";
 
 export default function InboxPage() {
+  const { user } = useAuth();
+  const { config, isSetupComplete } = useEmpresaSetupStatus();
   const {
     snapshot,
     filteredConversations,
     filters,
     setFilters,
-    advisors,
     channelConnections,
+    whatsappConnections,
+    whatsappConnectionFilter,
+    setWhatsappConnectionFilter,
     isLoading,
-    isFetching,
-    refresh,
-    lastUpdatedAt,
+    invalidate,
   } = useInbox();
 
-  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel(false);
+  const [contactPanelHidden, setContactPanelHidden] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [campanaOpen, setCampanaOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [teamChatChannel, setTeamChatChannel] = useState<TeamChatChannel>("ventas");
+  const [demoBannerHidden, setDemoBannerHidden] = useState(false);
 
-  const totalPages = Math.max(1, Math.ceil(filteredConversations.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
+  const { countsByChannel } = useTeamChat(teamChatChannel);
+  const teamChatTotal = useMemo(
+    () => Object.values(countsByChannel).reduce((sum, count) => sum + count, 0),
+    [countsByChannel],
+  );
 
-  const paginatedConversations = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredConversations.slice(start, start + PAGE_SIZE);
-  }, [filteredConversations, currentPage]);
+  const filterTabs = useMemo(
+    () =>
+      inboxViewTabs.map((tab) =>
+        tab.id === "team-chat" ? { ...tab, count: teamChatTotal } : tab,
+      ),
+    [teamChatTotal],
+  );
 
   const updateFilter = <K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) => {
     setFilters((current) => ({ ...current, [key]: value }));
-    setPage(1);
   };
+
+  const isSupabaseLive = Boolean(snapshot && "source" in snapshot && snapshot.source === "supabase");
+  const hasWhatsAppConnected = whatsappConnections.some((item) => item.status === "connected");
+  const isTeamChatView = filters.view === "team-chat";
+  const showWhatsAppSelector =
+    !isTeamChatView &&
+    hasWhatsAppConnected &&
+    (filters.view === "all" || filters.view === "whatsapp" || filters.view === "unread");
+  const showDemoCleanupBanner =
+    Boolean(user?.id) &&
+    isSetupComplete &&
+    !config.demoCleanupDismissed &&
+    !demoBannerHidden;
 
   if (isLoading || !snapshot) {
     return (
@@ -82,21 +78,14 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-[#f4f6f9]">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inbox</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Centraliza conversaciones de WhatsApp, Facebook, Messenger, TikTok, página web y
-              correo electrónico en un solo lugar.
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Inbox</h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Gestiona todas tus conversaciones en un solo lugar
             </p>
-            {lastUpdatedAt && (
-              <p className="mt-1 text-xs text-slate-400">
-                Última sincronización{" "}
-                {formatDistanceToNow(lastUpdatedAt, { addSuffix: true, locale: es })}
-              </p>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -104,32 +93,28 @@ export default function InboxPage() {
               variant="outline"
               size="sm"
               className="h-9"
-              onClick={togglePanel}
+              onClick={() => setIntegrationsOpen(true)}
             >
-              {isPanelVisible ? (
-                <>
-                  <PanelRightClose className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Ocultar panel</span>
-                </>
-              ) : (
-                <>
-                  <PanelRightOpen className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Mostrar panel</span>
-                </>
-              )}
+              <Plug className="mr-2 h-4 w-4" />
+              Integraciones
             </Button>
             <Button
               variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setIntegrationsOpen(true)}
-              title="Integraciones"
+              size="sm"
+              className="h-9"
+              onClick={() => setContactPanelHidden((current) => !current)}
             >
-              <HelpCircle className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="relative h-9 w-9">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" />
+              {contactPanelHidden ? (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Mostrar barra lateral
+                </>
+              ) : (
+                <>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  Ocultar barra lateral
+                </>
+              )}
             </Button>
             <Button
               size="sm"
@@ -137,192 +122,70 @@ export default function InboxPage() {
               onClick={() => setCampanaOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Nueva campaña
+              Nuevo mensaje
+              <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
             </Button>
           </div>
         </div>
       </header>
 
-      {"source" in snapshot && snapshot.source === "supabase" && (
-        <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-2 text-xs text-emerald-700">
+      {showDemoCleanupBanner && user?.id && (
+        <DemoDataCleanupBanner
+          userId={user.id}
+          onCleaned={() => {
+            setDemoBannerHidden(true);
+            invalidate();
+          }}
+        />
+      )}
+
+      {isSupabaseLive && (
+        <div className="shrink-0 border-b border-emerald-100 bg-emerald-50 px-6 py-1.5 text-xs text-emerald-700">
           Conectado a Supabase · {snapshot.conversations.length} conversaciones sincronizadas
+          {hasWhatsAppConnected ? " · WhatsApp Kapso activo" : " · Conecta WhatsApp en Integraciones"}
         </div>
       )}
 
-      <NuevaCampanaWhatsAppModal open={campanaOpen} onOpenChange={setCampanaOpen} />
+      <InboxFilterBar
+        tabs={filterTabs}
+        activeView={filters.view}
+        onViewChange={(view: InboxViewFilter) => updateFilter("view", view)}
+      />
 
-      <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <InboxKpiCards kpis={snapshot.kpis} />
+      {showWhatsAppSelector && (
+        <WhatsAppNumberSelector
+          connections={whatsappConnections}
+          value={whatsappConnectionFilter}
+          onChange={setWhatsappConnectionFilter}
+        />
+      )}
 
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="min-w-0 space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                {inboxTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => updateFilter("tab", tab.id)}
-                    className={cn(
-                      "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-                      filters.tab === tab.id
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-600 hover:bg-slate-100",
-                    )}
-                  >
-                    {tab.label}
-                    {tab.count !== undefined && (
-                      <span className="ml-1 opacity-80">({tab.count})</span>
-                    )}
-                  </button>
-                ))}
-                </div>
-                <div className="ml-auto flex gap-2">
-                  <Button variant="ghost" size="sm" className="h-8 text-xs">
-                    Guardar vista
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 text-xs">
-                    Más filtros
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_180px_180px_auto]">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    value={filters.search}
-                    onChange={(event) => updateFilter("search", event.target.value)}
-                    placeholder="Buscar por contacto, identificador, asesor, campaña..."
-                    className="h-10 pl-9"
-                  />
-                </div>
-
-                <Select
-                  value={filters.channel}
-                  onValueChange={(value) =>
-                    updateFilter("channel", value as InboxChannel | "all")
-                  }
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Canal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los canales</SelectItem>
-                    {INBOX_CHANNEL_ORDER.map((channel) => (
-                      <SelectItem key={channel} value={channel}>
-                        <span className="flex items-center gap-2">
-                          <ChannelIcon channel={channel} size="sm" />
-                          {inboxChannelMeta[channel].label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={filters.advisor}
-                  onValueChange={(value) => updateFilter("advisor", value)}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Asesor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Asesor: Todos</SelectItem>
-                    {advisors.map((advisor) => (
-                      <SelectItem key={advisor} value={advisor}>
-                        {advisor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={() => void refresh()}
-                  disabled={isFetching}
-                >
-                  <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-                </Button>
-              </div>
-            </div>
-
-            <InboxConversationTable conversations={paginatedConversations} />
-
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">
-                Mostrando {(currentPage - 1) * PAGE_SIZE + 1} a{" "}
-                {Math.min(currentPage * PAGE_SIZE, filteredConversations.length)} de{" "}
-                {filteredConversations.length} conversaciones
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-slate-600">
-                  Página {currentPage} de {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Select defaultValue="10">
-                  <SelectTrigger className="h-8 w-[120px] text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 por página</SelectItem>
-                    <SelectItem value="25">25 por página</SelectItem>
-                    <SelectItem value="50">50 por página</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <AppRightPanelSlot
-            panelHidden={panelHidden}
-            mobileOpen={mobileOpen}
-            onMobileOpenChange={setMobileOpen}
-          >
-            <Suspense
-              fallback={
-                <div className="flex h-full min-h-[240px] items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                </div>
-              }
-            >
-              <InboxAnalyticsSidebar
-                stageStats={snapshot.stageStats}
-                advisorStats={snapshot.advisorStats}
-                pending={snapshot.pending}
-                updatedAt={lastUpdatedAt}
-                onRefresh={() => void refresh()}
-                isRefreshing={isFetching}
-              />
-            </Suspense>
-          </AppRightPanelSlot>
-        </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {isTeamChatView ? (
+          <InboxTeamChatView activeChannel={teamChatChannel} onChannelChange={setTeamChatChannel} />
+        ) : (
+          <InboxMessengerView
+            conversations={filteredConversations}
+            search={filters.search}
+            onSearchChange={(search) => updateFilter("search", search)}
+            activeView={filters.view}
+            contactPanelHidden={contactPanelHidden}
+            useLiveWhatsApp={hasWhatsAppConnected}
+            showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasWhatsAppConnected}
+            onMessageSent={invalidate}
+          />
+        )}
       </div>
+
+      <NuevaCampanaWhatsAppModal open={campanaOpen} onOpenChange={setCampanaOpen} />
 
       <InboxChannelIntegrations
         open={integrationsOpen}
         onOpenChange={setIntegrationsOpen}
         connections={channelConnections}
+        whatsappConnections={whatsappConnections}
+        userId={user?.id}
+        onConnectionsChange={invalidate}
       />
     </div>
   );

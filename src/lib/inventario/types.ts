@@ -10,12 +10,14 @@ export type InventarioProduct = {
   sku: string;
   name: string;
   description: string;
+  marca: string;
   category: string;
   warehouse: string;
   stock: number;
   unit: string;
   cost: number;
   price: number;
+  moneda: string;
   status: ProductStatus;
   type: ProductType;
   icon: LucideIcon;
@@ -43,4 +45,5 @@ export type InventarioSnapshot = {
   inventoryAlerts: { label: string; count: number; color: string; width: string }[];
   totalRecords: number;
   source: "supabase" | "mock";
+  importError?: string;
 };

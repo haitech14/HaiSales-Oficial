@@ -12,21 +12,20 @@
   XAxis,
   YAxis,
 } from "recharts";
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { ChevronDown, RefreshCw, Loader2 } from "lucide-react";
 import { CrmKpiCard } from "@/components/app/CrmShared";
 import { Button } from "@/components/ui/button";
-import {
-  flujoCajaChart,
-  gastosDistribucion,
-  generalKpis,
-  indicadoresFinancieros,
-  ingresosDistribucion,
-  resumenFinancieroChart,
-  topClientesGeneral,
-  topProductosGeneral,
-  utilidadEvolucion,
-} from "@/lib/dashboard-general-data";
+import { useAppPeriod } from "@/hooks/useAppPeriod";
+import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { cn } from "@/lib/utils";
+
+function parseCurrencyTotal(total: string) {
+  const match = total.match(/^(S\/|USD)\s+(.+)$/);
+  if (match) {
+    return { currency: match[1], amount: match[2] };
+  }
+  return { currency: null, amount: total };
+}
 
 function DonutCard({
   title,
@@ -39,6 +38,9 @@ function DonutCard({
   totalLabel: string;
   data: { name: string; value: number; color: string }[];
 }) {
+  const { currency, amount } = parseCurrencyTotal(total);
+  const slices = data.length > 0 ? data : [{ name: "Sin datos", value: 100, color: "#e2e8f0" }];
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="app-panel-title">{title}</h3>
@@ -46,20 +48,25 @@ function DonutCard({
         <div className="relative h-32 w-32 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={38} outerRadius={58} paddingAngle={2} strokeWidth={0}>
-                {data.map((entry) => (
+              <Pie data={slices} dataKey="value" innerRadius={38} outerRadius={58} paddingAngle={2} strokeWidth={0}>
+                {slices.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-xs font-bold text-slate-900">{total}</span>
-            <span className="text-[10px] text-slate-500">{totalLabel}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center">
+            <div className="flex items-baseline justify-center gap-0.5 whitespace-nowrap">
+              {currency && (
+                <span className="text-[9px] font-semibold text-slate-500">{currency}</span>
+              )}
+              <span className="text-[11px] font-bold leading-none text-slate-900">{amount}</span>
+            </div>
+            <span className="mt-0.5 text-[10px] text-slate-500">{totalLabel}</span>
           </div>
         </div>
         <ul className="app-panel-list min-w-0 flex-1">
-          {data.map((item) => (
+          {slices.map((item) => (
             <li key={item.name} className="flex items-center justify-between gap-2 text-slate-600">
               <span className="flex items-center gap-1.5 truncate">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
@@ -68,54 +75,6 @@ function DonutCard({
               <span className="shrink-0 font-semibold text-slate-800">{item.value}%</span>
             </li>
           ))}
-        </ul>
-      </div>
-    </article>
-  );
-}
-
-function MiniDonut({
-  title,
-  fijo,
-  variable,
-  fijoColor,
-  variableColor,
-}: {
-  title: string;
-  fijo: number;
-  variable: number;
-  fijoColor: string;
-  variableColor: string;
-}) {
-  const data = [
-    { name: "Fijos", value: fijo, color: fijoColor },
-    { name: "Variables", value: variable, color: variableColor },
-  ];
-
-  return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="app-panel-title">{title}</h3>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="h-24 w-24 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={28} outerRadius={42} paddingAngle={2} strokeWidth={0}>
-                {data.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <ul className="space-y-1.5 text-xs text-slate-600">
-          <li className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: fijoColor }} />
-            {title.includes("Ingresos") ? "Ingresos fijos" : "Gastos fijos"} ({fijo}%)
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: variableColor }} />
-            {title.includes("Ingresos") ? "Ingresos variables" : "Gastos variables"} ({variable}%)
-          </li>
         </ul>
       </div>
     </article>
@@ -146,7 +105,14 @@ function RankingTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-6 text-center text-slate-400">
+                  Sin datos en el periodo seleccionado
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
               <tr key={row.name} className="border-b border-slate-50">
                 <td className="max-w-[140px] truncate py-2 pr-2 font-medium text-slate-700">{row.name}</td>
                 <td className="whitespace-nowrap py-2 pr-2 font-semibold text-slate-900">
@@ -161,7 +127,8 @@ function RankingTable({
                   </div>
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -170,10 +137,31 @@ function RankingTable({
 }
 
 export function DashboardGeneralView() {
+  const { data: analytics, isLoading } = useDashboardAnalytics();
+  const { range } = useAppPeriod();
+
+  if (isLoading || !analytics) {
+    return (
+      <div className="flex min-h-[320px] items-center justify-center text-sm text-slate-500">
+        Cargando indicadores del periodo...
+      </div>
+    );
+  }
+
+  const ingresosTotal = analytics.ingresosDistribucion.reduce((sum, item) => sum + item.value, 0);
+  const gastosTotal = analytics.gastosDistribucion.reduce((sum, item) => sum + item.value, 0);
+  const ingresosAmount = analytics.generalKpis[0]?.value ?? "S/ 0";
+  const gastosAmount = analytics.generalKpis[1]?.value ?? "S/ 0";
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {generalKpis.map((kpi) => (
+      <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+        Mostrando datos de <span className="font-semibold">{analytics.periodLabel}</span>
+        {analytics.source === "empty" && " · Sin movimientos registrados en este periodo"}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6">
+        {analytics.generalKpis.map((kpi) => (
           <CrmKpiCard key={kpi.label} {...kpi} />
         ))}
       </div>
@@ -183,16 +171,15 @@ export function DashboardGeneralView() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="app-panel-title">Resumen financiero</h3>
-              <p className="text-xs text-slate-500">Ingresos, gastos y utilidad neta</p>
+              <p className="text-xs text-slate-500">Ingresos, gastos y utilidad — {range.label}</p>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-              Mensual
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+              {range.shortLabel}
+            </span>
           </div>
           <div className="mt-4 h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={resumenFinancieroChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <ComposedChart data={analytics.resumenFinancieroChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />
@@ -207,89 +194,68 @@ export function DashboardGeneralView() {
         </article>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:col-span-6">
-          <DonutCard title="Distribución de ingresos" total="S/ 248,450" totalLabel="Total" data={ingresosDistribucion} />
-          <DonutCard title="Distribución de gastos" total="S/ 187,230" totalLabel="Total" data={gastosDistribucion} />
+          <DonutCard
+            title="Distribución de ingresos"
+            total={ingresosTotal > 0 ? ingresosAmount : "S/ 0"}
+            totalLabel="Total periodo"
+            data={analytics.ingresosDistribucion}
+          />
+          <DonutCard
+            title="Distribución de gastos"
+            total={gastosTotal > 0 ? gastosAmount : "S/ 0"}
+            totalLabel="Total periodo"
+            data={analytics.gastosDistribucion}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MiniDonut title="Ingresos: Fijos vs Variables" fijo={35} variable={65} fijoColor="#3b82f6" variableColor="#93c5fd" />
-        <MiniDonut title="Gastos: Fijos vs Variables" fijo={58} variable={42} fijoColor="#ef4444" variableColor="#fca5a5" />
-
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="app-panel-title">Evolución de la utilidad neta</h3>
-            <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-              Mensual
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <div className="mt-3 h-[120px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={utilidadEvolucion} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="utilidadFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                <Line type="monotone" dataKey="utilidad" stroke="#22c55e" strokeWidth={2} dot={false} fill="url(#utilidadFill)" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="app-panel-title">Indicadores financieros</h3>
-          <ul className="mt-3 space-y-2.5">
-            {indicadoresFinancieros.map((item) => (
-              <li key={item.label} className="flex items-center justify-between gap-2 text-xs">
-                <div className="min-w-0">
-                  <p className="truncate text-slate-600">{item.label}</p>
-                  <p className="font-semibold text-slate-900">{item.value}</p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                    item.tone === "emerald" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-                    item.tone === "amber" && "border-amber-200 bg-amber-50 text-amber-700",
-                  )}
-                >
-                  {item.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
+      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="app-panel-title">Indicadores financieros</h3>
+        <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {analytics.indicadoresFinancieros.map((item) => (
+            <li key={item.label} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 text-xs">
+              <div className="min-w-0">
+                <p className="truncate text-slate-600">{item.label}</p>
+                <p className="font-semibold text-slate-900">{item.value}</p>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                  item.tone === "emerald" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+                  item.tone === "amber" && "border-amber-200 bg-amber-50 text-amber-700",
+                )}
+              >
+                {item.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </article>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <RankingTable
           title="Top 10 clientes por facturación"
           nameHeader="Cliente"
           valueHeader="Facturación"
-          rows={topClientesGeneral.map((r) => ({ name: r.cliente, value: r.facturacion, participacion: r.participacion }))}
+          rows={analytics.topClientes}
         />
         <RankingTable
           title="Top 10 productos / servicios"
           nameHeader="Producto / Servicio"
           valueHeader="Ventas"
-          rows={topProductosGeneral.map((r) => ({ name: r.producto, value: r.ventas, participacion: r.participacion }))}
+          rows={analytics.topProductos}
         />
 
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <h3 className="app-panel-title">Flujo de caja</h3>
-            <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-              Mensual
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+              {range.shortLabel}
+            </span>
           </div>
           <div className="mt-3 h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={flujoCajaChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <ComposedChart data={analytics.flujoCajaChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />

@@ -113,7 +113,7 @@ export default function IntegracionesPage() {
                         </div>
                         <span
                           className={cn(
-                            "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                            "app-table-badge inline-flex rounded-full border",
                             getIntegracionEstadoStyles(item.estado),
                           )}
                         >

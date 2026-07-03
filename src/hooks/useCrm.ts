@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchCrmSnapshot } from "@/lib/crm/crm-service";
+import { useAppPeriod } from "@/hooks/useAppPeriod";
+import { buildCrmSnapshotFromOpportunities, fetchCrmSnapshot } from "@/lib/crm/crm-service";
 import type { Opportunity } from "@/lib/crm-mock-data";
+import { isIsoDateInRange } from "@/lib/period-filter";
 import type { PipelineCard } from "@/lib/pipeline-mock-data";
 
 const CRM_QUERY_KEY = ["crm", "snapshot"] as const;
 
 export function useCrm() {
   const { user } = useAuth();
+  const { range } = useAppPeriod();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("todos");
   const [search, setSearch] = useState("");
@@ -19,12 +22,26 @@ export function useCrm() {
     staleTime: 30_000,
   });
 
+  const periodOpportunities = useMemo(() => {
+    if (!data) return [] as Opportunity[];
+
+    return data.opportunities.filter(
+      (item) =>
+        item.stage === "Prospectos" || isIsoDateInRange(item.fechaIso, range),
+    );
+  }, [data, range]);
+
+  const displaySnapshot = useMemo(() => {
+    if (!data) return data;
+    return buildCrmSnapshotFromOpportunities(periodOpportunities);
+  }, [data, periodOpportunities]);
+
   const filteredOpportunities = useMemo(() => {
     if (!data) return [] as Opportunity[];
 
     const query = search.trim().toLowerCase();
 
-    return data.opportunities.filter((item) => {
+    return periodOpportunities.filter((item) => {
       const matchesTab =
         activeTab === "todos" ||
         (activeTab === "prospectos" && item.stage === "Prospectos") ||
@@ -42,15 +59,15 @@ export function useCrm() {
 
       return matchesTab && matchesSearch;
     });
-  }, [activeTab, data, search]);
+  }, [activeTab, data, periodOpportunities, search]);
 
   const allPipelineCards = useMemo(() => {
-    if (!data) return [] as (PipelineCard & { stage: string })[];
+    if (!displaySnapshot) return [] as (PipelineCard & { stage: string })[];
 
-    return data.pipelineColumns.flatMap((column) =>
+    return displaySnapshot.pipelineColumns.flatMap((column) =>
       column.cards.map((card) => ({ ...card, stage: column.title })),
     );
-  }, [data]);
+  }, [displaySnapshot]);
 
   const filteredPipelineCards = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -74,7 +91,7 @@ export function useCrm() {
   }, [queryClient]);
 
   return {
-    snapshot: data,
+    snapshot: displaySnapshot,
     filteredOpportunities,
     filteredPipelineCards,
     activeTab,

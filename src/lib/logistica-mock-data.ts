@@ -84,6 +84,56 @@ export const logisticaEntregaTabs = [
   { id: "observadas", label: "Observadas", count: 8 },
 ];
 
+export const guiasKpis = [
+  {
+    label: "Guías registradas",
+    value: "0",
+    change: "Sin datos en el periodo",
+    changePositive: true,
+    sparkColor: "#2563eb",
+    sparkPoints: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    iconBg: "bg-blue-50",
+    iconColor: "text-blue-600",
+  },
+  {
+    label: "En tránsito",
+    value: "0",
+    change: "Sin datos en el periodo",
+    changePositive: true,
+    sparkColor: "#f97316",
+    sparkPoints: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    iconBg: "bg-orange-50",
+    iconColor: "text-orange-600",
+  },
+  {
+    label: "Entregadas",
+    value: "0",
+    change: "Sin datos en el periodo",
+    changePositive: true,
+    sparkColor: "#22c55e",
+    sparkPoints: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
+  },
+  {
+    label: "Motivo venta",
+    value: "0",
+    change: "Sin datos en el periodo",
+    changePositive: true,
+    sparkColor: "#a855f7",
+    sparkPoints: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    iconBg: "bg-violet-50",
+    iconColor: "text-violet-600",
+  },
+];
+
+export const logisticaGuiaTabs = [
+  { id: "todos", label: "Todas", count: null },
+  { id: "en_transito", label: "En tránsito", count: null },
+  { id: "entregadas", label: "Entregadas", count: null },
+  { id: "venta", label: "Venta", count: null },
+];
+
 export const purchaseOrders: PurchaseOrder[] = [
   {
     id: "OC-2026-0045",

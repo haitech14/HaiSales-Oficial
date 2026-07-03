@@ -40,6 +40,8 @@ import {
 
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 
+import { AppTablePagination } from "@/components/app/AppTablePagination";
+
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -124,7 +126,7 @@ export default function AlmacenesPage() {
 
     ...tab,
 
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
 
   }));
 
@@ -284,7 +286,7 @@ export default function AlmacenesPage() {
 
                     type="button"
 
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
 
                   >
 
@@ -298,7 +300,7 @@ export default function AlmacenesPage() {
 
                     type="button"
 
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
 
                   >
 
@@ -330,7 +332,7 @@ export default function AlmacenesPage() {
 
                     placeholder="Buscar por producto, SKU, almacén, referencia..."
 
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
 
                   />
 
@@ -392,23 +394,23 @@ export default function AlmacenesPage() {
 
                     <tr className="app-table-head-row">
 
-                      <th className="px-4 py-3">Fecha</th>
+                      <th className="app-table-cell">Fecha</th>
 
-                      <th className="px-4 py-3">Movimiento</th>
+                      <th className="app-table-cell">Movimiento</th>
 
-                      <th className="px-4 py-3">Producto</th>
+                      <th className="app-table-cell">Producto</th>
 
-                      <th className="px-4 py-3">Cantidad</th>
+                      <th className="app-table-cell">Cantidad</th>
 
-                      <th className="px-4 py-3">Almacén</th>
+                      <th className="app-table-cell">Almacén</th>
 
-                      <th className="px-4 py-3">Ubicación</th>
+                      <th className="app-table-cell">Ubicación</th>
 
-                      <th className="px-4 py-3">Costo</th>
+                      <th className="app-table-cell">Costo</th>
 
-                      <th className="px-4 py-3">Referencia</th>
+                      <th className="app-table-cell">Referencia</th>
 
-                      <th className="px-4 py-3">Estado</th>
+                      <th className="app-table-cell">Estado</th>
 
                     </tr>
 
@@ -430,8 +432,13 @@ export default function AlmacenesPage() {
 
                       </tr>
 
+                    ) : filteredMovements.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                          No hay movimientos de kardex registrados.
+                        </td>
+                      </tr>
                     ) : (
-
                     filteredMovements.map((movement) => (
 
                       <tr
@@ -442,7 +449,7 @@ export default function AlmacenesPage() {
 
                       >
 
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
 
                           <p className="font-medium text-slate-800">{movement.fecha}</p>
 
@@ -450,7 +457,7 @@ export default function AlmacenesPage() {
 
                         </td>
 
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
 
                           <span
 
@@ -472,7 +479,7 @@ export default function AlmacenesPage() {
 
                         </td>
 
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
 
                           <p className="font-semibold text-slate-800">{movement.producto}</p>
 
@@ -480,31 +487,31 @@ export default function AlmacenesPage() {
 
                         </td>
 
-                        <td className="px-4 py-3.5 font-medium text-slate-800">
+                        <td className="app-table-cell font-medium text-slate-800">
 
                           {movement.cantidad} {movement.unidad}
 
                         </td>
 
-                        <td className="px-4 py-3.5 text-slate-700">{movement.almacen}</td>
+                        <td className="app-table-cell text-slate-700">{movement.almacen}</td>
 
-                        <td className="px-4 py-3.5 text-slate-600">{movement.ubicacion}</td>
+                        <td className="app-table-cell text-slate-600">{movement.ubicacion}</td>
 
-                        <td className="px-4 py-3.5 font-semibold text-slate-900">
+                        <td className="app-table-cell font-semibold text-slate-900">
 
                           {formatKardexCost(movement.costo)}
 
                         </td>
 
-                        <td className="px-4 py-3.5 text-slate-600">{movement.referencia}</td>
+                        <td className="app-table-cell text-slate-600">{movement.referencia}</td>
 
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
 
                           <span
 
                             className={cn(
 
-                              "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                              "app-table-badge inline-flex rounded-full border",
 
                               getMovimientoEstadoStyles(movement.estado),
 
@@ -530,99 +537,7 @@ export default function AlmacenesPage() {
 
 
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-
-                <p>
-
-                  Mostrando 1 a {filteredMovements.length} de {totalRecords.toLocaleString("es-PE")} registros
-
-                </p>
-
-                <div className="flex items-center gap-1">
-
-                  <button
-
-                    type="button"
-
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-
-                    aria-label="Página anterior"
-
-                  >
-
-                    <ChevronLeft className="h-4 w-4" />
-
-                  </button>
-
-                  <button
-
-                    type="button"
-
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white"
-
-                  >
-
-                    1
-
-                  </button>
-
-                  {[2, 3].map((page) => (
-
-                    <button
-
-                      key={page}
-
-                      type="button"
-
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-
-                    >
-
-                      {page}
-
-                    </button>
-
-                  ))}
-
-                  <span className="px-1 text-slate-400">...</span>
-
-                  <button
-
-                    type="button"
-
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-
-                  >
-
-                    33
-
-                  </button>
-
-                  <button
-
-                    type="button"
-
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-
-                    aria-label="Página siguiente"
-
-                  >
-
-                    <ChevronRight className="h-4 w-4" />
-
-                  </button>
-
-                </div>
-
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-
-                  10 por página
-
-                  <ChevronDown className="h-3.5 w-3.5" />
-
-                </Button>
-
-              </div>
+              <AppTablePagination shownCount={filteredMovements.length} totalCount={totalRecords} />
 
             </section>
 
@@ -642,7 +557,11 @@ export default function AlmacenesPage() {
 
         >
 
-          <AlmacenesRightPanel />
+          <AlmacenesRightPanel
+            snapshot={snapshot}
+            onRefresh={() => void refresh()}
+            isRefreshing={isFetching}
+          />
 
         </AppRightPanelSlot>
 

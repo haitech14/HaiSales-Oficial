@@ -16,6 +16,7 @@ import {
   UserRound,
   Wallet,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -57,7 +58,7 @@ export default function PlanillasPage() {
 
   const tabsWithCounts = planillasTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   const totalRecords = snapshot?.totalRecords ?? filteredWorkers.length;
@@ -138,14 +139,14 @@ export default function PlanillasPage() {
                 <div className="flex items-center gap-2 pb-2">
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
@@ -161,7 +162,7 @@ export default function PlanillasPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por trabajador, DNI, cargo, área..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -194,15 +195,15 @@ export default function PlanillasPage() {
                 <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1100px]">
                   <thead>
                     <tr className="app-table-head-row">
-                      <th className="px-4 py-3">Trabajador</th>
-                      <th className="px-4 py-3">DNI</th>
-                      <th className="px-4 py-3">Cargo</th>
-                      <th className="px-4 py-3">Área</th>
-                      <th className="px-4 py-3">Sueldo</th>
-                      <th className="px-4 py-3">Asistencia</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3">Responsable</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
+                      <th className="app-table-cell">Trabajador</th>
+                      <th className="app-table-cell">DNI</th>
+                      <th className="app-table-cell">Cargo</th>
+                      <th className="app-table-cell">Área</th>
+                      <th className="app-table-cell">Sueldo</th>
+                      <th className="app-table-cell">Asistencia</th>
+                      <th className="app-table-cell">Estado</th>
+                      <th className="app-table-cell">Responsable</th>
+                      <th className="app-table-cell text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -231,7 +232,7 @@ export default function PlanillasPage() {
                             key={worker.dbId ?? worker.id}
                             className="border-b border-slate-100 transition hover:bg-slate-50/60"
                           >
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
                                   <AvatarFallback
@@ -250,13 +251,13 @@ export default function PlanillasPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600">{worker.dni}</td>
-                            <td className="px-4 py-3.5 text-slate-700">{worker.cargo}</td>
-                            <td className="px-4 py-3.5 text-slate-600">{worker.area}</td>
-                            <td className="px-4 py-3.5 font-medium text-slate-800">
+                            <td className="app-table-cell text-slate-600">{worker.dni}</td>
+                            <td className="app-table-cell text-slate-700">{worker.cargo}</td>
+                            <td className="app-table-cell text-slate-600">{worker.area}</td>
+                            <td className="app-table-cell font-medium text-slate-800">
                               {formatSalary(worker.sueldo)}
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <p className="font-medium text-slate-800">
                                 {worker.asistenciaDias}/{worker.asistenciaTotal}
                               </p>
@@ -264,18 +265,18 @@ export default function PlanillasPage() {
                                 {attendancePercent}%
                               </p>
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <span
                                 className={cn(
-                                  "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                                  "app-table-badge inline-flex rounded-full border",
                                   getWorkerStatusStyles(worker.estado),
                                 )}
                               >
                                 {worker.estado}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-700">{worker.responsable}</td>
-                            <td className="px-4 py-3.5 text-right">
+                            <td className="app-table-cell text-slate-700">{worker.responsable}</td>
+                            <td className="app-table-cell text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
@@ -301,31 +302,7 @@ export default function PlanillasPage() {
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>
-                  Mostrando {filteredWorkers.length > 0 ? 1 : 0} a {filteredWorkers.length} de{" "}
-                  {totalRecords.toLocaleString("es-PE")} registros
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-                    aria-label="Página anterior"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white"
-                  >
-                    1
-                  </button>
-                  <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                    10 por página
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
+              <AppTablePagination shownCount={filteredWorkers.length} totalCount={totalRecords} />
             </section>
           </div>
         </div>
@@ -335,7 +312,7 @@ export default function PlanillasPage() {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
         >
-          <PlanillasRightPanel />
+          <PlanillasRightPanel snapshot={snapshot} />
         </AppRightPanelSlot>
       </div>
 

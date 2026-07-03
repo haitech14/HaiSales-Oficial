@@ -12,6 +12,7 @@ import {
   Search,
   Star,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -26,6 +27,7 @@ import {
   type MovimientoTipo,
 } from "@/lib/caja-bancos/caja-bancos-service";
 import { cn } from "@/lib/utils";
+import { formatPeriodMonth } from "@/lib/ventas-mock-data";
 
 function OperacionBadge({ tipo }: { tipo: MovimientoTipo }) {
   const config = {
@@ -60,8 +62,14 @@ export default function CajaBancosPage() {
   const {
     snapshot,
     filteredRecords,
+    availableMonths,
+    availableCuentas,
     activeTab,
     setActiveTab,
+    selectedMonth,
+    setSelectedMonth,
+    selectedCuenta,
+    setSelectedCuenta,
     search,
     setSearch,
     isLoading,
@@ -73,7 +81,7 @@ export default function CajaBancosPage() {
   const kpis = snapshot?.kpis ?? [];
   const tabs = cajaBancosTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   return (
@@ -137,11 +145,11 @@ export default function CajaBancosPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 pb-2">
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <button type="button" className="app-toolbar-link">
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <button type="button" className="app-toolbar-link">
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
                   </button>
@@ -156,25 +164,39 @@ export default function CajaBancosPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por concepto, cuenta, documento..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Cuenta: Todas
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Tipo: Todos
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Estado: Todos
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Rango de fechas
-                </Button>
+                <div className="relative">
+                  <select
+                    value={selectedCuenta}
+                    onChange={(event) => setSelectedCuenta(event.target.value)}
+                    className="h-9 max-w-[220px] appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700"
+                  >
+                    <option value="todos">Cuenta: Todas</option>
+                    {availableCuentas.map((cuenta) => (
+                      <option key={cuenta} value={cuenta}>
+                        {cuenta}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </div>
+                <div className="relative">
+                  <select
+                    value={selectedMonth}
+                    onChange={(event) => setSelectedMonth(event.target.value)}
+                    className="h-9 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700"
+                  >
+                    <option value="todos">Mes: Todos</option>
+                    {availableMonths.map((month) => (
+                      <option key={month} value={month}>
+                        {formatPeriodMonth(month)}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </div>
                 <button
                   type="button"
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
@@ -204,35 +226,35 @@ export default function CajaBancosPage() {
                   <tbody>
                     {filteredRecords.map((item) => (
                       <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <p className="font-medium text-slate-800">{item.date}</p>
                           <p className="text-xs text-slate-400">{item.time}</p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <OperacionBadge tipo={item.tipo} />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <p className="font-medium text-slate-800">{item.cuenta}</p>
                           <p className="text-xs text-slate-400">{item.cuentaNumero}</p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <a href="#" className="font-semibold text-blue-600 hover:text-blue-500">
                             {item.documento}
                           </a>
                         </td>
-                        <td className="max-w-[200px] px-4 py-3">
+                        <td className="app-table-cell max-w-[200px]">
                           <p className="line-clamp-2 text-slate-600">{item.concepto}</p>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-emerald-600">
+                        <td className="app-table-cell font-semibold text-emerald-600">
                           {formatCajaAmount(item.ingreso)}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-red-600">
+                        <td className="app-table-cell font-semibold text-red-600">
                           {formatCajaAmount(item.egreso)}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-900">
+                        <td className="app-table-cell font-semibold text-slate-900">
                           {formatCajaAmount(item.saldo)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarFallback className="bg-blue-100 text-[9px] font-semibold text-blue-700">
@@ -242,7 +264,7 @@ export default function CajaBancosPage() {
                             <span className="text-slate-700">{item.responsable}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="app-table-cell">
                           <span
                             className={cn(
                               "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
@@ -252,7 +274,7 @@ export default function CajaBancosPage() {
                             {item.estado}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="app-table-cell text-right">
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -267,31 +289,10 @@ export default function CajaBancosPage() {
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>Mostrando 1 a {filteredRecords.length} de 128 registros</p>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100">
-                    13
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination
+                shownCount={filteredRecords.length}
+                totalCount={snapshot?.totalRecords ?? filteredRecords.length}
+              />
             </section>
           </div>
         </div>

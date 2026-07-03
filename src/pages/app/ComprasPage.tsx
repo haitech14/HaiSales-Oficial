@@ -18,6 +18,7 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -101,7 +102,7 @@ export default function ComprasPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
                 <div className="flex gap-1 overflow-x-auto pb-1">
                   {comprasTabs.map((tab) => {
-                    const count = snapshot?.tabCounts[tab.id] ?? tab.count;
+                    const count = snapshot?.tabCounts[tab.id] ?? null;
                     return (
                       <button
                         key={tab.id}
@@ -134,14 +135,14 @@ export default function ComprasPage() {
                 <div className="flex items-center gap-2 pb-2">
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
@@ -157,7 +158,7 @@ export default function ComprasPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por orden, proveedor, producto, almacén..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -183,7 +184,7 @@ export default function ComprasPage() {
               </div>
 
               {isLoading ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+                <div className="flex items-center justify-center gap-2 py-16 text-[11px] text-slate-500">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Cargando órdenes...
                 </div>
@@ -192,15 +193,15 @@ export default function ComprasPage() {
                   <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1100px]">
                     <thead>
                       <tr className="app-table-head-row">
-                        <th className="px-4 py-3">Fecha</th>
-                        <th className="px-4 py-3">Orden</th>
-                        <th className="px-4 py-3">Proveedor</th>
-                        <th className="px-4 py-3">Tipo</th>
-                        <th className="px-4 py-3">Almacén</th>
-                        <th className="px-4 py-3">Importe</th>
-                        <th className="px-4 py-3">Estado</th>
-                        <th className="px-4 py-3">Responsable</th>
-                        <th className="px-4 py-3 text-right">Acción</th>
+                        <th className="app-table-cell">Fecha</th>
+                        <th className="app-table-cell">Orden</th>
+                        <th className="app-table-cell">Proveedor</th>
+                        <th className="app-table-cell">Tipo</th>
+                        <th className="app-table-cell">Almacén</th>
+                        <th className="app-table-cell">Importe</th>
+                        <th className="app-table-cell">Estado</th>
+                        <th className="app-table-cell">Responsable</th>
+                        <th className="app-table-cell text-right">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -209,11 +210,11 @@ export default function ComprasPage() {
                           key={order.id}
                           className="border-b border-slate-100 transition hover:bg-slate-50/60"
                         >
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <p className="font-medium text-slate-800">{order.fecha}</p>
                             <p className="text-xs text-slate-400">{order.hora}</p>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <button
                               type="button"
                               onClick={() => openOrderDetail(order.id)}
@@ -223,11 +224,11 @@ export default function ComprasPage() {
                             </button>
                             <p className="text-xs text-slate-400">{order.requisicionId}</p>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <p className="font-semibold text-slate-800">{order.proveedor}</p>
                             <p className="text-xs text-slate-400">RUC {order.ruc}</p>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <div className="flex items-center gap-2 text-slate-700">
                               {order.tipo === "Compra" ? (
                                 <ShoppingCart className="h-4 w-4 text-slate-400" strokeWidth={1.75} />
@@ -237,21 +238,21 @@ export default function ComprasPage() {
                               {order.tipo}
                             </div>
                           </td>
-                          <td className="px-4 py-3.5 text-slate-700">{order.almacen}</td>
-                          <td className="px-4 py-3.5 font-semibold text-slate-900">
+                          <td className="app-table-cell text-slate-700">{order.almacen}</td>
+                          <td className="app-table-cell font-semibold text-slate-900">
                             {formatImporte(order.importe)}
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <span
                               className={cn(
-                                "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                                "app-table-badge inline-flex rounded-full border",
                                 getOrderStatusStyles(order.estado),
                               )}
                             >
                               {order.estado}
                             </span>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <div className="flex items-center gap-2">
                               <Avatar className="h-7 w-7">
                                 <AvatarFallback className="bg-blue-100 text-[11px] font-semibold text-blue-700">
@@ -261,7 +262,7 @@ export default function ComprasPage() {
                               <span className="text-slate-700">{order.responsable}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="app-table-cell">
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 type="button"
@@ -287,53 +288,10 @@ export default function ComprasPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>
-                  Mostrando 1 a {filteredOrders.length} de {snapshot?.totalRecords ?? 0} registros
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-                    aria-label="Página anterior"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white"
-                  >
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                  >
-                    8
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100"
-                    aria-label="Página siguiente"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination
+                shownCount={filteredOrders.length}
+                totalCount={snapshot?.totalRecords ?? filteredOrders.length}
+              />
             </section>
           </div>
         </div>

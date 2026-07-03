@@ -1,26 +1,60 @@
-import { BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
+export const HAISALES_LOGO_SRC = "/haisaleslogo.png";
+export const HAISALES_ICON_SRC = "/haisaleslogo.png";
+
 interface HaiSalesLogoProps {
-  variant?: "light" | "dark";
   href?: string;
+  to?: string;
   className?: string;
+  onClick?: () => void;
+  /** Muestra solo el ícono cuadrado (sidebar colapsado, header móvil). */
+  iconOnly?: boolean;
+  imageClassName?: string;
 }
 
-export function HaiSalesLogo({ variant = "light", href = "#inicio", className }: HaiSalesLogoProps) {
-  return (
-    <a href={href} className={cn("flex items-center gap-2.5", className)}>
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
-        <BarChart3 className="h-5 w-5 text-white" strokeWidth={2.5} />
-      </span>
-      <span
+export function HaiSalesLogo({
+  href = "#inicio",
+  to,
+  className,
+  onClick,
+  iconOnly = false,
+  imageClassName,
+}: HaiSalesLogoProps) {
+  const src = iconOnly ? HAISALES_ICON_SRC : HAISALES_LOGO_SRC;
+  const alt = iconOnly ? "HaiSales" : "HaiSales — Desarrollado por HAITECH";
+
+  const content = (
+    <>
+      <img
+        src={src}
+        alt={alt}
         className={cn(
-          "text-xl font-bold tracking-tight",
-          variant === "light" ? "text-white" : "text-slate-900",
+          iconOnly ? "h-8 w-8 object-cover object-left" : "h-10 w-auto max-w-[240px] object-contain",
+          imageClassName,
         )}
-      >
-        HaiSales
-      </span>
+        width={iconOnly ? 32 : 200}
+        height={36}
+        decoding="async"
+      />
+      <span className="sr-only">HaiSales</span>
+    </>
+  );
+
+  const wrapperClass = cn("inline-flex shrink-0 items-center", className);
+
+  if (to) {
+    return (
+      <Link to={to} onClick={onClick} className={wrapperClass}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={href} onClick={onClick} className={wrapperClass}>
+      {content}
     </a>
   );
 }

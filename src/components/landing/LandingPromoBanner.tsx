@@ -28,7 +28,7 @@ export function LandingPromoBanner({ compact = false }: { compact?: boolean }) {
           <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
-                href="#precios"
+                href="#planes"
                 className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Conocer Precios

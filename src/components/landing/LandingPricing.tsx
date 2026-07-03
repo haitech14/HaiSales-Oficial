@@ -67,7 +67,7 @@ export function LandingPricing() {
   const [isAnnual, setIsAnnual] = useState(false);
 
   return (
-    <section id="precios" className="bg-white px-4 pb-10 pt-16 sm:px-6 sm:pb-12 sm:pt-20 lg:px-8">
+    <section id="planes" className="bg-white px-4 pb-10 pt-16 sm:px-6 sm:pb-12 sm:pt-20 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="relative mb-10 sm:mb-12">
           <h2 className="text-center text-3xl font-bold tracking-tight text-[#0f172a] sm:text-4xl">

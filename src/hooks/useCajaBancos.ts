@@ -6,9 +6,17 @@ import type { CajaBancosRecord } from "@/lib/caja-bancos-mock-data";
 
 const QUERY_KEY = ["caja-bancos", "snapshot"] as const;
 
+function periodFromDisplayDate(date: string): string {
+  const [day, month, year] = date.split("/");
+  if (!day || !month || !year) return "";
+  return `${year}-${month.padStart(2, "0")}`;
+}
+
 export function useCajaBancos() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("todos");
+  const [selectedMonth, setSelectedMonth] = useState("todos");
+  const [selectedCuenta, setSelectedCuenta] = useState("todos");
   const [search, setSearch] = useState("");
 
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
@@ -16,6 +24,21 @@ export function useCajaBancos() {
     queryFn: () => fetchCajaBancosSnapshot(user?.id ?? null),
     staleTime: 30_000,
   });
+
+  const availableMonths = useMemo(() => {
+    if (!data) return [] as string[];
+    const months = new Set(
+      data.records
+        .map((item) => periodFromDisplayDate(item.date))
+        .filter(Boolean),
+    );
+    return [...months].sort((a, b) => b.localeCompare(a));
+  }, [data]);
+
+  const availableCuentas = useMemo(() => {
+    if (!data) return [] as string[];
+    return [...new Set(data.records.map((item) => item.cuenta))].sort((a, b) => a.localeCompare(b, "es"));
+  }, [data]);
 
   const filteredRecords = useMemo(() => {
     if (!data) return [] as CajaBancosRecord[];
@@ -30,6 +53,11 @@ export function useCajaBancos() {
         (activeTab === "pendientes" && item.estado === "Pendiente") ||
         (activeTab === "conciliados" && item.estado === "Conciliado");
 
+      const matchesMonth =
+        selectedMonth === "todos" || periodFromDisplayDate(item.date) === selectedMonth;
+
+      const matchesCuenta = selectedCuenta === "todos" || item.cuenta === selectedCuenta;
+
       const matchesSearch =
         !query ||
         item.concepto.toLowerCase().includes(query) ||
@@ -37,9 +65,9 @@ export function useCajaBancos() {
         item.cuentaNumero.includes(query) ||
         item.documento.toLowerCase().includes(query);
 
-      return matchesTab && matchesSearch;
+      return matchesTab && matchesMonth && matchesCuenta && matchesSearch;
     });
-  }, [activeTab, data, search]);
+  }, [activeTab, data, search, selectedCuenta, selectedMonth]);
 
   const refresh = useCallback(async () => {
     await refetch();
@@ -48,8 +76,14 @@ export function useCajaBancos() {
   return {
     snapshot: data,
     filteredRecords,
+    availableMonths,
+    availableCuentas,
     activeTab,
     setActiveTab,
+    selectedMonth,
+    setSelectedMonth,
+    selectedCuenta,
+    setSelectedCuenta,
     search,
     setSearch,
     isLoading,

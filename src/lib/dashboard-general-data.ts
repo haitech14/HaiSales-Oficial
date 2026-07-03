@@ -1,4 +1,4 @@
-import { Percent, Receipt, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { CreditCard, Receipt, TrendingDown, TrendingUp, Users } from "lucide-react";
 
 export const generalKpis = [
   {
@@ -33,17 +33,7 @@ export const generalKpis = [
     icon: TrendingUp,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
-  },
-  {
-    label: "Margen de utilidad",
-    value: "24.65%",
-    change: "+3.2 pp vs. mes anterior",
-    changePositive: true,
-    sparkColor: "#8b5cf6",
-    sparkPoints: [18, 19, 20, 21, 22, 23, 24, 24.65],
-    icon: Percent,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-600",
+    note: "24.65% (+3.2 pp vs. mes anterior)",
   },
   {
     label: "Facturas emitidas",
@@ -66,6 +56,17 @@ export const generalKpis = [
     icon: Users,
     iconBg: "bg-teal-50",
     iconColor: "text-teal-600",
+  },
+  {
+    label: "Por cobrar",
+    value: "S/ 202,170",
+    change: "45 documentos pendientes",
+    changePositive: false,
+    sparkColor: "#0ea5e9",
+    sparkPoints: [142, 155, 162, 168, 175, 184, 192, 202],
+    icon: CreditCard,
+    iconBg: "bg-sky-50",
+    iconColor: "text-sky-600",
   },
 ];
 

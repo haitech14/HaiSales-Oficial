@@ -1,85 +1,80 @@
-import { lazy, Suspense } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { GuestRoute, ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SetupGuard } from "@/components/auth/SetupGuard";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { PageLoader } from "@/components/layout/PageLoader";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
+import { lazyWithRetry } from "@/lib/lazy-with-retry";
 
-const AppShell = lazy(() =>
+const AppShell = lazyWithRetry(() =>
   import("@/components/layout/AppShell").then((module) => ({ default: module.AppShell })),
 );
-const Landing = lazy(() => import("@/pages/Landing"));
-const Login = lazy(() => import("@/pages/Login"));
-const AppIndexPage = lazy(() => import("@/pages/app/AppIndexPage"));
-const AppPlaceholderPage = lazy(() => import("@/pages/app/AppPlaceholderPage"));
-const ParametrosPage = lazy(() => import("@/pages/app/ParametrosPage"));
-const ClientesPage = lazy(() => import("@/pages/app/ClientesPage"));
-const InventarioPage = lazy(() => import("@/pages/app/InventarioPage"));
-const ComprasPage = lazy(() => import("@/pages/app/ComprasPage"));
-const AlmacenesPage = lazy(() => import("@/pages/app/AlmacenesPage"));
-const IntegracionesPage = lazy(() => import("@/pages/app/IntegracionesPage"));
-const LogisticaPage = lazy(() => import("@/pages/app/LogisticaPage"));
-const PipelinePage = lazy(() => import("@/pages/app/PipelinePage"));
-const VentasCrmPage = lazy(() => import("@/pages/app/VentasCrmPage"));
-const VentasPage = lazy(() => import("@/pages/app/VentasPage"));
-const DashboardPage = lazy(() => import("@/pages/app/DashboardPage"));
-const CajaBancosPage = lazy(() => import("@/pages/app/CajaBancosPage"));
-const ContabilidadPage = lazy(() => import("@/pages/app/ContabilidadPage"));
-const CuentasPorCobrarPage = lazy(() => import("@/pages/app/CuentasPorCobrarPage"));
-const PlanillasPage = lazy(() => import("@/pages/app/PlanillasPage"));
-const UsuariosPage = lazy(() => import("@/pages/app/UsuariosPage"));
-const InboxPage = lazy(() => import("@/pages/inbox/InboxPage"));
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-    },
-  },
-});
+const CheckoutPage = lazyWithRetry(() => import("@/pages/CheckoutPage"));
+const Landing = lazyWithRetry(() => import("@/pages/Landing"));
+const Login = lazyWithRetry(() => import("@/pages/Login"));
+const AppIndexPage = lazyWithRetry(() => import("@/pages/app/AppIndexPage"));
+const AppPlaceholderPage = lazyWithRetry(() => import("@/pages/app/AppPlaceholderPage"));
+const ParametrosPage = lazyWithRetry(() => import("@/pages/app/ParametrosPage"));
+const ClientesPage = lazyWithRetry(() => import("@/pages/app/ClientesPage"));
+const InventarioPage = lazyWithRetry(() => import("@/pages/app/InventarioPage"));
+const ComprasPage = lazyWithRetry(() => import("@/pages/app/ComprasPage"));
+const AlmacenesPage = lazyWithRetry(() => import("@/pages/app/AlmacenesPage"));
+const IntegracionesPage = lazyWithRetry(() => import("@/pages/app/IntegracionesPage"));
+const LogisticaPage = lazyWithRetry(() => import("@/pages/app/LogisticaPage"));
+const PipelinePage = lazyWithRetry(() => import("@/pages/app/PipelinePage"));
+const VentasPage = lazyWithRetry(() => import("@/pages/app/VentasPage"));
+const DashboardPage = lazyWithRetry(() => import("@/pages/app/DashboardPage"));
+const CajaBancosPage = lazyWithRetry(() => import("@/pages/app/CajaBancosPage"));
+const ContabilidadPage = lazyWithRetry(() => import("@/pages/app/ContabilidadPage"));
+const CuentasPorCobrarPage = lazyWithRetry(() => import("@/pages/app/CuentasPorCobrarPage"));
+const PlanillasPage = lazyWithRetry(() => import("@/pages/app/PlanillasPage"));
+const UsuariosPage = lazyWithRetry(() => import("@/pages/app/UsuariosPage"));
+const InboxPage = lazyWithRetry(() => import("@/pages/inbox/InboxPage"));
+const AlquileresPage = lazyWithRetry(() => import("@/pages/app/AlquileresPage"));
+const PlanesMantenimientoSuministroPage = lazyWithRetry(() =>
+  import("@/pages/app/PlanesMantenimientoSuministroPage"),
+);
+const ServiciosPage = lazyWithRetry(() => import("@/pages/app/ServiciosPage"));
 
 const placeholderRoutes: string[] = [];
 
 export default function App() {
   return (
     <ErrorBoundary fallbackTitle="Error al cargar HaiSales">
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <BrowserRouter>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
+      <TooltipProvider>
+        <Toaster />
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
                   <Route path="/" element={<Landing />} />
-                  <Route
-                    path="/login"
-                    element={
-                      <GuestRoute>
-                        <Login />
-                      </GuestRoute>
-                    }
-                  />
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/login" element={<Login />} />
+
+                  <Route path="/onboarding" element={<Navigate to="/app/dashboard" replace />} />
 
                   <Route
                     path="/app"
                     element={
                       <ProtectedRoute>
-                        <AppShell />
+                        <SetupGuard>
+                          <AppShell />
+                        </SetupGuard>
                       </ProtectedRoute>
                     }
                   >
                     <Route index element={<AppIndexPage />} />
                     <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="reportes" element={<Navigate to="/app/dashboard" replace />} />
+                    <Route path="anuncios" element={<AppPlaceholderPage />} />
+                    <Route path="modulo" element={<Navigate to="/app/anuncios" replace />} />
+                    <Route path="reportes" element={<Navigate to="/app/dashboard?mode=reportes" replace />} />
                     <Route path="tesoreria" element={<Navigate to="/app/caja-bancos" replace />} />
                     <Route path="caja-bancos" element={<CajaBancosPage />} />
                     <Route path="inbox" element={<InboxPage />} />
                     <Route path="whatsapp-crm" element={<Navigate to="/app/inbox" replace />} />
-                    <Route path="ventas-crm" element={<VentasCrmPage />} />
+                    <Route path="ventas-crm" element={<Navigate to="/app/pipeline" replace />} />
+                    <Route path="leads" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="ventas" element={<VentasPage />} />
                     <Route path="facturacion" element={<Navigate to="/app/ventas" replace />} />
                     <Route path="clientes" element={<ClientesPage />} />
@@ -90,6 +85,12 @@ export default function App() {
                     <Route path="compras" element={<ComprasPage />} />
                     <Route path="logistica" element={<LogisticaPage />} />
                     <Route path="almacenes" element={<AlmacenesPage />} />
+                    <Route path="alquileres" element={<AlquileresPage />} />
+                    <Route
+                      path="planes-mantenimiento-suministro"
+                      element={<PlanesMantenimientoSuministroPage />}
+                    />
+                    <Route path="servicios" element={<ServiciosPage />} />
                     <Route path="integraciones" element={<IntegracionesPage />} />
                     <Route path="planillas" element={<PlanillasPage />} />
                     <Route path="usuarios" element={<UsuariosPage />} />
@@ -103,12 +104,10 @@ export default function App() {
                   </Route>
 
                   <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

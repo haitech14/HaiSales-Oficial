@@ -2,13 +2,12 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Eye,
-  EyeOff,
-  LineChart,
+  CheckCircle2,
   Lock,
   Mail,
   Shield,
-  Zap,
+  ShoppingCart,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
@@ -21,80 +20,101 @@ import { formatSupabaseError } from "@/lib/authErrors";
 import { prefetchAppRoutes } from "@/lib/prefetch-app-routes";
 import { cn } from "@/lib/utils";
 
-const promoFeatures = [
+type AuthMode = "login" | "register";
+
+const features = [
   {
-    icon: Zap,
-    title: "Información centralizada",
-    description: "Clientes, cotizaciones y facturas siempre actualizados.",
+    icon: ShoppingCart,
+    title: "Gestión de Ventas",
+    description: "Controla todo el ciclo de ventas",
   },
   {
-    icon: Shield,
-    title: "Seguridad y confianza",
-    description: "Tus datos protegidos con los más altos estándares.",
+    icon: User,
+    title: "CRM Completo",
+    description: "Gestiona clientes y leads",
   },
   {
     icon: BarChart3,
-    title: "Decisiones inteligentes",
-    description: "Reportes en tiempo real para impulsar tus ventas.",
+    title: "Reportes Avanzados",
+    description: "Toma decisiones basadas en datos",
+  },
+  {
+    icon: Shield,
+    title: "Seguro y Confiable",
+    description: "Tus datos siempre protegidos",
   },
 ];
 
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
+  );
+}
+
 function LoginPromoPanel() {
   return (
-    <aside className="relative hidden flex-col overflow-hidden bg-[#070d1a] lg:flex lg:w-[54%] xl:w-[55%]">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          backgroundImage: "radial-gradient(circle, rgba(148,163,184,0.18) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-blue-600/10 blur-[100px]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-blue-500/10 blur-[120px]" />
+    <aside className="relative hidden min-h-screen flex-col items-center justify-center lg:flex lg:w-[52%] xl:w-[54%]">
+      <div className="flex w-full max-w-[580px] flex-col items-center px-8 py-10 text-center xl:px-10 xl:py-12">
+        <HaiSalesLogo
+          href="/"
+          className="justify-center"
+          imageClassName="h-10 w-auto max-w-[220px] object-contain object-center sm:h-11 sm:max-w-[240px]"
+        />
 
-      <div className="relative z-10 flex h-full flex-col px-10 py-8 xl:px-14 xl:py-10">
-        <HaiSalesLogo variant="light" href="/" />
-
-        <div className="mt-10 flex flex-1 flex-col justify-center xl:mt-14">
-          <span className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-lg shadow-black/20">
-            <LineChart className="h-6 w-6 text-blue-600" strokeWidth={2} />
-          </span>
-
-          <h1 className="max-w-lg text-3xl font-bold leading-tight tracking-tight text-white xl:text-[2.35rem] xl:leading-[1.15]">
-            Ventas claras en{" "}
-            <span className="text-blue-500">tiempo real</span>
+        <div className="mt-8 flex w-full flex-col items-center">
+          <h1 className="max-w-[560px] font-bold tracking-tight text-white">
+            <span className="block text-[2.1rem] leading-[1.22] sm:text-[2.45rem] xl:text-[2.65rem]">
+              Gestiona tu negocio de manera
+            </span>
+            <span className="mt-2 block text-[2.35rem] leading-[1.12] text-[#0b7cff] sm:text-[2.75rem] xl:text-[3rem]">
+              inteligente y eficiente
+            </span>
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400 sm:text-[15px]">
-            Visualiza tu pipeline, oportunidades e ingresos desde cualquier dispositivo.
+
+          <p className="mt-6 max-w-[520px] text-[17px] leading-[1.7] text-slate-300 sm:text-[18px]">
+            Plataforma ERP y CRM completa para optimizar ventas, inventario, clientes y más.
           </p>
 
-          <div className="relative mt-8 xl:mt-10">
-            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-blue-500/10 blur-3xl" />
-            <img
-              src="/mockups.png"
-              alt="Vista previa de HaiSales en escritorio y móvil"
-              width={620}
-              height={420}
-              className="relative z-10 mx-auto w-full max-w-[620px]"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-              onError={(event) => {
-                event.currentTarget.src = "/placeholder.svg";
-              }}
-            />
-          </div>
+          <ul className="mt-11 w-full max-w-[460px] space-y-4 text-left">
+            {features.map((feature) => (
+              <li key={feature.title} className="flex items-start gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b7cff]/15 ring-1 ring-[#0b7cff]/25">
+                  <feature.icon className="h-5 w-5 text-[#3b9eff]" strokeWidth={1.75} />
+                </span>
+                <div className="pt-0.5">
+                  <p className="text-[17px] font-semibold leading-tight text-white sm:text-[18px]">
+                    {feature.title}
+                  </p>
+                  <p className="mt-1.5 text-[15px] leading-snug text-slate-400 sm:text-[16px]">
+                    {feature.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <div className="mt-8 grid grid-cols-3 gap-6 border-t border-white/[0.08] pt-8 xl:gap-8">
-          {promoFeatures.map((feature) => (
-            <div key={feature.title}>
-              <feature.icon className="h-5 w-5 text-blue-400" strokeWidth={1.75} />
-              <p className="mt-3 text-sm font-semibold text-white">{feature.title}</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{feature.description}</p>
-            </div>
-          ))}
-        </div>
+        <p className="mt-12 flex items-center justify-center gap-2 text-[15px] text-slate-300 sm:text-[16px]">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-[#3b9eff]" strokeWidth={2} />
+          Utilizado por cientos de empresas en todo el Perú
+        </p>
       </div>
     </aside>
   );
@@ -102,27 +122,44 @@ function LoginPromoPanel() {
 
 function LoginFormPanel() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        toast.success("Sesión iniciada correctamente");
+        prefetchAppRoutes();
+        navigate("/app/dashboard");
+        return;
+      }
 
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
         toast.error(error.message);
         return;
       }
 
-      toast.success("Sesión iniciada correctamente");
-      prefetchAppRoutes();
-      navigate("/app/dashboard");
+      if (data.session) {
+        toast.success("Cuenta creada. Configura tu empresa para continuar.");
+        navigate("/app/dashboard");
+        return;
+      }
+
+      toast.success("Cuenta creada. Revisa tu correo para confirmar el registro.");
+      setMode("login");
     } catch (error) {
       toast.error(formatSupabaseError(error));
     } finally {
@@ -130,30 +167,68 @@ function LoginFormPanel() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/app/dashboard` },
+      });
+      if (error) toast.error(error.message);
+    } catch (error) {
+      toast.error(formatSupabaseError(error));
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-1 items-center justify-center bg-[#f4f6f9] px-4 py-10 sm:px-6 lg:px-10">
-      <div className="w-full max-w-[420px]">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center px-5 py-10 sm:px-8 lg:w-[48%] lg:px-10 xl:w-[46%] xl:pr-16">
+      <div className="w-full max-w-[400px]">
         <div className="mb-8 flex justify-center lg:hidden">
-          <HaiSalesLogo variant="dark" href="/" />
+          <HaiSalesLogo
+            href="/"
+            className="justify-center"
+            imageClassName="h-10 w-auto max-w-[220px] object-contain object-center"
+          />
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white px-6 py-8 shadow-[0_8px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-9">
-          <div className="flex justify-center">
-            <HaiSalesLogo variant="dark" href="/" />
+        <div className="rounded-[20px] bg-white px-7 py-8 shadow-[0_24px_64px_rgba(0,0,0,0.42)] sm:px-8 sm:py-9">
+          <div className="text-center">
+            <h2 className="text-[1.85rem] font-bold leading-tight text-slate-900 sm:text-[2rem]">Bienvenido</h2>
+            <p className="mt-2 text-[15px] text-slate-500 sm:text-base">Accede a tu cuenta o crea una nueva</p>
           </div>
 
-          <div className="mt-6 text-center">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-[1.35rem]">
-              Inicia sesión en HaiSales
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              Gestiona tus ventas, clientes y facturas desde una sola plataforma.
-            </p>
+          <div className="mt-7 grid grid-cols-2 gap-1 rounded-xl bg-[#eef1f5] p-1">
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className={cn(
+                "rounded-[10px] py-2.5 text-[13px] font-semibold transition",
+                mode === "login"
+                  ? "bg-[#0b7cff] text-white shadow-sm"
+                  : "bg-transparent text-slate-600 hover:text-slate-900",
+              )}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("register")}
+              className={cn(
+                "rounded-[10px] py-2.5 text-[13px] font-semibold transition",
+                mode === "register"
+                  ? "bg-[#0b7cff] text-white shadow-sm"
+                  : "bg-transparent text-slate-600 hover:text-slate-900",
+              )}
+            >
+              Registrarse
+            </button>
           </div>
 
-          <form className="mt-7 space-y-5" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+          <form className="mt-6 space-y-[1.15rem]" onSubmit={handleSubmit}>
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="email" className="text-[13px] font-medium text-slate-800">
                 Correo electrónico
               </Label>
               <div className="relative">
@@ -162,75 +237,97 @@ function LoginFormPanel() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="ejemplo@empresa.com"
+                  placeholder="ventas@haitech.pe"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required
-                  className="h-11 rounded-lg border-slate-200 bg-white pl-10 text-sm placeholder:text-slate-400 focus-visible:ring-blue-600/30"
+                  className="h-11 rounded-[10px] border-transparent bg-[#eef2f8] pl-10 text-[13px] text-slate-800 shadow-none placeholder:text-slate-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/20"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="password" className="text-[13px] font-medium text-slate-800">
                 Contraseña
               </Label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
+                  type="password"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
-                  className="h-11 rounded-lg border-slate-200 bg-white pl-10 pr-11 text-sm placeholder:text-slate-400 focus-visible:ring-blue-600/30"
+                  minLength={6}
+                  className="h-11 rounded-[10px] border-transparent bg-[#eef2f8] pl-10 text-[13px] text-slate-800 shadow-none placeholder:text-slate-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/20"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <label className="flex cursor-pointer items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                  className="border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
-                />
-                <span className="text-sm text-slate-600">Recordarme</span>
-              </label>
-              <a href="#" className="text-sm font-medium text-blue-600 transition hover:text-blue-500">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
+            {mode === "login" && (
+              <div className="flex items-center justify-between gap-3 pt-0.5">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    className="h-4 w-4 border-slate-300 data-[state=checked]:border-[#0b7cff] data-[state=checked]:bg-[#0b7cff]"
+                  />
+                  <span className="text-[13px] text-slate-600">Recordarme</span>
+                </label>
+                <button
+                  type="button"
+                  className="text-[13px] font-medium text-[#0b7cff] transition hover:text-blue-500"
+                  onClick={() => toast.info("Próximamente: recuperación de contraseña")}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+            )}
 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className={cn(
-                "h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-500",
-              )}
+              className="mt-1 h-11 w-full rounded-[10px] bg-[#0b7cff] text-[14px] font-semibold text-white shadow-none hover:bg-[#0066e0]"
             >
-              {isSubmitting ? "Iniciando sesión..." : "Iniciar Sesión"}
+              {isSubmitting
+                ? mode === "login"
+                  ? "Iniciando sesión..."
+                  : "Creando cuenta..."
+                : mode === "login"
+                  ? "Iniciar Sesión"
+                  : "Crear cuenta"}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
-            ¿No tienes cuenta?{" "}
-            <a href="/#contacto" className="font-semibold text-blue-600 transition hover:text-blue-500">
-              Prueba gratis 14 días
-            </a>
-          </p>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-3 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                o continúa con
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isGoogleLoading}
+            onClick={handleGoogleSignIn}
+            className="h-11 w-full rounded-[10px] border-slate-200 bg-white text-[13px] font-medium text-slate-700 shadow-none hover:bg-slate-50"
+          >
+            <GoogleIcon className="mr-2.5 h-[18px] w-[18px]" />
+            {isGoogleLoading ? "Redirigiendo..." : "Continuar con Google"}
+          </Button>
         </div>
+
+        <p className="mt-7 text-center text-[12px] text-slate-400 lg:text-slate-300/90">
+          © 2025 HaiSales ERP. Todos los derechos reservados.
+        </p>
       </div>
     </main>
   );
@@ -238,9 +335,22 @@ function LoginFormPanel() {
 
 export default function Login() {
   return (
-    <div className="flex min-h-screen">
-      <LoginPromoPanel />
-      <LoginFormPanel />
+    <div className="relative min-h-screen overflow-hidden bg-[#06101f]">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/login-bg-v3.png')" }}
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-[#04101f]/65" aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-[#04101f]/88 via-[#04101f]/55 to-[#04101f]/30"
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 flex min-h-screen w-full">
+        <LoginPromoPanel />
+        <LoginFormPanel />
+      </div>
     </div>
   );
 }

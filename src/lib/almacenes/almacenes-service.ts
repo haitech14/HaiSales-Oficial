@@ -3,7 +3,6 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   almacenesKpis as staticKpis,
   almacenesTabs,
-  kardexMovements as mockMovements,
   type KardexMovement,
 } from "@/lib/almacenes-mock-data";
 import {
@@ -11,7 +10,7 @@ import {
   movimientoResponsables,
   type NuevoMovimientoFormState,
 } from "@/lib/almacenes-form-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
+import { withRealKpi } from "@/lib/kpi-utils";
 
 type KardexRow = {
   id: string;
@@ -34,12 +33,38 @@ type KardexRow = {
 type AlmacenRow = Database["public"]["Tables"]["almacenes"]["Row"];
 type ProductoRow = Database["public"]["Tables"]["productos"]["Row"];
 
+const WAREHOUSE_COLORS = ["#3b82f6", "#f97316", "#22c55e", "#a855f7", "#ef4444", "#8b5cf6"];
+
+export type AlmacenesPanelStat = {
+  label: string;
+  count: number;
+  percent: number;
+  color: string;
+};
+
+export type AlmacenesPanelStock = {
+  label: string;
+  amount: number;
+  percent: number;
+  color: string;
+};
+
+export type AlmacenesPanelAlert = {
+  label: string;
+  count: number;
+  color: string;
+  width: string;
+};
+
 export type AlmacenesSnapshot = {
   movements: KardexMovement[];
   almacenes: AlmacenRow[];
   kpis: typeof staticKpis;
   tabCounts: Record<string, number | null>;
   totalRecords: number;
+  movimientosPorTipo: AlmacenesPanelStat[];
+  stockPorAlmacen: AlmacenesPanelStock[];
+  alerts: AlmacenesPanelAlert[];
   source: "supabase" | "mock";
 };
 
@@ -56,6 +81,10 @@ function mapKardexRowToMovement(row: KardexRow): KardexMovement {
   const tipoLabel =
     row.tipo === "entrada" ? "Entrada" : row.tipo === "salida" ? "Salida" : "Transferencia";
 
+  let estado: KardexMovement["estado"] = "Completado";
+  if (row.estado === "borrador") estado = "Pendiente";
+  if (row.estado === "observado") estado = "Observado";
+
   return {
     id: `MOV-${row.id.slice(0, 8).toUpperCase()}`,
     fecha,
@@ -69,51 +98,168 @@ function mapKardexRowToMovement(row: KardexRow): KardexMovement {
     ubicacion: row.ubicacion_origen ?? row.ubicacion_destino ?? "—",
     costo: Number(row.costo_total ?? 0),
     referencia: row.documento_referencia ?? `KDX-${row.id.slice(0, 6).toUpperCase()}`,
-    estado: row.estado === "borrador" ? "Borrador" : "Completado",
+    estado,
   };
 }
 
-function mapProductoToMovement(row: ProductoRow, index: number): KardexMovement {
-  const { fecha, hora } = formatDateTime(row.ultimo_movimiento_at ?? row.updated_at);
-  const tipo = row.stock <= 5 ? "Salida" : index % 3 === 0 ? "Entrada" : "Transferencia";
-  return {
-    id: `MOV-${row.id.slice(0, 8).toUpperCase()}`,
-    fecha,
-    hora,
-    tipo,
-    producto: row.nombre,
-    sku: row.sku ?? "—",
-    cantidad: Math.max(1, Math.min(row.stock, 24)),
-    unidad: row.unidad,
-    almacen: row.almacen ?? "Almacén Principal",
-    ubicacion: "—",
-    costo: Number(row.costo ?? row.precio) * Math.max(1, Math.min(row.stock, 5)),
-    referencia: `PRD-${row.id.slice(0, 6).toUpperCase()}`,
-    estado: "Completado",
-  };
+function isCurrentMonth(fecha: string): boolean {
+  const parts = fecha.split("/");
+  if (parts.length !== 3) return false;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if (!day || !month || !year) return false;
+  const now = new Date();
+  return month === now.getMonth() + 1 && year === now.getFullYear();
 }
 
-function resolveAlmacenLabel(value: string) {
-  return movimientoAlmacenes.find((item) => item.value === value)?.label ?? value;
+function computeStockValorizado(productos: ProductoRow[]): number {
+  return productos.reduce((sum, producto) => {
+    const cost = Number(producto.costo ?? producto.precio ?? 0);
+    return sum + Number(producto.stock) * cost;
+  }, 0);
 }
 
-function resolveResponsableLabel(value: string) {
-  return movimientoResponsables.find((item) => item.value === value)?.label ?? value;
+function computeMovimientosPorTipo(movements: KardexMovement[]): AlmacenesPanelStat[] {
+  const entradas = movements.filter((movement) => movement.tipo === "Entrada").length;
+  const salidas = movements.filter((movement) => movement.tipo === "Salida").length;
+  const transferencias = movements.filter((movement) => movement.tipo === "Transferencia").length;
+  const total = movements.length;
+
+  return [
+    {
+      label: "Entradas",
+      count: entradas,
+      percent: total > 0 ? Math.round((entradas / total) * 100) : 0,
+      color: "#22c55e",
+    },
+    {
+      label: "Salidas",
+      count: salidas,
+      percent: total > 0 ? Math.round((salidas / total) * 100) : 0,
+      color: "#ef4444",
+    },
+    {
+      label: "Transferencias",
+      count: transferencias,
+      percent: total > 0 ? Math.round((transferencias / total) * 100) : 0,
+      color: "#3b82f6",
+    },
+  ];
+}
+
+function computeStockPorAlmacen(
+  productos: ProductoRow[],
+  almacenes: AlmacenRow[],
+): AlmacenesPanelStock[] {
+  const totals = new Map<string, number>();
+
+  for (const producto of productos) {
+    const key = producto.almacen?.trim() || "Sin asignar";
+    const cost = Number(producto.costo ?? producto.precio ?? 0);
+    totals.set(key, (totals.get(key) ?? 0) + Number(producto.stock) * cost);
+  }
+
+  const entries =
+    almacenes.length > 0
+      ? almacenes.map((almacen) => ({
+          label: almacen.nombre,
+          amount: totals.get(almacen.nombre) ?? 0,
+        }))
+      : [...totals.entries()].map(([label, amount]) => ({ label, amount }));
+
+  const totalAmount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  if (totalAmount === 0 && entries.length === 0) return [];
+
+  return entries.map((entry, index) => ({
+    ...entry,
+    percent: totalAmount > 0 ? Math.round((entry.amount / totalAmount) * 100) : 0,
+    color: WAREHOUSE_COLORS[index % WAREHOUSE_COLORS.length],
+  }));
+}
+
+function computeAlerts(
+  movements: KardexMovement[],
+  productos: ProductoRow[],
+): AlmacenesPanelAlert[] {
+  const diferencias = movements.filter((movement) => movement.estado === "Observado").length;
+  const bajoStock = productos.filter(
+    (producto) => Number(producto.stock) <= Number(producto.stock_minimo ?? 0),
+  ).length;
+  const transferenciasPendientes = movements.filter(
+    (movement) => movement.estado === "Pendiente" && movement.tipo === "Transferencia",
+  ).length;
+
+  const alerts: AlmacenesPanelAlert[] = [];
+
+  if (diferencias > 0) {
+    alerts.push({
+      label: `${diferencias} diferencia${diferencias === 1 ? "" : "s"} por revisar`,
+      count: diferencias,
+      color: "bg-red-500",
+      width: "100%",
+    });
+  }
+
+  if (bajoStock > 0) {
+    alerts.push({
+      label: `${bajoStock} producto${bajoStock === 1 ? "" : "s"} bajo stock mínimo`,
+      count: bajoStock,
+      color: "bg-orange-500",
+      width: bajoStock > 0 && diferencias > 0 ? "80%" : "100%",
+    });
+  }
+
+  if (transferenciasPendientes > 0) {
+    alerts.push({
+      label: `${transferenciasPendientes} transferencia${transferenciasPendientes === 1 ? "" : "s"} pendiente${transferenciasPendientes === 1 ? "" : "s"}`,
+      count: transferenciasPendientes,
+      color: "bg-blue-400",
+      width: "60%",
+    });
+  }
+
+  return alerts;
 }
 
 function buildSnapshot(
   movements: KardexMovement[],
   almacenes: AlmacenRow[],
+  productos: ProductoRow[],
   source: "supabase" | "mock",
 ): AlmacenesSnapshot {
-  const entradas = movements.filter((m) => m.tipo === "Entrada").length;
-  const salidas = movements.filter((m) => m.tipo === "Salida").length;
-  const transferencias = movements.filter((m) => m.tipo === "Transferencia").length;
+  const entradas = movements.filter((movement) => movement.tipo === "Entrada").length;
+  const salidas = movements.filter((movement) => movement.tipo === "Salida").length;
+  const transferencias = movements.filter((movement) => movement.tipo === "Transferencia").length;
+
+  const stockValorizado = computeStockValorizado(productos);
+  const entradasMes = movements.filter(
+    (movement) => movement.tipo === "Entrada" && isCurrentMonth(movement.fecha),
+  ).length;
+  const salidasMes = movements.filter(
+    (movement) => movement.tipo === "Salida" && isCurrentMonth(movement.fecha),
+  ).length;
+  const diferencias = movements.filter((movement) => movement.estado === "Observado").length;
+
+  const kpis = staticKpis.map((kpi, index) => {
+    if (index === 0) {
+      return withRealKpi(
+        kpi,
+        stockValorizado > 0
+          ? `S/ ${Math.round(stockValorizado).toLocaleString("es-PE")}`
+          : "S/ 0",
+      );
+    }
+    if (index === 1) return withRealKpi(kpi, String(entradasMes));
+    if (index === 2) return withRealKpi(kpi, String(salidasMes));
+    if (index === 3) return withRealKpi(kpi, String(diferencias));
+    return withRealKpi(kpi, "0");
+  });
 
   return {
     movements,
     almacenes,
-    kpis: staticKpis,
+    kpis,
     tabCounts: {
       todos: null,
       entradas,
@@ -121,91 +267,91 @@ function buildSnapshot(
       transferencias,
     },
     totalRecords: movements.length,
+    movimientosPorTipo: computeMovimientosPorTipo(movements),
+    stockPorAlmacen: computeStockPorAlmacen(productos, almacenes),
+    alerts: computeAlerts(movements, productos),
     source,
   };
 }
 
-async function loadKardexMovements(userId: string): Promise<KardexMovement[] | null> {
+async function loadKardexMovements(userId: string): Promise<KardexMovement[]> {
   const { data, error } = await supabase
     .from("kardex_movimientos" as "productos")
     .select("*, productos(nombre, sku)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (error) {
-    return null;
+    console.warn("[almacenes] Error al cargar kardex:", error.message);
+    return [];
   }
 
   return ((data ?? []) as unknown as KardexRow[]).map(mapKardexRowToMovement);
 }
 
-export async function fetchAlmacenesSnapshot(userId: string | null): Promise<AlmacenesSnapshot> {
-  if (!userId) {
-    return buildSnapshot(mockMovements, [], "mock");
-  }
-
-  const [almacenesResult, kardexMovements] = await Promise.all([
-    supabase.from("almacenes").select("*").eq("user_id", userId).eq("activo", true).order("nombre"),
-    loadKardexMovements(userId),
-  ]);
-
-  if (almacenesResult.error) {
-    console.warn("[almacenes] Error al cargar:", almacenesResult.error.message);
-    return buildSnapshot(mockMovements, [], "mock");
-  }
-
-  let almacenes = almacenesResult.data ?? [];
-
-  if (kardexMovements?.length) {
-    return buildSnapshot(kardexMovements, almacenes, "supabase");
-  }
-
-  const productosResult = await supabase
+async function loadProductos(userId: string): Promise<ProductoRow[]> {
+  const { data, error } = await supabase
     .from("productos")
     .select("*")
     .eq("user_id", userId)
-    .eq("activo", true)
-    .order("ultimo_movimiento_at", { ascending: false })
-    .limit(50);
+    .eq("activo", true);
 
-  if (productosResult.error) {
-    return buildSnapshot(mockMovements, almacenes, "mock");
+  if (error) {
+    console.warn("[almacenes] Error al cargar productos:", error.message);
+    return [];
   }
 
-  let productos = productosResult.data ?? [];
-
-  if (!almacenes.length || !productos.length) {
-    await seedDemoDataForUser(userId);
-    const retryAlmacenes = await supabase
-      .from("almacenes")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("activo", true)
-      .order("nombre");
-    const retryKardex = await loadKardexMovements(userId);
-    almacenes = retryAlmacenes.data ?? [];
-
-    if (retryKardex?.length) {
-      return buildSnapshot(retryKardex, almacenes, "supabase");
-    }
-
-    const retryProductos = await supabase
-      .from("productos")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("activo", true)
-      .order("ultimo_movimiento_at", { ascending: false })
-      .limit(50);
-    productos = retryProductos.data ?? [];
-  }
+  let productos = data ?? [];
 
   if (!productos.length) {
-    return buildSnapshot(mockMovements, almacenes, almacenes.length ? "supabase" : "mock");
+    const imported = await importLegacyProductosIfNeeded(userId);
+    if (imported) {
+      const retry = await supabase
+        .from("productos")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("activo", true);
+
+      if (!retry.error && retry.data?.length) {
+        productos = retry.data;
+      }
+    }
   }
 
-  const movements = productos.map(mapProductoToMovement);
-  return buildSnapshot(movements, almacenes, "supabase");
+  return productos;
+}
+
+async function importLegacyProductosIfNeeded(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("import_productos_legacy_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn("[almacenes] Import legacy productos:", error.message);
+    return false;
+  }
+
+  return typeof data === "number" && data > 0;
+}
+
+export async function fetchAlmacenesSnapshot(userId: string | null): Promise<AlmacenesSnapshot> {
+  if (!userId) {
+    return buildSnapshot([], [], [], "supabase");
+  }
+
+  const [almacenesResult, movements, productos] = await Promise.all([
+    supabase.from("almacenes").select("*").eq("user_id", userId).eq("activo", true).order("nombre"),
+    loadKardexMovements(userId),
+    loadProductos(userId),
+  ]);
+
+  if (almacenesResult.error) {
+    console.warn("[almacenes] Error al cargar almacenes:", almacenesResult.error.message);
+    return buildSnapshot(movements, [], productos, "supabase");
+  }
+
+  return buildSnapshot(movements, almacenesResult.data ?? [], productos, "supabase");
 }
 
 export async function createMovimientoAlmacen(
@@ -285,6 +431,14 @@ export async function createMovimientoAlmacen(
   }
 
   return { productoId: producto.id, cantidad, tipo };
+}
+
+function resolveAlmacenLabel(value: string) {
+  return movimientoAlmacenes.find((item) => item.value === value)?.label ?? value;
+}
+
+function resolveResponsableLabel(value: string) {
+  return movimientoResponsables.find((item) => item.value === value)?.label ?? value;
 }
 
 export {

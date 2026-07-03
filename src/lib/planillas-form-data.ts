@@ -18,6 +18,7 @@ export const trabajadorAreas = [
   { value: "finanzas", label: "Finanzas" },
   { value: "produccion", label: "Producción" },
   { value: "rrhh", label: "Recursos Humanos" },
+  { value: "soporte", label: "Soporte" },
 ];
 
 export const trabajadorTiposContrato = [

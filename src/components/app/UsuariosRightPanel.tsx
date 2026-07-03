@@ -1,111 +1,112 @@
 ﻿import { RefreshCw } from "lucide-react";
-import {
-  actividadReciente,
-  alertasSeguridad,
-  usuariosPorRol,
-} from "@/lib/usuarios-mock-data";
+import type { UsuariosSnapshot } from "@/lib/usuarios/usuarios-service";
 import { cn } from "@/lib/utils";
 
-function RolesDonutChart() {
-  const total = 48;
-  let offset = 0;
-  const circumference = 2 * Math.PI * 15.5;
+const ROLE_COLORS = ["#3b82f6", "#8b5cf6", "#22c55e", "#f97316", "#ef4444"];
 
-  return (
-    <div className="flex items-center gap-4">
-      <div className="relative h-28 w-28 shrink-0">
-        <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-          <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-          {usuariosPorRol.map((rol) => {
-            const dash = (rol.percent / 100) * circumference;
-            const circle = (
-              <circle
-                key={rol.label}
-                cx="18"
-                cy="18"
-                r="15.5"
-                fill="none"
-                stroke={rol.color}
-                strokeWidth="3"
-                strokeDasharray={`${dash} ${circumference - dash}`}
-                strokeDashoffset={-offset}
-              />
-            );
-            offset += dash;
-            return circle;
-          })}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold text-slate-900">{total}</span>
-          <span className="app-panel-meta">Total</span>
-        </div>
-      </div>
-      <ul className="app-panel-list min-w-0 flex-1">
-        {usuariosPorRol.map((rol) => (
-          <li key={rol.label} className="flex items-center justify-between gap-2 text-slate-600">
-            <span className="flex items-center gap-1.5 truncate">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: rol.color }}
-              />
-              {rol.label}
-            </span>
-            <span className="shrink-0 font-semibold text-slate-800">{rol.count}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+export function UsuariosRightPanel({
+  className,
+  snapshot,
+}: {
+  className?: string;
+  snapshot?: UsuariosSnapshot | null;
+}) {
+  const users = snapshot?.users ?? [];
+  const roleTotals = users.reduce((map, user) => {
+    map.set(user.rol, (map.get(user.rol) ?? 0) + 1);
+    return map;
+  }, new Map<string, number>());
 
-export function UsuariosRightPanel({ className }: { className?: string }) {
+  const roles = [...roleTotals.entries()].map(([label, count], index) => ({
+    label,
+    count,
+    percent: users.length > 0 ? Math.round((count / users.length) * 100) : 0,
+    color: ROLE_COLORS[index % ROLE_COLORS.length],
+  }));
+
+  let dashOffset = 0;
+  const donutSegments = roles.map((role) => {
+    const dash = `${role.percent} ${100 - role.percent}`;
+    const offset = -dashOffset;
+    dashOffset += role.percent;
+    return { ...role, dash, offset };
+  });
+
   return (
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
           <h3 className="app-panel-title">Usuarios por rol</h3>
-          <div className="mt-4">
-            <RolesDonutChart />
-          </div>
-        </section>
-
-        <section className="border-t border-slate-100 pt-4">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="app-panel-title">Actividad reciente</h3>
-            <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
-              Ver todas
-            </button>
-          </div>
-          <ul className="mt-3 space-y-3">
-            {actividadReciente.map((item) => (
-              <li key={`${item.usuario}-${item.tiempo}`}>
-                <p className="text-xs font-medium text-slate-800">{item.usuario}</p>
-                <p className="text-xs text-slate-500">{item.accion}</p>
-                <p className="mt-0.5 text-xs text-slate-400">{item.tiempo}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="border-t border-slate-100 pt-4">
-          <h3 className="app-panel-title">Alertas de seguridad</h3>
-          <ul className="mt-3 space-y-3">
-            {alertasSeguridad.map((alerta) => (
-              <li key={alerta.label}>
-                <p className="text-xs text-slate-600">{alerta.label}</p>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={cn("h-full rounded-full", alerta.color)}
-                    style={{ width: alerta.width }}
-                  />
+          {users.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">Sin usuarios sincronizados.</p>
+          ) : (
+            <div className="mt-4 flex items-center gap-4">
+              <div className="relative h-28 w-28 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                  {donutSegments.map((role) => (
+                    <circle
+                      key={role.label}
+                      cx="18"
+                      cy="18"
+                      r="15.5"
+                      fill="none"
+                      stroke={role.color}
+                      strokeWidth="3"
+                      strokeDasharray={role.dash}
+                      strokeDashoffset={role.offset}
+                    />
+                  ))}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xl font-bold text-slate-900">{users.length}</span>
+                  <span className="app-panel-meta">Total</span>
                 </div>
-              </li>
-            ))}
+              </div>
+              <ul className="app-panel-list min-w-0 flex-1">
+                {roles.map((role) => (
+                  <li key={role.label} className="flex items-center justify-between gap-2 text-slate-600">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: role.color }}
+                      />
+                      {role.label}
+                    </span>
+                    <span className="shrink-0 font-semibold text-slate-800">{role.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        <section className="border-t border-slate-100 pt-4">
+          <h3 className="app-panel-title">Resumen de acceso</h3>
+          <ul className="mt-3 space-y-2 text-xs text-slate-600">
+            <li className="flex justify-between">
+              <span>Activos</span>
+              <span className="font-semibold text-slate-800">
+                {users.filter((user) => user.estado === "Activo").length}
+              </span>
+            </li>
+            <li className="flex justify-between">
+              <span>Invitados</span>
+              <span className="font-semibold text-slate-800">
+                {users.filter((user) => user.estado === "Invitado").length}
+              </span>
+            </li>
+            <li className="flex justify-between">
+              <span>Inactivos</span>
+              <span className="font-semibold text-slate-800">
+                {users.filter((user) => user.estado === "Inactivo").length}
+              </span>
+            </li>
           </ul>
         </section>
 
         <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
-          <span>Actualizado: hace 5 minutos</span>
+          <span>{users.length} usuarios sincronizados</span>
           <button type="button" className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-500">
             <RefreshCw className="h-3.5 w-3.5" />
             Actualizar

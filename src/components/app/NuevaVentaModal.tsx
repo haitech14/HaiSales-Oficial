@@ -35,6 +35,8 @@ import {
 } from "@/lib/nueva-venta-types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { configToEmisor, defaultEmpresaConfig } from "@/lib/parametros/empresa-service";
 
 type NuevaVentaModalProps = {
   open: boolean;
@@ -128,6 +130,11 @@ export function NuevaVentaModal({
   isSubmitting = false,
 }: NuevaVentaModalProps) {
   const [form, setForm] = useState<NuevaVentaFormData>(defaultNuevaVentaForm);
+  const { data: empresaConfig } = useEmpresaConfig();
+  const emisor = useMemo(
+    () => configToEmisor(empresaConfig ?? defaultEmpresaConfig),
+    [empresaConfig],
+  );
 
   const totals = useMemo(
     () => calculateVentaTotals(form.cantidad, form.precioUnitario),
@@ -170,7 +177,7 @@ export function NuevaVentaModal({
         await onRegister(form);
       }
       const { generateComprobantePdf } = await import("@/lib/pdf/generate-comprobante-pdf");
-      await generateComprobantePdf(form);
+      await generateComprobantePdf(form, emisor);
       toast.success("Venta registrada y comprobante PDF generado.");
       handleClose();
     } catch (error) {
@@ -184,13 +191,13 @@ export function NuevaVentaModal({
 
   const handleProforma = async () => {
     const { generateProformaPdf } = await import("@/lib/pdf/generate-proforma-pdf");
-    await generateProformaPdf(form);
+    await generateProformaPdf(form, emisor);
     toast.success("Proforma PDF generada.");
   };
 
   const handleGuiaRemision = async () => {
     const { generateGuiaRemisionPdf } = await import("@/lib/pdf/generate-guia-remision-pdf");
-    await generateGuiaRemisionPdf(form);
+    await generateGuiaRemisionPdf(form, emisor);
     toast.success("Guía de remisión PDF generada.");
   };
 

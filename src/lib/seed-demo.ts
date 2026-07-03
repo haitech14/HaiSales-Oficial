@@ -1,11 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export async function seedDemoDataForUser(userId: string): Promise<void> {
-  const { error } = await supabase.rpc("seed_demo_data_for_user", {
+/** @deprecated El seed automático está deshabilitado. */
+export async function seedDemoDataForUser(_userId: string): Promise<void> {
+  return;
+}
+
+export async function clearDemoDataForUser(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("clear_demo_data_for_user", {
     p_user_id: userId,
   });
 
   if (error) {
-    console.warn("[seed] No se pudo ejecutar seed_demo_data_for_user:", error.message);
+    throw new Error(error.message);
   }
 }

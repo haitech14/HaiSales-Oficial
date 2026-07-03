@@ -62,9 +62,9 @@ export const almacenesKpis = [
 
 export const almacenesTabs = [
   { id: "todos", label: "Todos", count: null },
-  { id: "entradas", label: "Entradas", count: 156 },
-  { id: "salidas", label: "Salidas", count: 142 },
-  { id: "transferencias", label: "Transferencias", count: 37 },
+  { id: "entradas", label: "Entradas", count: null },
+  { id: "salidas", label: "Salidas", count: null },
+  { id: "transferencias", label: "Transferencias", count: null },
 ];
 
 export const kardexMovements: KardexMovement[] = [

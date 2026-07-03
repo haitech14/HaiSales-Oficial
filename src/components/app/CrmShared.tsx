@@ -1,5 +1,7 @@
 ﻿import type { LucideIcon } from "lucide-react";
-import { Bell, Calendar, ChevronDown, CircleHelp, Filter, PanelRightClose, Plus, RefreshCw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bell, ChevronDown, CircleHelp, Filter, PanelRightClose, Plus, RefreshCw } from "lucide-react";
+import { AppPeriodFilter } from "@/components/app/AppPeriodFilter";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,7 +53,7 @@ export function AppPageHeader({
   actionLabel = "+ Nueva oportunidad",
   showActionDropdown = false,
   actionDropdownItems = [],
-  notificationCount = 8,
+  notificationCount = 0,
   onActionClick,
 }: AppPageHeaderProps) {
   return (
@@ -63,14 +65,7 @@ export function AppPageHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {showDateRange && (
-            <Button variant="outline" size="sm" className="hidden h-9 gap-2 border-slate-200 text-slate-600 sm:inline-flex">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden md:inline">01/06/2026 - 30/06/2026</span>
-              <span className="md:hidden">Jun 2026</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-            </Button>
-          )}
+          {showDateRange && <AppPeriodFilter className="hidden sm:inline-flex" />}
 
           {showFiltersButton && (
             <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -173,6 +168,19 @@ export function AppPageHeader({
   );
 }
 
+function KpiValueDisplay({ value }: { value: string }) {
+  const match = value.match(/^(S\/|USD)\s+(.+)$/);
+  if (match) {
+    return (
+      <p className="app-kpi-value flex items-baseline gap-1 whitespace-nowrap">
+        <span className="text-sm font-semibold text-slate-500 sm:text-base">{match[1]}</span>
+        <span>{match[2]}</span>
+      </p>
+    );
+  }
+  return <p className="app-kpi-value whitespace-nowrap">{value}</p>;
+}
+
 export function CrmKpiCard({
   label,
   value,
@@ -183,6 +191,7 @@ export function CrmKpiCard({
   icon: Icon,
   iconBg,
   iconColor,
+  note,
 }: {
   label: string;
   value: string;
@@ -193,6 +202,7 @@ export function CrmKpiCard({
   icon?: LucideIcon;
   iconBg?: string;
   iconColor?: string;
+  note?: string;
 }) {
   const max = Math.max(...sparkPoints);
   const min = Math.min(...sparkPoints);
@@ -207,8 +217,13 @@ export function CrmKpiCard({
     })
     .join(" ");
 
-  return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  const card = (
+    <article
+      className={cn(
+        "rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm",
+        note && "cursor-default",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="app-kpi-label">{label}</p>
         {Icon && iconBg && iconColor && (
@@ -219,7 +234,7 @@ export function CrmKpiCard({
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div>
-          <p className="app-kpi-value">{value}</p>
+          <KpiValueDisplay value={value} />
           <p
             className={cn(
               "app-kpi-change",
@@ -241,6 +256,19 @@ export function CrmKpiCard({
         </svg>
       </div>
     </article>
+  );
+
+  if (!note) {
+    return card;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{card}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[240px] text-xs leading-snug">
+        Margen de utilidad: {note}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

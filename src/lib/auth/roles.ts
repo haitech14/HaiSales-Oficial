@@ -15,7 +15,7 @@ const ROLE_HIDDEN_HREFS: Record<UserRole, string[]> = {
     "/app/integraciones",
     "/app/parametros",
   ],
-  contador: ["/app/pipeline", "/app/ventas-crm", "/app/inbox", "/app/integraciones"],
+  contador: ["/app/pipeline", "/app/inbox", "/app/integraciones"],
 };
 
 export function normalizeRole(value: string | null | undefined): UserRole {

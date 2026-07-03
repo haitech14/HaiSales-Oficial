@@ -9,6 +9,7 @@ import {
   Search,
   Star,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -40,7 +41,7 @@ export default function ContabilidadPage() {
 
   const tabsWithCounts = contabilidadTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   const totalRecords = snapshot?.totalRecords ?? filteredRecords.length;
@@ -105,11 +106,11 @@ export default function ContabilidadPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 pb-2">
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <button type="button" className="app-toolbar-link">
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
-                  <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700">
+                  <button type="button" className="app-toolbar-link">
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
                   </button>
@@ -124,7 +125,7 @@ export default function ContabilidadPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por asiento, cuenta, documento, descripción..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -159,18 +160,18 @@ export default function ContabilidadPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1120px]">
+                <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1120px]">
                   <thead>
                     <tr className="app-table-head-row">
-                      <th className="px-4 py-3">Fecha</th>
-                      <th className="px-4 py-3">Asiento</th>
-                      <th className="px-4 py-3">Cuenta</th>
-                      <th className="px-4 py-3">Documento</th>
-                      <th className="px-4 py-3">Descripción</th>
-                      <th className="px-4 py-3">Debe</th>
-                      <th className="px-4 py-3">Haber</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
+                      <th className="app-table-cell">Fecha</th>
+                      <th className="app-table-cell">Asiento</th>
+                      <th className="app-table-cell">Cuenta</th>
+                      <th className="app-table-cell">Documento</th>
+                      <th className="app-table-cell">Descripción</th>
+                      <th className="app-table-cell">Debe</th>
+                      <th className="app-table-cell">Haber</th>
+                      <th className="app-table-cell">Estado</th>
+                      <th className="app-table-cell text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -184,42 +185,42 @@ export default function ContabilidadPage() {
                     ) : (
                     filteredRecords.map((item) => (
                       <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/60">
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <p className="font-medium text-slate-800">{item.date}</p>
                           <p className="text-xs text-slate-400">{item.time}</p>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <a href="#" className="font-semibold text-blue-600 hover:text-blue-500">
                             {item.entryCode}
                           </a>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <p className="font-medium text-slate-800">{item.account}</p>
                           <p className="text-xs text-slate-400">{item.accountCode}</p>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <span className="font-medium text-slate-700">{item.document}</span>
                         </td>
-                        <td className="max-w-[220px] px-4 py-3.5">
+                        <td className="app-table-cell max-w-[220px]">
                           <p className="line-clamp-2 text-slate-600">{item.description}</p>
                         </td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-900">
+                        <td className="app-table-cell font-semibold text-slate-900">
                           {formatAmountCell(item.debit)}
                         </td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-900">
+                        <td className="app-table-cell font-semibold text-slate-900">
                           {formatAmountCell(item.credit)}
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="app-table-cell">
                           <span
                             className={cn(
-                              "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                              "app-table-badge inline-flex rounded-full border",
                               getEntryStatusStyles(item.status),
                             )}
                           >
                             {item.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="app-table-cell text-right">
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -234,31 +235,7 @@ export default function ContabilidadPage() {
                 </table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>Mostrando 1 a {filteredRecords.length} de {totalRecords} registros</p>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100">
-                    16
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination shownCount={filteredRecords.length} totalCount={totalRecords} />
             </section>
           </div>
         </div>
@@ -268,7 +245,7 @@ export default function ContabilidadPage() {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
         >
-          <ContabilidadRightPanel />
+          <ContabilidadRightPanel snapshot={snapshot} />
         </AppRightPanelSlot>
       </div>
     </div>

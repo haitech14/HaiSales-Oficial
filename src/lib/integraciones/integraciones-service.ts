@@ -6,7 +6,6 @@ import {
   type IntegracionEstado,
   type IntegracionItem,
 } from "@/lib/integraciones-mock-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
 
 type ConnectionRow = Database["public"]["Tables"]["inbox_channel_connections"]["Row"];
 
@@ -79,17 +78,11 @@ export async function fetchIntegracionesSnapshot(userId: string | null): Promise
 
   if (error) {
     console.warn("[integraciones] Error al cargar:", error.message);
-    return buildSnapshot(catalogIntegraciones, "mock");
+    return buildSnapshot(catalogIntegraciones, "supabase");
   }
 
   if (!data?.length) {
-    await seedDemoDataForUser(userId);
-    const retry = await supabase.from("inbox_channel_connections").select("*").eq("user_id", userId);
-    data = retry.data ?? [];
-  }
-
-  if (!data.length) {
-    return buildSnapshot(catalogIntegraciones, "mock");
+    return buildSnapshot(catalogIntegraciones, "supabase");
   }
 
   return buildSnapshot(mergeConnections(data), "supabase");

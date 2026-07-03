@@ -37,6 +37,7 @@ export function useInventario() {
         !query ||
         product.sku.toLowerCase().includes(query) ||
         product.name.toLowerCase().includes(query) ||
+        product.marca.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query) ||
         product.warehouse.toLowerCase().includes(query);
 

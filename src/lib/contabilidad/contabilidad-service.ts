@@ -1,14 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
   contabilidadKpis as staticKpis,
-  contabilidadRecords as mockRecords,
   contabilidadTabs,
   type ContabilidadEntryStatus,
   type ContabilidadRecord,
   type ContabilidadSection,
 } from "@/lib/contabilidad-mock-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
 
 type AsientoRow = Database["public"]["Tables"]["asientos_contables"]["Row"];
 type LineaRow = Database["public"]["Tables"]["asiento_lineas"]["Row"];
@@ -104,19 +103,26 @@ function buildSnapshot(
   const margen = ingresos > 0 ? Math.round((ganancia / ingresos) * 1000) / 10 : 0;
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0 && ingresos > 0) {
-      return { ...kpi, value: `S/ ${Math.round(ingresos).toLocaleString("es-PE")}` };
+    if (index === 0) {
+      return withRealKpi(
+        kpi,
+        ingresos > 0 ? `S/ ${Math.round(ingresos).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 1 && egresos > 0) {
-      return { ...kpi, value: `S/ ${Math.round(egresos).toLocaleString("es-PE")}` };
+    if (index === 1) {
+      return withRealKpi(
+        kpi,
+        egresos > 0 ? `S/ ${Math.round(egresos).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 2 && ganancia > 0) {
-      return { ...kpi, value: `S/ ${Math.round(ganancia).toLocaleString("es-PE")}` };
+    if (index === 2) {
+      return withRealKpi(
+        kpi,
+        ganancia > 0 ? `S/ ${Math.round(ganancia).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 3 && ingresos > 0) {
-      return { ...kpi, value: `${margen}%` };
-    }
-    return kpi;
+    if (index === 3) return withRealKpi(kpi, ingresos > 0 ? `${margen}%` : "0%");
+    return withRealKpi(kpi, "0");
   });
 
   return {
@@ -132,7 +138,7 @@ export async function fetchContabilidadSnapshot(
   userId: string | null,
 ): Promise<ContabilidadSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -143,21 +149,11 @@ export async function fetchContabilidadSnapshot(
 
   if (error) {
     console.warn("[contabilidad] Error al cargar asientos:", error.message);
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   if (!data || data.length === 0) {
-    await seedDemoDataForUser(userId);
-    const retry = await supabase
-      .from("asientos_contables")
-      .select("*, asiento_lineas(*)")
-      .eq("user_id", userId)
-      .order("fecha", { ascending: false });
-
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockRecords, "mock");
-    }
-    data = retry.data;
+    return buildSnapshot([], "supabase");
   }
 
   return buildSnapshot(flattenAsientos(data as AsientoWithLineas[]), "supabase");

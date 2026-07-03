@@ -1,13 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import {
-  logisticsRisks as mockRisks,
   logisticaKpis as staticKpis,
-  purchaseOrders as mockOrders,
+  guiasKpis as staticGuiasKpis,
 } from "@/lib/logistica-mock-data";
+import { withRealKpi } from "@/lib/kpi-utils";
+import { fetchGuiasSnapshot } from "@/lib/logistica/guias-service";
 import type {
   DbOrderStatus,
   DbOrderType,
+  GuiaRemision,
   LogisticaSnapshot,
   OrderCategory,
   OrderStatus,
@@ -16,17 +18,8 @@ import type {
   PurchaseOrderDetail,
   PurchaseOrderItem,
 } from "@/lib/logistica/types";
-
 type OrdenRow = Database["public"]["Tables"]["ordenes_compra"]["Row"];
 type OrdenItemRow = Database["public"]["Tables"]["orden_compra_items"]["Row"];
-
-const STATUS_TO_DB: Record<OrderStatus, DbOrderStatus> = {
-  Aprobada: "aprobada",
-  Emitida: "emitida",
-  "En tránsito": "en_transito",
-  Recibida: "recibida",
-  Observada: "observada",
-};
 
 const STATUS_FROM_DB: Record<DbOrderStatus, OrderStatus> = {
   aprobada: "Aprobada",
@@ -36,42 +29,10 @@ const STATUS_FROM_DB: Record<DbOrderStatus, OrderStatus> = {
   observada: "Observada",
 };
 
-const TYPE_TO_DB: Record<OrderType, DbOrderType> = {
-  Compra: "compra",
-  Servicio: "servicio",
-};
-
 const TYPE_FROM_DB: Record<DbOrderType, OrderType> = {
   compra: "Compra",
   servicio: "Servicio",
 };
-
-const MOCK_ORDER_ITEMS: Record<string, Omit<PurchaseOrderItem, "id">[]> = {
-  "OC-2026-0045": [
-    { descripcion: "Laptop Dell Latitude 5540", cantidad: 5, precioUnitario: 4200, subtotal: 21000 },
-    { descripcion: "Monitor 24\" Full HD", cantidad: 5, precioUnitario: 890, subtotal: 4450 },
-    { descripcion: "Licencia Microsoft 365 Business", cantidad: 5, precioUnitario: 1400, subtotal: 7000 },
-  ],
-  "OC-2026-0044": [
-    { descripcion: "Tóner HP CF410A negro", cantidad: 12, precioUnitario: 320, subtotal: 3840 },
-    { descripcion: "Resma papel A4 500 hojas", cantidad: 40, precioUnitario: 112, subtotal: 4480 },
-  ],
-  "OC-2026-0043": [
-    { descripcion: "Servicio de transporte nacional", cantidad: 1, precioUnitario: 5680, subtotal: 5680 },
-  ],
-};
-
-function defaultItemsForOrder(numero: string, importe: number): Omit<PurchaseOrderItem, "id">[] {
-  if (MOCK_ORDER_ITEMS[numero]) return MOCK_ORDER_ITEMS[numero];
-  return [
-    {
-      descripcion: `Ítems de ${numero}`,
-      cantidad: 1,
-      precioUnitario: importe,
-      subtotal: importe,
-    },
-  ];
-}
 
 function formatDateParts(iso: string) {
   const date = new Date(iso);
@@ -110,44 +71,39 @@ function mapRowToOrder(row: OrdenRow): PurchaseOrder {
   };
 }
 
-function mapMockToOrder(order: (typeof mockOrders)[number]): PurchaseOrder {
-  return {
-    id: order.id,
-    numero: order.id,
-    requisicionId: order.requisicionId,
-    fecha: order.fecha,
-    hora: order.hora,
-    proveedor: order.proveedor,
-    ruc: order.ruc,
-    tipo: order.tipo,
-    almacen: order.almacen,
-    importe: order.importe,
-    estado: order.estado,
-    responsable: order.responsable,
-    responsableInitials: order.responsableInitials,
-    category: order.category,
-    notas: null,
-    fechaEntregaEstimada: null,
-  };
-}
-
-function buildSnapshot(orders: PurchaseOrder[], source: "supabase" | "mock"): LogisticaSnapshot {
+function buildSnapshot(
+  orders: PurchaseOrder[],
+  guias: GuiaRemision[],
+  source: "supabase" | "mock",
+): LogisticaSnapshot {
   const openStates: OrderStatus[] = ["Aprobada", "Emitida", "En tránsito", "Observada"];
   const openCount = orders.filter((o) => openStates.includes(o.estado)).length;
   const monthTotal = orders.reduce((sum, o) => sum + o.importe, 0);
   const pendingReception = orders.filter((o) => o.estado === "En tránsito" || o.estado === "Emitida").length;
   const delayed = orders.filter((o) => o.estado === "Observada").length;
+  const guiasTransito = guias.filter((g) => g.estado === "En tránsito").length;
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0) return { ...kpi, value: String(openCount || kpi.value) };
+    if (index === 0) return { ...kpi, value: String(openCount + guiasTransito) };
     if (index === 1) {
       return {
         ...kpi,
-        value: monthTotal > 0 ? `S/ ${Math.round(monthTotal).toLocaleString("es-PE")}` : kpi.value,
+        value: monthTotal > 0 ? `S/ ${Math.round(monthTotal).toLocaleString("es-PE")}` : "S/ 0",
       };
     }
-    if (index === 2) return { ...kpi, value: String(pendingReception || kpi.value) };
-    if (index === 3) return { ...kpi, value: String(delayed || kpi.value) };
+    if (index === 2) return { ...kpi, value: String(pendingReception + guiasTransito) };
+    if (index === 3) return { ...kpi, value: String(delayed) };
+    return kpi;
+  });
+
+  const guiasEntregadas = guias.filter((g) => g.estado === "Entregada").length;
+  const guiasVenta = guias.filter((g) => g.motivoTraslado === "venta").length;
+
+  const guiasKpis = staticGuiasKpis.map((kpi, index) => {
+    if (index === 0) return withRealKpi(kpi, String(guias.length));
+    if (index === 1) return withRealKpi(kpi, String(guiasTransito));
+    if (index === 2) return withRealKpi(kpi, String(guiasEntregadas));
+    if (index === 3) return withRealKpi(kpi, String(guiasVenta));
     return kpi;
   });
 
@@ -160,6 +116,12 @@ function buildSnapshot(orders: PurchaseOrder[], source: "supabase" | "mock"): Lo
     observadas: orders.filter((o) => o.category === "observada").length,
   };
 
+  const guiaTabCounts: Record<string, number | null> = {
+    todos: null,
+    en_transito: guias.filter((g) => g.estado === "En tránsito").length,
+    entregadas: guias.filter((g) => g.estado === "Entregada").length,
+    venta: guias.filter((g) => g.motivoTraslado === "venta").length,
+  };
   const statusGroups: { label: OrderStatus; color: string }[] = [
     { label: "Aprobada", color: "#22c55e" },
     { label: "Emitida", color: "#38bdf8" },
@@ -192,110 +154,50 @@ function buildSnapshot(orders: PurchaseOrder[], source: "supabase" | "mock"): Lo
 
   return {
     orders,
+    guias,
     kpis,
+    guiasKpis,
     tabCounts,
+    guiaTabCounts,
     ordersByStatus,
     purchasesBySupplier,
-    logisticsRisks: mockRisks,
+    logisticsRisks: [],
     totalRecords: orders.length,
+    totalGuias: guias.length,
     source,
   };
 }
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-async function seedOrdersForUser(userId: string) {
-  for (const mock of mockOrders) {
-    const { data: inserted, error } = await supabase
-      .from("ordenes_compra")
-      .insert({
-        user_id: userId,
-        numero: mock.id,
-        requisicion_id: mock.requisicionId,
-        proveedor: mock.proveedor,
-        proveedor_ruc: mock.ruc,
-        tipo: TYPE_TO_DB[mock.tipo],
-        almacen: mock.almacen,
-        importe: mock.importe,
-        estado: STATUS_TO_DB[mock.estado],
-        categoria: mock.category,
-        responsable: mock.responsable,
-        responsable_iniciales: mock.responsableInitials,
-        notas: `Orden demo importada desde seed inicial.`,
-        fecha_entrega_estimada: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-      })
-      .select("id, numero")
-      .single();
-
-    if (error || !inserted) continue;
-
-    const items = defaultItemsForOrder(mock.id, mock.importe).map((item) => ({
-      orden_id: inserted.id,
-      descripcion: item.descripcion,
-      cantidad: item.cantidad,
-      precio_unitario: item.precioUnitario,
-      subtotal: item.subtotal,
-    }));
-
-    if (items.length > 0) {
-      await supabase.from("orden_compra_items").insert(items);
-    }
-  }
-}
-
 export async function fetchLogisticaSnapshot(userId: string | null): Promise<LogisticaSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockOrders.map(mapMockToOrder), "mock");
+    return buildSnapshot([], [], "supabase");
   }
 
-  const { data, error } = await supabase
-    .from("ordenes_compra")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("[logistica] Error al cargar órdenes:", error.message);
-    return buildSnapshot(mockOrders.map(mapMockToOrder), "mock");
-  }
-
-  if (!data || data.length === 0) {
-    await seedOrdersForUser(userId);
-    const retry = await supabase
+  const [{ data, error }, guiasResult] = await Promise.all([
+    supabase
       .from("ordenes_compra")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }),
+    fetchGuiasSnapshot(userId),
+  ]);
 
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockOrders.map(mapMockToOrder), "mock");
-    }
-    data = retry.data;
+  if (error) {
+    console.warn("[logistica] Error al cargar órdenes:", error.message);
+    return buildSnapshot([], guiasResult.guias, "supabase");
   }
 
-  return buildSnapshot(data.map(mapRowToOrder), "supabase");
+  return buildSnapshot((data ?? []).map(mapRowToOrder), guiasResult.guias, "supabase");
 }
-
 export async function fetchOrderDetail(
   orderId: string,
   userId: string | null,
 ): Promise<PurchaseOrderDetail | null> {
   if (!userId) {
-    const mock = mockOrders.find((o) => o.id === orderId);
-    if (!mock) return null;
-    const base = mapMockToOrder(mock);
-    const items = defaultItemsForOrder(mock.id, mock.importe).map((item, index) => ({
-      id: `mock-item-${index}`,
-      ...item,
-    }));
-    return {
-      ...base,
-      items,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    return null;
   }
 
   const { data, error } = await supabase
@@ -306,9 +208,7 @@ export async function fetchOrderDetail(
     .maybeSingle();
 
   if (error || !data) {
-    const mock = mockOrders.find((o) => o.id === orderId);
-    if (!mock) return null;
-    return fetchOrderDetail(orderId, null);
+    return null;
   }
 
   const items = ((data.orden_compra_items as OrdenItemRow[] | null) ?? []).map((item) => ({

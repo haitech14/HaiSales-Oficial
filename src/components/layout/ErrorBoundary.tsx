@@ -10,13 +10,25 @@ type ErrorBoundaryProps = {
 type ErrorBoundaryState = {
   hasError: boolean;
   message?: string;
+  isChunkError?: boolean;
 };
+
+const CHUNK_ERROR_PATTERN =
+  /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk .+ failed/i;
+
+function isChunkLoadError(error: Error): boolean {
+  return CHUNK_ERROR_PATTERN.test(error.message);
+}
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, message: error.message };
+    return {
+      hasError: true,
+      message: error.message,
+      isChunkError: isChunkLoadError(error),
+    };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -24,7 +36,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   private handleRetry = () => {
-    this.setState({ hasError: false, message: undefined });
+    if (this.state.isChunkError) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ hasError: false, message: undefined, isChunkError: false });
   };
 
   render() {
@@ -39,12 +55,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               {this.props.fallbackTitle ?? "Algo salió mal"}
             </h2>
             <p className="mt-2 max-w-md text-sm text-slate-500">
-              {this.state.message ?? "Ocurrió un error inesperado al cargar esta sección."}
+              {this.state.isChunkError
+                ? "La aplicación se actualizó o hubo un problema al cargar un módulo. Recarga la página para continuar."
+                : (this.state.message ?? "Ocurrió un error inesperado al cargar esta sección.")}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={this.handleRetry} className="gap-2">
             <RefreshCw className="h-4 w-4" />
-            Reintentar
+            {this.state.isChunkError ? "Recargar página" : "Reintentar"}
           </Button>
         </div>
       );

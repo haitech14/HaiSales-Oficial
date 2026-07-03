@@ -14,6 +14,7 @@ import {
   Upload,
   Wallet,
 } from "lucide-react";
+import { AppTablePagination } from "@/components/app/AppTablePagination";
 import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
@@ -23,7 +24,7 @@ import { NuevoProductoModal } from "@/components/app/NuevoProductoModal";
 import { Button } from "@/components/ui/button";
 import { useInventario } from "@/hooks/useInventario";
 import {
-  formatCurrency,
+  formatProductCurrency,
   getProductStatusStyles,
   isLowStock,
 } from "@/lib/inventario/inventario-service";
@@ -74,7 +75,7 @@ export default function InventarioPage() {
 
   const tabsWithCounts = inventarioTabs.map((tab) => ({
     ...tab,
-    count: snapshot?.tabCounts[tab.id] ?? tab.count,
+    count: snapshot?.tabCounts[tab.id] ?? null,
   }));
 
   const totalRecords = snapshot?.totalRecords ?? filteredProducts.length;
@@ -90,13 +91,19 @@ export default function InventarioPage() {
         actionLabel="+ Nuevo producto"
         showActionDropdown
         actionDropdownItems={inventarioActionItems}
-        notificationCount={5}
+        notificationCount={0}
         onActionClick={() => setProductModalOpen(true)}
       />
 
       {snapshot?.source === "supabase" && (
         <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-2 text-xs text-emerald-700">
           Conectado a Supabase · {snapshot.totalRecords} productos sincronizados
+        </div>
+      )}
+
+      {snapshot?.importError && snapshot.totalRecords === 0 && (
+        <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs text-amber-900">
+          No se pudo cargar el catálogo: {snapshot.importError}
         </div>
       )}
 
@@ -157,14 +164,14 @@ export default function InventarioPage() {
                 <div className="flex items-center gap-2 pb-2">
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Star className="h-3.5 w-3.5" />
                     Guardar vista
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                    className="app-toolbar-link"
                   >
                     <Filter className="h-3.5 w-3.5" />
                     Más filtros
@@ -179,8 +186,8 @@ export default function InventarioPage() {
                     type="search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Buscar por SKU, producto, categoría, almacén..."
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    placeholder="Buscar por SKU, producto, marca, categoría, almacén..."
+                    className="app-search-input pl-9 pr-3"
                   />
                 </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -211,24 +218,25 @@ export default function InventarioPage() {
               </div>
 
               {isLoading ? (
-                <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500">
+                <div className="flex items-center justify-center gap-2 px-4 py-16 text-[11px] text-slate-500">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Cargando inventario...
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm sm:min-w-[1080px]">
+                  <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1240px]">
                     <thead>
                       <tr className="app-table-head-row">
-                        <th className="px-4 py-3">SKU</th>
-                        <th className="px-4 py-3">Producto</th>
-                        <th className="px-4 py-3">Categoría</th>
-                        <th className="px-4 py-3">Almacén</th>
-                        <th className="px-4 py-3">Stock</th>
-                        <th className="px-4 py-3">Costo</th>
-                        <th className="px-4 py-3">Precio venta</th>
-                        <th className="px-4 py-3">Estado</th>
-                        <th className="px-4 py-3 text-right">Acción</th>
+                        <th className="app-table-cell">SKU</th>
+                        <th className="app-table-cell">Producto</th>
+                        <th className="app-table-cell">Marca</th>
+                        <th className="app-table-cell">Categoría</th>
+                        <th className="app-table-cell">Almacén</th>
+                        <th className="app-table-cell">Stock</th>
+                        <th className="app-table-cell">Costo</th>
+                        <th className="app-table-cell">Precio venta</th>
+                        <th className="app-table-cell">Estado</th>
+                        <th className="app-table-cell text-right">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -241,12 +249,12 @@ export default function InventarioPage() {
                             key={product.id}
                             className="border-b border-slate-100 transition hover:bg-slate-50/60"
                           >
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <a href="#" className="font-semibold text-blue-600 hover:text-blue-500">
                                 {product.sku}
                               </a>
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <div className="flex items-start gap-3">
                                 <span
                                   className={cn(
@@ -258,13 +266,14 @@ export default function InventarioPage() {
                                 </span>
                                 <div className="min-w-0">
                                   <p className="font-semibold text-slate-800">{product.name}</p>
-                                  <p className="mt-0.5 text-xs text-slate-400">{product.description}</p>
+                                  <p className="app-table-meta">{product.description}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-700">{product.category}</td>
-                            <td className="px-4 py-3.5 text-slate-600">{product.warehouse}</td>
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell text-slate-700">{product.marca}</td>
+                            <td className="app-table-cell text-slate-700">{product.category}</td>
+                            <td className="app-table-cell text-slate-600">{product.warehouse}</td>
+                            <td className="app-table-cell">
                               {product.type === "service" ? (
                                 <span className="text-slate-400">—</span>
                               ) : (
@@ -278,23 +287,23 @@ export default function InventarioPage() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-700">
-                              {product.cost > 0 ? formatCurrency(product.cost) : "—"}
+                            <td className="app-table-cell text-slate-700">
+                              {formatProductCurrency(product.cost, product.moneda)}
                             </td>
-                            <td className="px-4 py-3.5 font-semibold text-slate-900">
-                              {formatCurrency(product.price)}
+                            <td className="app-table-cell font-semibold text-slate-900">
+                              {formatProductCurrency(product.price, product.moneda)}
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="app-table-cell">
                               <span
                                 className={cn(
-                                  "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                                  "app-table-badge inline-flex rounded-full border",
                                   getProductStatusStyles(product.status),
                                 )}
                               >
                                 {product.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 text-right">
+                            <td className="app-table-cell text-right">
                               <button
                                 type="button"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -311,39 +320,7 @@ export default function InventarioPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
-                <p>
-                  Mostrando 1 a {filteredProducts.length} de {totalRecords.toLocaleString("es-PE")} registros
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white"
-                  >
-                    1
-                  </button>
-                  {[2, 3].map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <span className="px-1 text-slate-400">...</span>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
-                  >
-                    {Math.max(1, Math.ceil(totalRecords / 10))}
-                  </button>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-                  10 por página
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <AppTablePagination shownCount={filteredProducts.length} totalCount={totalRecords} />
             </section>
           </div>
         </div>

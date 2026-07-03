@@ -13,6 +13,8 @@ export type PipelineCard = {
   dueDate: string;
   dueDateUrgent?: boolean;
   statusBadge?: "Ganada" | "Cerrada";
+  intereses?: string;
+  ciudad?: string;
 };
 
 export type PipelineColumn = {

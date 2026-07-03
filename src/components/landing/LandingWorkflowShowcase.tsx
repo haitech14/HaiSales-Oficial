@@ -1,4 +1,5 @@
-﻿import {
+﻿import { HAISALES_ICON_SRC } from "@/components/landing/HaiSalesLogo";
+import {
   BarChart3,
   BookOpen,
   ChevronDown,
@@ -128,10 +129,13 @@ function PipelineMockup() {
       <div className="flex min-h-[420px]">
         <aside className="hidden w-[130px] shrink-0 bg-[#081b33] px-2.5 py-4 sm:block">
           <div className="flex items-center gap-2 px-1.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
-              <BarChart3 className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-            </span>
-            <span className="text-xs font-bold text-white">HaiSales</span>
+            <img
+              src={HAISALES_ICON_SRC}
+              alt="HaiSales"
+              className="h-7 w-7 rounded-md object-cover object-left"
+              width={28}
+              height={28}
+            />
           </div>
           <nav className="mt-5 space-y-0.5">
             {sidebarNav.map((item) => (

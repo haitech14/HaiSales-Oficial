@@ -1,5 +1,6 @@
 export type InboxChannel =
   | "whatsapp"
+  | "instagram"
   | "facebook"
   | "messenger"
   | "tiktok"
@@ -14,15 +15,38 @@ export type InboxStatus = "activa" | "cerrada";
 
 export type InboxTab = "todos" | InboxStage;
 
+export type InboxViewFilter = "all" | "unread" | "team-chat" | InboxChannel;
+
 export interface InboxContact {
   name: string;
   identifier: string;
   avatarUrl?: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  isFrequentClient?: boolean;
+  clientSince?: string;
+  totalPurchases?: string;
+  orderCount?: number;
+  tags?: string[];
+  previousConversations?: { id: string; title: string; date: string; channel: InboxChannel }[];
+  internalNotes?: { id: string; author: string; date: string; body: string }[];
+}
+
+export interface InboxMessage {
+  id: string;
+  conversationId: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  sentAt: string;
+  isAutoReply?: boolean;
 }
 
 export interface InboxConversation {
   id: string;
   channel: InboxChannel;
+  connectionId?: string;
+  sourcePhoneLabel?: string;
   externalId: string;
   contact: InboxContact;
   lastMessage: string;
@@ -34,6 +58,8 @@ export interface InboxConversation {
   advisor: string;
   advisorInitials: string;
   campaign?: string;
+  isAssigned?: boolean;
+  contactType?: "cliente" | "lead" | "prospecto";
 }
 
 export interface InboxKpi {
@@ -74,16 +100,19 @@ export interface InboxSnapshot {
 }
 
 export interface ChannelConnection {
+  id?: string;
   channel: InboxChannel;
+  phoneNumberId?: string;
   status: "connected" | "disconnected" | "error";
   accountLabel?: string;
   lastSyncAt?: string;
   errorMessage?: string;
 }
 
+export type WhatsAppConnectionFilter = "all" | string;
+
 export interface InboxFilters {
-  tab: InboxTab;
-  channel: InboxChannel | "all";
+  view: InboxViewFilter;
   advisor: string;
   search: string;
 }

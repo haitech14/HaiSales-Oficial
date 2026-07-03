@@ -1,10 +1,5 @@
 ﻿import { RefreshCw } from "lucide-react";
 import type { InventarioSnapshot } from "@/lib/inventario/types";
-import {
-  inventoryAlerts as fallbackAlerts,
-  stockByCategory as fallbackStockByCategory,
-  topRotationProducts as fallbackTopRotation,
-} from "@/lib/inventario-mock-data";
 import { cn } from "@/lib/utils";
 
 type InventarioRightPanelProps = {
@@ -13,10 +8,10 @@ type InventarioRightPanelProps = {
 };
 
 export function InventarioRightPanel({ className, snapshot }: InventarioRightPanelProps) {
-  const stockByCategory = snapshot?.stockByCategory ?? fallbackStockByCategory;
-  const topRotationProducts = snapshot?.topRotationProducts ?? fallbackTopRotation;
-  const inventoryAlerts = snapshot?.inventoryAlerts ?? fallbackAlerts;
-  const totalInChart = stockByCategory.reduce((sum, item) => sum + item.count, 0) || 10;
+  const stockByCategory = snapshot?.stockByCategory ?? [];
+  const topRotationProducts = snapshot?.topRotationProducts ?? [];
+  const inventoryAlerts = snapshot?.inventoryAlerts ?? [];
+  const totalInChart = stockByCategory.reduce((sum, item) => sum + item.count, 0);
 
   let dashOffset = 0;
   const donutSegments = stockByCategory.map((item) => {

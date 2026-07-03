@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { HaiSalesLogo } from "./HaiSalesLogo";
@@ -6,7 +7,7 @@ import { HaiSalesLogo } from "./HaiSalesLogo";
 const navLinks = [
   { label: "Inicio", href: "#inicio", active: true },
   { label: "Modulos", href: "#modulos" },
-  { label: "Precios", href: "#precios" },
+  { label: "Planes", href: "#planes" },
   { label: "Contacto", href: "#contacto" },
 ];
 
@@ -36,14 +37,14 @@ export function LandingHeader() {
         </nav>
 
         <div className="flex items-center justify-end gap-2 sm:gap-3">
-          <a
-            href="/login"
+          <Link
+            to="/login"
             className="hidden text-sm font-medium text-slate-300 transition hover:text-white sm:inline-flex"
           >
             Iniciar Sesión
-          </a>
+          </Link>
           <a
-            href="#contacto"
+            href="#planes"
             className="hidden rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 sm:inline-flex lg:px-5"
           >
             Probar Gratis 14 días
@@ -79,15 +80,15 @@ export function LandingHeader() {
                   </a>
                 ))}
               </nav>
-              <a
-                href="/login"
+              <Link
+                to="/login"
                 onClick={() => setMobileOpen(false)}
                 className="mt-8 flex rounded-lg border border-white/10 px-4 py-3 text-center text-sm font-medium text-slate-300 hover:bg-white/5"
               >
                 Iniciar Sesión
-              </a>
+              </Link>
               <a
-                href="#contacto"
+                href="#planes"
                 onClick={() => setMobileOpen(false)}
                 className="mt-3 flex rounded-lg bg-blue-600 px-4 py-3 text-center text-sm font-semibold"
               >

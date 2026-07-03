@@ -1,13 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
   cuentasCobrarKpis as staticKpis,
-  cuentasCobrarRecords as mockRecords,
   cuentasCobrarTabs,
   type CobroEstado,
   type CuentasCobrarRecord,
 } from "@/lib/cuentas-cobrar-mock-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
 
 type CuentaRow = Database["public"]["Tables"]["cuentas_cobrar"]["Row"];
 
@@ -56,11 +55,11 @@ function buildSnapshot(records: CuentasCobrarRecord[], source: "supabase" | "moc
   const saldoPorVencer = porVencer.reduce((sum, r) => sum + r.balance, 0);
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0) return { ...kpi, value: formatCurrency(saldoTotal) };
-    if (index === 1) return { ...kpi, value: formatCurrency(saldoVencido) };
-    if (index === 2) return { ...kpi, value: formatCurrency(saldoPorVencer * 0.55) };
-    if (index === 3) return { ...kpi, value: formatCurrency(saldoPorVencer * 0.3) };
-    return { ...kpi, value: formatCurrency(saldoPorVencer * 0.15) };
+    if (index === 0) return withRealKpi(kpi, formatCurrency(saldoTotal));
+    if (index === 1) return withRealKpi(kpi, formatCurrency(saldoVencido));
+    if (index === 2) return withRealKpi(kpi, formatCurrency(saldoPorVencer));
+    if (index === 3) return withRealKpi(kpi, String(vencidas.length));
+    return withRealKpi(kpi, String(porVencer.length));
   });
 
   return {
@@ -84,7 +83,7 @@ function formatCurrency(value: number) {
 
 export async function fetchCuentasCobrarSnapshot(userId: string | null): Promise<CuentasCobrarSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const { data, error } = await supabase
@@ -95,21 +94,11 @@ export async function fetchCuentasCobrarSnapshot(userId: string | null): Promise
 
   if (error) {
     console.warn("[cuentas-cobrar] Error al cargar:", error.message);
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   if (!data?.length) {
-    await seedDemoDataForUser(userId);
-    const retry = await supabase
-      .from("cuentas_cobrar")
-      .select("*, clientes(razon_social)")
-      .eq("user_id", userId)
-      .order("fecha_vencimiento", { ascending: true });
-
-    if (retry.error || !retry.data?.length) {
-      return buildSnapshot(mockRecords, "mock");
-    }
-    data = retry.data;
+    return buildSnapshot([], "supabase");
   }
 
   const records = data.map((row) =>

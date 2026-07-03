@@ -9,7 +9,6 @@ import {
   YAxis,
 } from "recharts";
 import {
-  Calendar,
   ChevronDown,
   Download,
   Eye,
@@ -18,16 +17,19 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppPeriodFilter } from "@/components/app/AppPeriodFilter";
+import { useAppPeriod } from "@/hooks/useAppPeriod";
+import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import {
   dashboardReports,
   getReportFormatStyles,
   reportCategoryFilters,
-  topClientesReporte,
-  ventasMensualesChart,
 } from "@/lib/dashboard-reportes-data";
 import { cn } from "@/lib/utils";
 
 export function DashboardReportesView() {
+  const { range } = useAppPeriod();
+  const { data: analytics } = useDashboardAnalytics();
   const [category, setCategory] =
     useState<(typeof reportCategoryFilters)[number]["id"]>("todos");
   const [search, setSearch] = useState("");
@@ -46,19 +48,21 @@ export function DashboardReportesView() {
     });
   }, [category, search]);
 
+  const ventasMensualesChart = analytics?.ventasMensualesChart ?? [];
+  const topClientesReporte = analytics?.topClientes ?? [];
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="app-panel-title">Ingresos mensuales</h3>
-              <p className="text-xs text-slate-500">Evolución de ventas — 2026</p>
+              <h3 className="app-panel-title">Ingresos del periodo</h3>
+              <p className="text-xs text-slate-500">{range.label}</p>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-2 border-slate-200 text-slate-600">
-              Este año
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+              {range.shortLabel}
+            </span>
           </div>
           <div className="mt-4 h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -92,12 +96,15 @@ export function DashboardReportesView() {
             </button>
           </div>
           <ul className="mt-4 space-y-3">
-            {topClientesReporte.map((item) => (
-              <li key={item.cliente}>
+            {topClientesReporte.length === 0 ? (
+              <li className="py-6 text-center text-xs text-slate-400">Sin clientes en el periodo</li>
+            ) : (
+              topClientesReporte.map((item) => (
+              <li key={item.name}>
                 <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate font-medium text-slate-700">{item.cliente}</span>
+                  <span className="truncate font-medium text-slate-700">{item.name}</span>
                   <span className="shrink-0 font-semibold text-slate-900">
-                    S/ {item.ventas.toLocaleString("es-PE")}
+                    S/ {item.value.toLocaleString("es-PE")}
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -107,7 +114,8 @@ export function DashboardReportesView() {
                   />
                 </div>
               </li>
-            ))}
+              ))
+            )}
           </ul>
         </article>
       </div>
@@ -141,7 +149,7 @@ export function DashboardReportesView() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar reporte por nombre o descripción..."
-              className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+              className="app-search-input pl-9 pr-3"
             />
           </div>
           <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -152,10 +160,7 @@ export function DashboardReportesView() {
             Formato: Todos
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-            <Calendar className="h-3.5 w-3.5" />
-            01/06/2026 - 30/06/2026
-          </Button>
+          <AppPeriodFilter />
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
@@ -203,7 +208,7 @@ export function DashboardReportesView() {
                     <td className="max-w-[280px] px-4 py-3">
                       <p className="line-clamp-2 text-slate-600">{report.description}</p>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{report.lastRun}</td>
+                    <td className="app-table-cell text-slate-600">{report.lastRun}</td>
                     <td className="px-4 py-3">
                       <span
                         className={cn(
@@ -246,7 +251,7 @@ export function DashboardReportesView() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
+        <div className="app-pagination-bar flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5">
           <p>Mostrando 1 a {filteredReports.length} de {dashboardReports.length} reportes</p>
           <div className="flex items-center gap-1">
             <button type="button" className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">

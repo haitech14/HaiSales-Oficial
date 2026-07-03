@@ -1,61 +1,78 @@
 ﻿import { RefreshCw } from "lucide-react";
+import type { VentasSnapshot } from "@/lib/ventas/ventas-service";
+import { formatPipelineCurrency } from "@/lib/pipeline-mock-data";
 import { cn } from "@/lib/utils";
 
-export function VentasRightPanel({ className }: { className?: string }) {
+type VentasRightPanelProps = {
+  className?: string;
+  snapshot?: VentasSnapshot | null;
+};
+
+export function VentasRightPanel({ className, snapshot }: VentasRightPanelProps) {
+  const records = snapshot?.records ?? [];
+  const total = records.length;
+  const facturas = records.filter((item) => item.documentType === "Factura").length;
+  const boletas = records.filter((item) => item.documentType === "Boleta").length;
+  const notas = records.filter((item) => item.documentType === "Nota de crédito").length;
+  const otros = Math.max(0, total - facturas - boletas - notas);
+  const distribution = [
+    { label: "Facturas", count: facturas, color: "bg-blue-500" },
+    { label: "Boletas", count: boletas, color: "bg-violet-500" },
+    { label: "Notas crédito", count: notas, color: "bg-orange-500" },
+    { label: "Otros", count: otros, color: "bg-slate-400" },
+  ].filter((item) => item.count > 0);
+
+  const statusRows = [
+    { label: "Aceptados", count: records.filter((item) => item.status === "Aceptado").length, color: "bg-emerald-500" },
+    { label: "Pendientes", count: records.filter((item) => item.status === "Pendiente").length, color: "bg-amber-400" },
+    { label: "Rechazados", count: records.filter((item) => item.status === "Rechazado").length, color: "bg-red-500" },
+  ];
+
+  const totalFacturado = records
+    .filter((item) => item.businessStatus !== "Anulada")
+    .reduce((sum, item) => sum + item.amount, 0);
+
   return (
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
           <h3 className="app-panel-title">Distribución por tipo</h3>
-          <div className="mt-4 flex items-center gap-4">
-            <div className="relative h-28 w-28 shrink-0">
-              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="44 56" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="30 70" strokeDashoffset="-44" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f97316" strokeWidth="3" strokeDasharray="12 88" strokeDashoffset="-74" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-bold text-slate-900">328</span>
-                <span className="app-panel-meta">Total</span>
-              </div>
-            </div>
-            <ul className="app-panel-list min-w-0 flex-1">
-              {[
-                ["Facturas", "144", "44%", "bg-blue-500"],
-                ["Boletas", "98", "30%", "bg-violet-500"],
-                ["Notas crédito", "28", "9%", "bg-orange-500"],
-                ["Otros", "58", "17%", "bg-slate-400"],
-              ].map(([label, count, percent, color]) => (
-                <li key={label} className="flex items-center justify-between gap-2 text-slate-600">
+          {total === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">Sin comprobantes en el periodo seleccionado.</p>
+          ) : (
+            <ul className="app-panel-list mt-4 space-y-2">
+              {distribution.map((item) => (
+                <li key={item.label} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="flex items-center gap-1.5 truncate">
-                    <span className={cn("h-2 w-2 shrink-0 rounded-full", color)} />
-                    {label}
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", item.color)} />
+                    {item.label}
                   </span>
                   <span className="shrink-0 font-semibold text-slate-800">
-                    {count} <span className="font-normal text-slate-400">{percent}</span>
+                    {item.count}{" "}
+                    <span className="font-normal text-slate-400">
+                      {Math.round((item.count / total) * 100)}%
+                    </span>
                   </span>
                 </li>
               ))}
             </ul>
-          </div>
+          )}
         </section>
 
         <section className="border-t border-slate-100 pt-4">
           <h3 className="app-panel-title">Emisión por estado</h3>
           <ul className="mt-3 space-y-3">
-            {[
-              ["Aceptados", 313, "bg-emerald-500", "95%"],
-              ["Pendientes", 12, "bg-amber-400", "4%"],
-              ["Rechazados", 3, "bg-red-500", "1%"],
-            ].map(([label, count, color, width]) => (
-              <li key={label as string}>
+            {statusRows.map((item) => (
+              <li key={item.label}>
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-slate-600">{label as string}</span>
-                  <span className="font-semibold text-slate-800">{count as number}</span>
+                  <span className="text-slate-600">{item.label}</span>
+                  <span className="font-semibold text-slate-800">{item.count}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div className={cn("h-full rounded-full", color as string)} style={{ width: width as string }} />
+                  <div
+                    className={cn("h-full rounded-full", item.color)}
+                    style={{ width: total > 0 ? `${Math.round((item.count / total) * 100)}%` : "0%" }}
+                  />
                 </div>
               </li>
             ))}
@@ -63,34 +80,14 @@ export function VentasRightPanel({ className }: { className?: string }) {
         </section>
 
         <section className="border-t border-slate-100 pt-4">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="app-panel-title">Errores SUNAT</h3>
-            <button type="button" className="text-xs font-medium text-blue-600 hover:text-blue-500">
-              Ver todas
-            </button>
-          </div>
-          <ul className="mt-3 space-y-3">
-            {[
-              ["RUC no existe", 5, "bg-red-500", "100%"],
-              ["Serie no registrada", 3, "bg-orange-500", "60%"],
-              ["Monto inválido", 2, "bg-amber-400", "40%"],
-              ["Fecha fuera de rango", 1, "bg-slate-400", "20%"],
-            ].map(([label, count, color, width]) => (
-              <li key={label as string}>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate text-slate-600">{label as string}</span>
-                  <span className="shrink-0 font-semibold text-slate-800">{count as number}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div className={cn("h-full rounded-full", color as string)} style={{ width: width as string }} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <h3 className="app-panel-title">Total facturado</h3>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {formatPipelineCurrency(totalFacturado)}
+          </p>
         </section>
 
         <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
-          <span>Actualizado: hace 31 minutos</span>
+          <span>{total} comprobantes en periodo</span>
           <button type="button" className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-500">
             <RefreshCw className="h-3.5 w-3.5" />
             Actualizar

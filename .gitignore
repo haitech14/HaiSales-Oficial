@@ -15,6 +15,10 @@ dist-ssr
 .env
 .vercel
 
+# Python
+__pycache__/
+*.pyc
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

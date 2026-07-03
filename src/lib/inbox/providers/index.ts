@@ -29,7 +29,7 @@ function createStubProvider(channel: InboxChannel): InboxProvider {
 }
 
 const providers: InboxProvider[] = (
-  ["whatsapp", "facebook", "messenger", "tiktok", "web", "email"] as InboxChannel[]
+  ["whatsapp", "instagram", "facebook", "messenger", "tiktok", "web", "email"] as InboxChannel[]
 ).map(createStubProvider);
 
 export function getInboxProvider(channel: InboxChannel): InboxProvider {

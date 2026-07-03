@@ -1,13 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
   dashboardKpis as staticKpis,
-  dashboardRecords as mockRecords,
   dashboardTabs,
   type DashboardRecord,
   type DashboardStatus,
   type DashboardTabId,
 } from "@/lib/dashboard-mock-data";
-import { seedDemoDataForUser } from "@/lib/seed-demo";
 
 export type DashboardSnapshot = {
   records: DashboardRecord[];
@@ -110,7 +109,7 @@ function mapClienteToRecord(row: {
   };
 }
 
-function buildSnapshot(records: DashboardRecord[], source: "supabase" | "mock"): DashboardSnapshot {
+export function buildSnapshot(records: DashboardRecord[], source: "supabase" | "mock"): DashboardSnapshot {
   const totalIngresos = records
     .filter((r) => r.amount && r.area === "Facturación")
     .reduce((sum, r) => sum + (r.amount ?? 0), 0);
@@ -118,12 +117,15 @@ function buildSnapshot(records: DashboardRecord[], source: "supabase" | "mock"):
   const pendientesCxC = records.filter((r) => r.status === "Pendiente" && r.area === "Facturación").length;
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0 && totalIngresos > 0) {
-      return { ...kpi, value: `S/ ${Math.round(totalIngresos).toLocaleString("es-PE")}` };
+    if (index === 0) {
+      return withRealKpi(
+        kpi,
+        totalIngresos > 0 ? `S/ ${Math.round(totalIngresos).toLocaleString("es-PE")}` : "S/ 0",
+      );
     }
-    if (index === 1 && ventasCount > 0) return { ...kpi, value: String(ventasCount) };
-    if (index === 2 && pendientesCxC > 0) return { ...kpi, value: String(pendientesCxC) };
-    return kpi;
+    if (index === 1) return withRealKpi(kpi, String(ventasCount));
+    if (index === 2) return withRealKpi(kpi, String(pendientesCxC));
+    return withRealKpi(kpi, String(records.length));
   });
 
   const tabCounts: Partial<Record<DashboardTabId, number | null>> = {
@@ -140,7 +142,7 @@ function buildSnapshot(records: DashboardRecord[], source: "supabase" | "mock"):
 
 export async function fetchDashboardSnapshot(userId: string | null): Promise<DashboardSnapshot> {
   if (!userId) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   const [ventasRes, oportunidadesRes, clientesRes] = await Promise.all([
@@ -150,24 +152,12 @@ export async function fetchDashboardSnapshot(userId: string | null): Promise<Das
   ]);
 
   if (ventasRes.error && oportunidadesRes.error && clientesRes.error) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
-  let ventas = ventasRes.data ?? [];
-  let oportunidades = oportunidadesRes.data ?? [];
-  let clientes = clientesRes.data ?? [];
-
-  if (!ventas.length && !oportunidades.length && !clientes.length) {
-    await seedDemoDataForUser(userId);
-    const retry = await Promise.all([
-      supabase.from("ventas").select("*").eq("user_id", userId).order("fecha", { ascending: false }).limit(20),
-      supabase.from("oportunidades").select("*").eq("user_id", userId).order("fecha_oportunidad", { ascending: false }).limit(15),
-      supabase.from("clientes").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-    ]);
-    ventas = retry[0].data ?? [];
-    oportunidades = retry[1].data ?? [];
-    clientes = retry[2].data ?? [];
-  }
+  const ventas = ventasRes.data ?? [];
+  const oportunidades = oportunidadesRes.data ?? [];
+  const clientes = clientesRes.data ?? [];
 
   const records: DashboardRecord[] = [
     ...ventas.map(mapVentaToRecord),
@@ -180,7 +170,7 @@ export async function fetchDashboardSnapshot(userId: string | null): Promise<Das
   });
 
   if (!records.length) {
-    return buildSnapshot(mockRecords, "mock");
+    return buildSnapshot([], "supabase");
   }
 
   return buildSnapshot(records, "supabase");

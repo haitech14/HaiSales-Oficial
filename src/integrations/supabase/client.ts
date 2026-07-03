@@ -1,9 +1,10 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { getSupabaseConfigError } from "@/lib/authErrors";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase-env";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+const SUPABASE_URL = getSupabaseUrl();
+const SUPABASE_PUBLISHABLE_KEY = getSupabasePublishableKey();
 
 export const supabaseConfigError = getSupabaseConfigError();
 
