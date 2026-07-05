@@ -100,7 +100,7 @@ export function InboxChannelIntegrations({
 
     try {
 
-      const result = await syncKapsoWhatsAppNumbers();
+      const result = await syncKapsoWhatsAppNumbers(userId);
 
       toast.success(`Kapso sincronizado · ${result.connections.length} número(s)`);
 

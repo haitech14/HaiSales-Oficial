@@ -1,56 +1,78 @@
-import { FileText, LineChart, RefreshCw } from "lucide-react";
+import { BarChart3, FileText, Receipt, Users, type LucideIcon } from "lucide-react";
 
-const highlights = [
+const features: {
+  icon: LucideIcon;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  description: string;
+}[] = [
   {
-    icon: RefreshCw,
+    icon: Users,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
-    title: "Seguimiento automático",
-    description:
-      "Automatiza tareas y recordatorios para que ningún cliente ni oportunidad se te escape.",
+    title: "Clientes centralizados",
+    description: "Organiza contactos, historial y seguimiento en una sola vista.",
   },
   {
     icon: FileText,
     iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
-    title: "Facturación electrónica",
-    description:
-      "Emite, envía y controla tus facturas electrónicas cumpliendo con la SUNAT de forma simple.",
+    title: "Cotizaciones rápidas",
+    description: "Crea propuestas profesionales y conviértelas en ventas.",
   },
   {
-    icon: LineChart,
+    icon: Receipt,
+    iconBg: "bg-blue-50",
+    iconColor: "text-blue-600",
+    title: "Facturación electrónica",
+    description: "Emite comprobantes, controla pagos y reduce tareas manuales.",
+  },
+  {
+    icon: BarChart3,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
     title: "Reportes en tiempo real",
-    description: "Visualiza indicadores clave y toma decisiones basadas en datos actualizados al instante.",
+    description: "Mide ingresos, oportunidades y cierres desde tu dashboard.",
   },
 ];
 
 export function LandingValueHero() {
   return (
-    <section className="bg-white px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,42%)_minmax(0,58%)] lg:gap-10">
-        <div>
-          <h2 className="text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.15]">
-            Deja de vender en hojas sueltas
+    <section className="bg-gradient-to-b from-blue-50/70 via-white to-white px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+            Todo lo que necesitas para vender mejor
           </h2>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-slate-500 sm:text-lg">
-            Centraliza tus procesos y elimina el desorden con funciones que te hacen más productivo cada
-            día.
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-500 sm:text-lg">
+            Cuatro herramientas clave para ordenar tu proceso comercial desde el primer día.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-5">
-          {highlights.map((item) => (
-            <div key={item.title} className="flex flex-col">
-              <div
-                className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${item.iconBg}`}
-              >
-                <item.icon className={`h-5 w-5 ${item.iconColor}`} strokeWidth={2} />
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          {features.map((item) => (
+            <article
+              key={item.title}
+              className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_24px_rgba(15,23,42,0.06)] sm:p-6"
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}
+                >
+                  <item.icon className={`h-5 w-5 ${item.iconColor}`} strokeWidth={1.75} />
+                </span>
+                <h3 className="pt-1 text-base font-bold leading-tight tracking-tight text-slate-900">
+                  {item.title}
+                </h3>
               </div>
-              <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">{item.description}</p>
-            </div>
+
+              <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-500">{item.description}</p>
+
+              <span className="mt-5 inline-flex w-fit rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-600">
+                Incluido en HaiSales
+              </span>
+            </article>
           ))}
         </div>
       </div>

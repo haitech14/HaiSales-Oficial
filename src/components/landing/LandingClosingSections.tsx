@@ -18,14 +18,17 @@ import {
 } from "@/components/ui/accordion";
 import {
   billingOptions,
-  buildCheckoutPath,
-  formatPlanPrice,
-  getCurrencySuffix,
+  formatCurrencyAmountRounded,
+  getCurrencyPrefix,
+  getPlanAnnualTotal,
+  getPlanDisplayPrice,
   pricingPlans,
   type BillingCycle,
   type Currency,
   type PricingPlan,
 } from "@/lib/pricing/plans";
+import { REGISTER_LOGIN_PATH } from "@/lib/auth-routes";
+import { CheckoutModal } from "@/components/landing/CheckoutModal";
 import { cn } from "@/lib/utils";
 
 const trustFeatures = [
@@ -152,17 +155,22 @@ function PricingPlanCard({
   billingCycle,
   currency,
   featured = false,
+  onBuyNow,
 }: {
   plan: PricingPlan;
   billingCycle: BillingCycle;
   currency: Currency;
   featured?: boolean;
+  onBuyNow: () => void;
 }) {
-  const price = formatPlanPrice(plan.monthlyPricePen, billingCycle, currency);
-  const currencySuffix = getCurrencySuffix(currency);
+  const currencyPrefix = getCurrencyPrefix(currency);
+  const showAnnualFormat = billingCycle === "annual";
+  const displayPrice = getPlanDisplayPrice(plan, billingCycle, currency);
+  const annualMonthlyPrice = getPlanDisplayPrice(plan, "annual", currency);
+  const annualTotal = getPlanAnnualTotal(plan, currency);
 
   return (
-    <div className={cn("relative flex flex-col", featured && "pt-4")}>
+    <div className="relative flex h-full flex-col pt-4">
       {featured && (
         <div className="absolute -top-0 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-bold tracking-wide text-white shadow-lg shadow-blue-600/25">
           <Star className="h-3 w-3 fill-white" />
@@ -172,41 +180,45 @@ function PricingPlanCard({
 
       <article
         className={cn(
-          "flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_40px_rgba(15,23,42,0.1)]",
-          featured && "border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_20px_50px_rgba(37,99,235,0.12)]",
+          "flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_40px_rgba(15,23,42,0.1)]",
+          featured
+            ? "border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_20px_50px_rgba(37,99,235,0.12)]"
+            : "border-slate-200",
         )}
       >
-        <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="flex h-full flex-1 flex-col p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm shadow-blue-600/20">
               <plan.icon className="h-5 w-5 text-white" strokeWidth={1.75} />
             </span>
             <div className="min-w-0 pt-0.5">
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {plan.name}
-              </h3>
+              <h3 className="text-sm font-bold text-slate-900 sm:text-base">{plan.name}</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm">{plan.subtitle}</p>
             </div>
           </div>
 
           <div className="mt-6 border-b border-slate-100 pb-5">
-            <div className="flex items-end gap-1">
-              <span className="font-bold leading-none tracking-tight text-slate-900 text-3xl sm:text-4xl">
-                {price}
-              </span>
-              <span className="mb-1 text-xs font-medium text-slate-400">{currencySuffix}</span>
-              <span className="mb-1 text-sm text-slate-400">/mes</span>
-            </div>
-            <p className="mt-1.5 text-xs text-slate-400">+IGV / Mensual</p>
+            {showAnnualFormat ? (
+              <>
+                <p className="text-3xl font-bold leading-none tracking-tight text-slate-900 sm:text-4xl">
+                  {currencyPrefix} {formatCurrencyAmountRounded(annualMonthlyPrice, currency)}
+                </p>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Pagas {currencyPrefix} {formatCurrencyAmountRounded(annualTotal, currency)} al año ·
+                  IGV incluido
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-bold leading-none tracking-tight text-slate-900 sm:text-4xl">
+                  {currencyPrefix} {formatCurrencyAmountRounded(displayPrice, currency)}
+                </p>
+                <p className="mt-1.5 text-xs text-slate-500">IGV incluido</p>
+              </>
+            )}
           </div>
 
           <ul className="mt-5 flex flex-1 flex-col gap-2.5">
-            {plan.includesLabel && (
-              <li className="flex items-start gap-2.5 text-xs font-medium text-slate-800 sm:text-[13px]">
-                <FeatureIcon included />
-                {plan.includesLabel}
-              </li>
-            )}
             {plan.features.map((feature) => (
               <li
                 key={feature.label}
@@ -216,25 +228,39 @@ function PricingPlanCard({
                 )}
               >
                 <FeatureIcon included={feature.included} />
-                {feature.label}
+                <div className="min-w-0">
+                  <span className={feature.subItems?.length ? "font-medium text-slate-800" : undefined}>
+                    {feature.label}
+                  </span>
+                  {feature.subItems && feature.subItems.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {feature.subItems.map((item) => (
+                        <li key={item} className="pl-0.5 text-slate-500">
+                          - {item}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
 
-          <div className={cn("mt-6 space-y-2", featured && "sm:max-w-md")}>
+          <div className="mt-auto space-y-2 pt-6">
             <Link
-              to="/login"
+              to={REGISTER_LOGIN_PATH}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
             >
               Probar Gratis 14 días
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              to={buildCheckoutPath(plan.slug, billingCycle, currency)}
+            <button
+              type="button"
+              onClick={onBuyNow}
               className="flex w-full items-center justify-center rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Comprar ahora
-            </Link>
+            </button>
           </div>
         </div>
       </article>
@@ -245,6 +271,13 @@ function PricingPlanCard({
 function PricingSection() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("annual");
   const [currency, setCurrency] = useState<Currency>("pen");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+
+  const handleBuyNow = (plan: PricingPlan) => {
+    setSelectedPlan(plan);
+    setCheckoutOpen(true);
+  };
 
   const entryPlan = pricingPlans.find((plan) => plan.slug === "microempresa");
   const featuredPlan = pricingPlans.find((plan) => plan.slug === "emprendedor");
@@ -257,12 +290,12 @@ function PricingSection() {
   return (
     <section
       id="planes"
-      className="relative overflow-hidden bg-slate-50 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+      className="relative overflow-hidden bg-slate-50 px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:pt-24 lg:pb-10"
     >
       <div className="pointer-events-none absolute -left-32 top-20 h-96 w-96 rounded-full bg-blue-100/60 blur-[120px]" />
       <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-blue-50 blur-[100px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl">
+      <div className="relative z-10 mx-auto max-w-5xl">
       {/* Header */}
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 sm:text-[11px]">
@@ -278,66 +311,88 @@ function PricingSection() {
         </p>
       </div>
 
-      {/* Billing cycle */}
-      <div className="mt-8 flex justify-center overflow-x-auto pb-1">
-        <div className="inline-flex min-w-max rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-          {billingOptions.map((option) => (
+      {/* Billing cycle + currency */}
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 justify-center overflow-x-auto pb-1 sm:justify-start lg:justify-center">
+          <div className="inline-flex min-w-max rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+            {billingOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setBillingCycle(option.id)}
+                className={cn(
+                  "whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium transition-all sm:px-4 sm:text-sm",
+                  billingCycle === option.id
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 justify-end">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
             <button
-              key={option.id}
               type="button"
-              onClick={() => setBillingCycle(option.id)}
+              onClick={() => setCurrency("pen")}
+              aria-label="Soles"
               className={cn(
-                "whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium transition-all sm:px-4 sm:text-sm",
-                billingCycle === option.id
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900",
+                "min-w-10 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:text-sm",
+                currency === "pen" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
               )}
             >
-              {option.label}
+              S/
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setCurrency("usd")}
+              aria-label="Dólares"
+              className={cn(
+                "min-w-10 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all sm:text-sm",
+                currency === "usd" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              USD
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Currency */}
-      <div className="mt-4 flex justify-center">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setCurrency("pen")}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
-              currency === "pen" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
-            )}
-          >
-            Soles (S/)
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrency("usd")}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-semibold transition-all sm:text-sm",
-              currency === "usd" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900",
-            )}
-          >
-            Dólares (USD)
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-10 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3 lg:gap-6">
-        <PricingPlanCard plan={entryPlan} billingCycle={billingCycle} currency={currency} />
+      <div className="mt-8 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-3 lg:gap-4">
+        <PricingPlanCard
+          plan={entryPlan}
+          billingCycle={billingCycle}
+          currency={currency}
+          onBuyNow={() => handleBuyNow(entryPlan)}
+        />
         <PricingPlanCard
           plan={featuredPlan}
           billingCycle={billingCycle}
           currency={currency}
           featured
+          onBuyNow={() => handleBuyNow(featuredPlan)}
         />
-        <PricingPlanCard plan={corporatePlan} billingCycle={billingCycle} currency={currency} />
+        <PricingPlanCard
+          plan={corporatePlan}
+          billingCycle={billingCycle}
+          currency={currency}
+          onBuyNow={() => handleBuyNow(corporatePlan)}
+        />
       </div>
 
+      <CheckoutModal
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        plan={selectedPlan}
+        billingCycle={billingCycle}
+        currency={currency}
+      />
+
       {/* Trust footer */}
-      <div className="mt-12 grid grid-cols-1 gap-6 border-t border-slate-200 pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+      <div className="mt-8 grid grid-cols-1 gap-6 border-t border-slate-200 pt-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
         {trustFeatures.map((item) => (
           <div key={item.title} className="flex gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100">
@@ -357,7 +412,7 @@ function PricingSection() {
 
 function TestimonialsSection() {
   return (
-    <div className="mt-20 sm:mt-24">
+    <div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-[#0f172a] sm:text-4xl">
         Lo que dicen nuestros clientes
       </h2>
@@ -436,7 +491,7 @@ export function LandingClosingSections() {
   return (
     <>
       <PricingSection />
-      <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <section className="bg-white px-4 pt-10 pb-16 sm:px-6 sm:pt-12 sm:pb-20 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <TestimonialsSection />
           <FaqSection />

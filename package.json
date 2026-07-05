@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "supabase:deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-deploy.ps1",
-    "supabase:link": "supabase link --project-ref xxslymzzreeelnlzzvqv",
+    "supabase:link": "supabase link --project-ref zjpsmffghtybljazmrgh",
     "supabase:push": "supabase db push",
     "supabase:status": "supabase migration list",
     "supabase:types": "supabase gen types typescript --linked > src/integrations/supabase/types.ts",

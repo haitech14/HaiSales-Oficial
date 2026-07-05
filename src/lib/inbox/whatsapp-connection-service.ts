@@ -35,6 +35,14 @@ function formatEdgeFunctionError(error: { message?: string } | null, functionNam
   return message;
 }
 
+function isKapsoDeployOrConfigError(message: string) {
+  return (
+    message.includes("no está desplegada") ||
+    message.includes("KAPSO_API_KEY") ||
+    message.includes("Kapso API")
+  );
+}
+
 async function upsertLocalWhatsAppConnection(userId: string): Promise<WhatsAppWebhookActivation> {
   const verifyToken = getWhatsAppWebhookVerifyToken();
   const webhookUrl = getWhatsAppWebhookUrl();
@@ -81,22 +89,31 @@ async function upsertLocalWhatsAppConnection(userId: string): Promise<WhatsAppWe
   };
 }
 
-export async function syncKapsoWhatsAppNumbers(): Promise<WhatsAppSyncResult> {
-  const { data, error } = await supabase.functions.invoke("kapso-whatsapp-sync", {
-    body: {},
-  });
+export async function syncKapsoWhatsAppNumbers(userId?: string): Promise<WhatsAppSyncResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("kapso-whatsapp-sync", {
+      body: {},
+    });
 
-  if (error) {
-    throw new Error(formatEdgeFunctionError(error, "kapso-whatsapp-sync"));
+    if (error) {
+      throw new Error(formatEdgeFunctionError(error, "kapso-whatsapp-sync"));
+    }
+
+    if (data?.error) {
+      throw new Error(String(data.error));
+    }
+
+    return {
+      connections: (data?.connections ?? []) as WhatsAppSyncResult["connections"],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (userId && isKapsoDeployOrConfigError(message)) {
+      const local = await upsertLocalWhatsAppConnection(userId);
+      return { connections: local.connections };
+    }
+    throw error;
   }
-
-  if (data?.error) {
-    throw new Error(String(data.error));
-  }
-
-  return {
-    connections: (data?.connections ?? []) as WhatsAppSyncResult["connections"],
-  };
 }
 
 export async function activateWhatsAppWebhook(userId: string): Promise<WhatsAppWebhookActivation> {
@@ -113,12 +130,7 @@ export async function activateWhatsAppWebhook(userId: string): Promise<WhatsAppW
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    const canFallbackLocally =
-      message.includes("no está desplegada") ||
-      message.includes("KAPSO_API_KEY") ||
-      message.includes("Kapso API");
-
-    if (!canFallbackLocally) {
+    if (!isKapsoDeployOrConfigError(message)) {
       throw error;
     }
   }

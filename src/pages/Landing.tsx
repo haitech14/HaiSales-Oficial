@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingPromoBanner } from "@/components/landing/LandingPromoBanner";
-import { LandingValueHero } from "@/components/landing/LandingValueHero";
 import { LandingProductShowcase } from "@/components/landing/LandingProductShowcase";
 import { LandingGrowthShowcase } from "@/components/landing/LandingGrowthShowcase";
 import { LandingFooter } from "@/components/landing/LandingFooter";
@@ -34,8 +33,6 @@ const Landing = () => {
         <LandingHeader />
         <LandingHero />
       </div>
-
-      <LandingValueHero />
 
       <Suspense fallback={<SectionFallback />}>
         <LandingPlatformShowcase />

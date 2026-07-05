@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { REGISTER_LOGIN_PATH } from "@/lib/auth-routes";
 import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   formatPlanPrice,
   getBillingLabel,
-  getCurrencySuffix,
+  getCurrencyPrefix,
   getPlanBySlug,
   parseBillingCycle,
   parseCurrency,
@@ -29,10 +30,10 @@ export default function CheckoutPage() {
 
   const price = useMemo(() => {
     if (!plan) return "0.00";
-    return formatPlanPrice(plan.monthlyPricePen, billingCycle, currency);
+    return formatPlanPrice(plan, billingCycle, currency);
   }, [plan, billingCycle, currency]);
 
-  const currencySuffix = getCurrencySuffix(currency);
+  const currencyPrefix = getCurrencyPrefix(currency);
 
   if (!plan) {
     return <Navigate to="/#planes" replace />;
@@ -144,30 +145,29 @@ export default function CheckoutPage() {
           </div>
 
           <div className="mt-4 flex items-end justify-between">
-            <span className="text-sm text-slate-500">Total mensual + IGV</span>
+            <span className="text-sm text-slate-500">Total mensual · IGV incluido</span>
             <span className="text-2xl font-bold text-slate-900">
-              {currencySuffix} {price}
+              {currencyPrefix} {price}
             </span>
           </div>
 
           <ul className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-xs text-slate-600">
-            {plan.includesLabel && (
-              <li className="flex items-start gap-2">
-                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                {plan.includesLabel}
-              </li>
-            )}
-            {plan.features.slice(0, plan.includesLabel ? 4 : 5).map((feature) => (
+            {plan.features.slice(0, 6).map((feature) => (
               <li key={feature.label} className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                {feature.label}
+                <span>
+                  {feature.label}
+                  {feature.subItems && feature.subItems.length > 0 && (
+                    <span className="text-slate-400"> ({feature.subItems.join(", ")})</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
 
           <p className="mt-4 text-xs text-slate-400">
             ¿Prefieres probar antes?{" "}
-            <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link to={REGISTER_LOGIN_PATH} className="font-medium text-blue-600 hover:text-blue-500">
               Probar gratis 14 días
             </Link>
           </p>

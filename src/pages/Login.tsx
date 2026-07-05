@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   BarChart3,
   CheckCircle2,
   Lock,
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSupabaseError } from "@/lib/authErrors";
+import { isRegisterLoginSearch } from "@/lib/auth-routes";
 import { prefetchAppRoutes } from "@/lib/prefetch-app-routes";
 import { cn } from "@/lib/utils";
 
@@ -70,48 +72,56 @@ function GoogleIcon({ className }: { className?: string }) {
 
 function LoginPromoPanel() {
   return (
-    <aside className="relative hidden min-h-screen flex-col items-center justify-center lg:flex lg:w-[52%] xl:w-[54%]">
-      <div className="flex w-full max-w-[580px] flex-col items-center px-8 py-10 text-center xl:px-10 xl:py-12">
+    <aside className="relative hidden min-h-screen flex-col justify-center lg:flex lg:w-[54%] xl:w-[56%]">
+      <div className="relative z-10 flex w-full max-w-[600px] flex-col px-10 py-12 lg:ml-12 lg:pl-24 lg:pr-6 xl:ml-16 xl:pl-28 xl:pr-8">
         <HaiSalesLogo
           href="/"
-          className="justify-center"
-          imageClassName="h-10 w-auto max-w-[220px] object-contain object-center sm:h-11 sm:max-w-[240px]"
+          imageClassName="h-11 w-auto max-w-[260px] object-contain object-left brightness-110"
         />
+        <p className="mt-2 text-sm text-slate-300">
+          Desarrollado por <span className="font-semibold text-white">HAITECH</span> | ERP
+        </p>
 
-        <div className="mt-8 flex w-full flex-col items-center">
+        <div className="mt-10">
           <h1 className="max-w-[560px] font-bold tracking-tight text-white">
-            <span className="block text-[2.1rem] leading-[1.22] sm:text-[2.45rem] xl:text-[2.65rem]">
-              Gestiona tu negocio de manera
+            <span className="block text-[2rem] leading-[1.2] sm:text-[2.35rem] xl:text-[2.55rem]">
+              Gestiona tu negocio de
             </span>
-            <span className="mt-2 block text-[2.35rem] leading-[1.12] text-[#0b7cff] sm:text-[2.75rem] xl:text-[3rem]">
-              inteligente y eficiente
+            <span className="mt-2 block text-[2rem] leading-[1.2] sm:text-[2.35rem] xl:text-[2.55rem]">
+              manera y{" "}
+              <span className="text-[2.2rem] leading-[1.12] text-[#0b7cff] sm:text-[2.6rem] xl:text-[2.85rem]">
+                inteligente
+              </span>
+            </span>
+            <span className="mt-2 block text-[2.2rem] leading-[1.12] text-[#0b7cff] sm:text-[2.6rem] xl:text-[2.85rem]">
+              eficiente
             </span>
           </h1>
 
-          <p className="mt-6 max-w-[520px] text-[17px] leading-[1.7] text-slate-300 sm:text-[18px]">
+          <p className="mt-5 max-w-[520px] text-base leading-relaxed text-slate-300 sm:text-[17px]">
             Plataforma ERP y CRM completa para optimizar ventas, inventario, clientes y más.
           </p>
-
-          <ul className="mt-11 w-full max-w-[460px] space-y-4 text-left">
-            {features.map((feature) => (
-              <li key={feature.title} className="flex items-start gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b7cff]/15 ring-1 ring-[#0b7cff]/25">
-                  <feature.icon className="h-5 w-5 text-[#3b9eff]" strokeWidth={1.75} />
-                </span>
-                <div className="pt-0.5">
-                  <p className="text-[17px] font-semibold leading-tight text-white sm:text-[18px]">
-                    {feature.title}
-                  </p>
-                  <p className="mt-1.5 text-[15px] leading-snug text-slate-400 sm:text-[16px]">
-                    {feature.description}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
 
-        <p className="mt-12 flex items-center justify-center gap-2 text-[15px] text-slate-300 sm:text-[16px]">
+        <ul className="mt-10 w-full max-w-[480px] space-y-4">
+          {features.map((feature) => (
+            <li key={feature.title} className="flex items-start gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0b7cff]/15 ring-1 ring-[#0b7cff]/30">
+                <feature.icon className="h-5 w-5 text-[#3b9eff]" strokeWidth={1.75} />
+              </span>
+              <div className="pt-0.5">
+                <p className="text-base font-semibold leading-tight text-white sm:text-[17px]">
+                  {feature.title}
+                </p>
+                <p className="mt-1.5 text-sm leading-snug text-slate-400 sm:text-[15px]">
+                  {feature.description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-10 flex items-center gap-2 text-sm text-slate-300 sm:text-[15px]">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-[#3b9eff]" strokeWidth={2} />
           Utilizado por cientos de empresas en todo el Perú
         </p>
@@ -122,7 +132,10 @@ function LoginPromoPanel() {
 
 function LoginFormPanel() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<AuthMode>(() =>
+    isRegisterLoginSearch(searchParams.toString()) ? "register" : "login",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -183,17 +196,20 @@ function LoginFormPanel() {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center px-5 py-10 sm:px-8 lg:w-[48%] lg:px-10 xl:w-[46%] xl:pr-16">
-      <div className="w-full max-w-[400px]">
-        <div className="mb-8 flex justify-center lg:hidden">
+    <main className="flex min-h-screen w-full flex-col items-center justify-center px-5 py-10 sm:px-8 lg:w-[46%] lg:max-w-none lg:px-10 lg:pr-12 xl:pr-16">
+      <div className="w-full max-w-[420px]">
+        <div className="mb-8 flex flex-col items-center lg:hidden">
           <HaiSalesLogo
             href="/"
             className="justify-center"
             imageClassName="h-10 w-auto max-w-[220px] object-contain object-center"
           />
+          <p className="mt-2 text-center text-xs text-slate-600">
+            Desarrollado por <span className="font-semibold text-slate-800">HAITECH</span> | ERP
+          </p>
         </div>
 
-        <div className="rounded-[20px] bg-white px-7 py-8 shadow-[0_24px_64px_rgba(0,0,0,0.42)] sm:px-8 sm:py-9">
+        <div className="rounded-[20px] border border-white/70 bg-white/95 px-7 py-8 shadow-[0_20px_50px_rgba(15,23,42,0.14)] backdrop-blur-sm sm:px-8 sm:py-9">
           <div className="text-center">
             <h2 className="text-[1.85rem] font-bold leading-tight text-slate-900 sm:text-[2rem]">Bienvenido</h2>
             <p className="mt-2 text-[15px] text-slate-500 sm:text-base">Accede a tu cuenta o crea una nueva</p>
@@ -325,7 +341,7 @@ function LoginFormPanel() {
           </Button>
         </div>
 
-        <p className="mt-7 text-center text-[12px] text-slate-400 lg:text-slate-300/90">
+        <p className="mt-7 text-center text-[12px] text-slate-500">
           © 2025 HaiSales ERP. Todos los derechos reservados.
         </p>
       </div>
@@ -335,17 +351,24 @@ function LoginFormPanel() {
 
 export default function Login() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#06101f]">
+    <div className="relative min-h-screen overflow-hidden bg-[#04101f]">
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/login-bg-v3.png')" }}
+        style={{ backgroundImage: "url('/fondologin.jpg')" }}
         aria-hidden="true"
       />
-      <div className="absolute inset-0 bg-[#04101f]/65" aria-hidden="true" />
       <div
-        className="absolute inset-0 bg-gradient-to-r from-[#04101f]/88 via-[#04101f]/55 to-[#04101f]/30"
+        className="absolute inset-0 bg-[linear-gradient(to_right,#04101f_0%,#041528e6_20%,#041528cc_34%,#04152880_44%,transparent_62%)]"
         aria-hidden="true"
       />
+
+      <Link
+        to="/"
+        className="absolute left-5 top-5 z-20 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/90 backdrop-blur-sm transition hover:bg-white/10 hover:text-white lg:left-8 lg:top-8"
+      >
+        <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+        Atrás
+      </Link>
 
       <div className="relative z-10 flex min-h-screen w-full">
         <LoginPromoPanel />

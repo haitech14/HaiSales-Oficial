@@ -189,7 +189,7 @@ export function LandingPlatformShowcase() {
   );
 
   return (
-    <section className="relative overflow-hidden bg-white px-4 pb-10 pt-12 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
+    <section id="modulos" className="relative overflow-hidden bg-white px-4 pb-10 pt-12 scroll-mt-[72px] sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
       <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-blue-100/50 blur-3xl" />
       <div className="pointer-events-none absolute -right-24 bottom-20 h-72 w-72 rounded-full bg-purple-100/50 blur-3xl" />
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   HAISALES_ICON_SRC,
 } from "@/components/landing/HaiSalesLogo";
 import {
@@ -289,7 +289,7 @@ function CrmDashboardPreview() {
 
 export function LandingGrowthShowcase() {
   return (
-    <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+    <section className="bg-white px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-12 lg:grid-cols-[minmax(0,38%)_minmax(0,62%)] lg:gap-14">
           <div>
             <h2 className="text-2xl font-bold leading-tight tracking-tight text-slate-900 sm:text-3xl">
