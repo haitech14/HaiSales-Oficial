@@ -1,3 +1,16 @@
+export type VentaCartLine = {
+  id: string;
+  producto: string;
+  productoCodigo: string;
+  productoId?: string | null;
+  cantidad: number;
+  unidad: string;
+  precioUnitario: number;
+  iconBg?: string;
+  iconColor?: string;
+  iconKind?: string;
+};
+
 export type NuevaVentaFormData = {
   cliente: string;
   clienteRuc: string;
@@ -8,6 +21,7 @@ export type NuevaVentaFormData = {
   cantidad: number;
   unidad: string;
   precioUnitario: number;
+  lineItems?: VentaCartLine[];
   tipoComprobante: string;
   serie: string;
   formaPago: string;
@@ -42,6 +56,34 @@ export function calculateVentaTotals(cantidad: number, precioUnitario: number) {
   const total = subtotal + igv;
 
   return { subtotal, igv, total };
+}
+
+export function calculateCartTotals(lines: VentaCartLine[]) {
+  const subtotal = lines.reduce((sum, line) => sum + line.cantidad * line.precioUnitario, 0);
+  const igv = subtotal * 0.18;
+  const total = subtotal + igv;
+  return { subtotal, igv, total };
+}
+
+export function resolveVentaLineItems(form: NuevaVentaFormData): VentaCartLine[] {
+  if (form.lineItems && form.lineItems.length > 0) {
+    return form.lineItems;
+  }
+
+  if (!form.producto.trim()) {
+    return [];
+  }
+
+  return [
+    {
+      id: "single",
+      producto: form.producto,
+      productoCodigo: form.productoCodigo,
+      cantidad: form.cantidad,
+      unidad: form.unidad,
+      precioUnitario: form.precioUnitario,
+    },
+  ];
 }
 
 export function formatVentaCurrency(amount: number): string {

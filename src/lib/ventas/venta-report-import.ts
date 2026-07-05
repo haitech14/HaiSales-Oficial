@@ -20,7 +20,7 @@ export type VentaReporteRow = {
   numeroOperacion: string;
   anulada: boolean;
   periodoMes: string;
-  tipoComprobante: "factura" | "boleta" | "nota_credito" | "orden";
+  tipoComprobante: "factura" | "boleta" | "nota_credito" | "nota_venta" | "orden";
   reporteDesde?: string;
   reporteHasta?: string;
   archivoOrigen: string;
@@ -128,6 +128,7 @@ function isValidDocumento(documento: string): boolean {
     text === "FACTURA" ||
     text === "ORDEN" ||
     text.includes("BOLETA") ||
+    text.includes("NOTA DE VENTA") ||
     text.includes("NOTA DE CREDITO")
   );
 }
@@ -135,6 +136,7 @@ function isValidDocumento(documento: string): boolean {
 function mapTipoComprobante(documento: string): VentaReporteRow["tipoComprobante"] {
   const text = documento.toUpperCase();
   if (text.includes("BOLETA")) return "boleta";
+  if (text.includes("NOTA DE VENTA") || text.includes("NOTA DE VENT")) return "nota_venta";
   if (text.includes("NOTA")) return "nota_credito";
   if (text === "ORDEN") return "orden";
   return "factura";
@@ -347,7 +349,9 @@ function mapBundleRow(row: LegacyBundleRow): VentaReporteRow {
       ? "BOLETA DE VENTA"
       : row.tipo_comprobante === "nota_credito"
         ? "NOTA DE CREDITO"
-        : "FACTURA";
+        : row.tipo_comprobante === "nota_venta"
+          ? "NOTA DE VENTA"
+          : "FACTURA";
 
   return {
     fechaEmision: row.fecha,
@@ -412,6 +416,7 @@ export function groupRowsByDocumentType(rows: VentaReporteRow[]) {
     factura: "Facturas",
     boleta: "Boletas",
     nota_credito: "Notas de crédito",
+    nota_venta: "Notas de venta",
     orden: "Órdenes",
   };
   const map = new Map<string, VentaReporteRow[]>();

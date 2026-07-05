@@ -24,13 +24,21 @@ export const ventaProductos = [
   { label: "Módulo de inventario adicional", codigo: "PRD-015", precio: 1200 },
 ];
 
-export const ventaTiposComprobante = [
-  "Factura Electrónica (01)",
-  "Boleta de Venta (03)",
-  "Nota de Crédito (07)",
-];
+import {
+  VENTA_TIPOS_COMPROBANTE_FORM,
+  DEFAULT_SERIES,
+} from "@/lib/ventas/comprobantes";
 
-export const ventaSeries = ["F001", "F002", "B001", "B002"];
+export const ventaTiposComprobante = [...VENTA_TIPOS_COMPROBANTE_FORM];
+
+export const ventaSeries = [
+  DEFAULT_SERIES.serieFactura,
+  "F002",
+  DEFAULT_SERIES.serieBoleta,
+  "B002",
+  DEFAULT_SERIES.serieNotaCredito,
+  DEFAULT_SERIES.serieNotaVenta,
+];
 
 export const ventaFormasPago = ["Contado", "Crédito 30 días", "Crédito 60 días", "Transferencia"];
 

@@ -40,6 +40,8 @@ export type ProspectDetail = {
   fechaCierreEstimada: string | null;
   statusBadge?: "Ganada" | "Cerrada";
   cliente: {
+    contacto: string | null;
+    celular: string | null;
     telefono: string | null;
     correo: string | null;
     direccion: string | null;
@@ -50,7 +52,16 @@ export type ProspectDetail = {
     ejecutivo: string | null;
     observaciones: string | null;
   } | null;
-  ventasRecientes: Array<{ codigo: string; fecha: string; total: number }>;
+  ventasRecientes: Array<{
+    codigo: string;
+    fecha: string;
+    total: number;
+    items: Array<{
+      descripcion: string;
+      cantidad: number;
+      subtotal: number;
+    }>;
+  }>;
 };
 
 export const crmKpis = [

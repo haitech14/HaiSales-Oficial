@@ -291,6 +291,96 @@ export function buildCrmSnapshotFromOpportunities(opportunities: Opportunity[]):
   return buildSnapshot(opportunities, "supabase");
 }
 
+const PLACEHOLDER_VENTA_ITEM =
+  /^(Factura|Boleta|Nota de crédito|Nota de Credito|FACTURA|BOLETA|NOTA DE CR[EÉ]DITO)\s*·\s*/i;
+
+type VentaItemRow = {
+  descripcion: string;
+  cantidad: number;
+  subtotal: number;
+  productos: { nombre: string; sku: string | null } | null;
+};
+
+type LegacyVentaItemRow = {
+  codigo_comprobante: string;
+  descripcion: string;
+  cantidad: number;
+  subtotal: number;
+  codigo: string | null;
+};
+
+function resolveVentaItemDescripcion(
+  descripcion: string,
+  producto?: { nombre: string; sku: string | null } | null,
+  codigo?: string | null,
+): string | null {
+  if (producto?.nombre) {
+    const sku = producto.sku?.trim();
+    return sku ? `${producto.nombre} (${sku})` : producto.nombre;
+  }
+
+  const trimmed = descripcion.trim();
+  if (!trimmed || PLACEHOLDER_VENTA_ITEM.test(trimmed)) {
+    return null;
+  }
+
+  const itemCodigo = codigo?.trim();
+  return itemCodigo ? `${itemCodigo} · ${trimmed}` : trimmed;
+}
+
+function mapVentaItems(items: VentaItemRow[] | null | undefined): ProspectDetail["ventasRecientes"][number]["items"] {
+  const mapped: ProspectDetail["ventasRecientes"][number]["items"] = [];
+
+  for (const item of items ?? []) {
+    const descripcion = resolveVentaItemDescripcion(item.descripcion, item.productos);
+    if (!descripcion) continue;
+
+    mapped.push({
+      descripcion,
+      cantidad: Number(item.cantidad),
+      subtotal: Number(item.subtotal),
+    });
+  }
+
+  return mapped;
+}
+
+async function loadLegacyItemsByComprobante(
+  codigos: string[],
+): Promise<Map<string, ProspectDetail["ventasRecientes"][number]["items"]>> {
+  const result = new Map<string, ProspectDetail["ventasRecientes"][number]["items"]>();
+  if (codigos.length === 0) return result;
+
+  const legacyClient = supabase as unknown as {
+    from: (table: string) => ReturnType<typeof supabase.from>;
+  };
+
+  const { data, error } = await legacyClient
+    .from("venta_legacy_import_items")
+    .select("codigo_comprobante, descripcion, cantidad, subtotal, codigo")
+    .in("codigo_comprobante", codigos);
+
+  if (error) {
+    console.warn("[crm] venta_legacy_import_items:", error.message);
+    return result;
+  }
+
+  for (const row of (data ?? []) as LegacyVentaItemRow[]) {
+    const descripcion = resolveVentaItemDescripcion(row.descripcion, null, row.codigo);
+    if (!descripcion) continue;
+
+    const items = result.get(row.codigo_comprobante) ?? [];
+    items.push({
+      descripcion,
+      cantidad: Number(row.cantidad),
+      subtotal: Number(row.subtotal),
+    });
+    result.set(row.codigo_comprobante, items);
+  }
+
+  return result;
+}
+
 export async function fetchProspectDetail(
   codigo: string,
   userId: string | null,
@@ -310,49 +400,88 @@ export async function fetchProspectDetail(
   const pipelineStage = ETAPA_TO_PIPELINE[opp.stage];
 
   let cliente: ProspectDetail["cliente"] = null;
-  if (row.cliente_id) {
+
+  const loadClienteFields = async (filter: { column: "id" | "ruc"; value: string }) => {
     const { data: clienteRow } = await supabase
       .from("clientes")
       .select(
-        "telefono, correo, email, direccion, ciudad, tipo_cliente, segmento, estado_comercial, ejecutivo_nombre, observaciones",
+        "contacto_nombre, contacto_cargo, telefono, correo, email, direccion, ciudad, tipo_cliente, segmento, estado_comercial, ejecutivo_nombre, observaciones",
       )
       .eq("user_id", userId)
-      .eq("id", row.cliente_id)
+      .eq(filter.column, filter.value)
       .maybeSingle();
 
-    if (clienteRow) {
-      cliente = {
-        telefono: clienteRow.telefono,
-        correo: clienteRow.correo ?? clienteRow.email,
-        direccion: clienteRow.direccion,
-        ciudad: clienteRow.ciudad,
-        tipoCliente: clienteRow.tipo_cliente,
-        segmento: clienteRow.segmento,
-        estadoComercial: clienteRow.estado_comercial,
-        ejecutivo: clienteRow.ejecutivo_nombre,
-        observaciones: clienteRow.observaciones,
-      };
-    }
+    if (!clienteRow) return null;
+
+    const contactoNombre = clienteRow.contacto_nombre?.trim() || null;
+    const contactoCargo = clienteRow.contacto_cargo?.trim() || null;
+    const contacto =
+      contactoNombre && contactoCargo && contactoCargo !== "—"
+        ? `${contactoNombre} — ${contactoCargo}`
+        : contactoNombre;
+
+    return {
+      contacto,
+      celular: clienteRow.telefono,
+      telefono: clienteRow.telefono,
+      correo: clienteRow.correo ?? clienteRow.email,
+      direccion: clienteRow.direccion,
+      ciudad: clienteRow.ciudad,
+      tipoCliente: clienteRow.tipo_cliente,
+      segmento: clienteRow.segmento,
+      estadoComercial: clienteRow.estado_comercial,
+      ejecutivo: clienteRow.ejecutivo_nombre,
+      observaciones: clienteRow.observaciones,
+    };
+  };
+
+  if (row.cliente_id) {
+    cliente = await loadClienteFields({ column: "id", value: row.cliente_id });
+  } else if (row.cliente_ruc) {
+    cliente = await loadClienteFields({ column: "ruc", value: row.cliente_ruc });
   }
 
   let ventasRecientes: ProspectDetail["ventasRecientes"] = [];
   if (row.cliente_ruc) {
     const { data: ventas } = await supabase
       .from("ventas")
-      .select("codigo_comprobante, numero, fecha, total")
+      .select(
+        "id, codigo_comprobante, numero, fecha, total, venta_items(descripcion, cantidad, subtotal, productos(nombre, sku))",
+      )
       .eq("user_id", userId)
       .eq("cliente_ruc", row.cliente_ruc)
       .order("fecha", { ascending: false })
       .limit(5);
 
-    ventasRecientes = (ventas ?? []).map((venta) => ({
-      codigo: venta.codigo_comprobante ?? venta.numero,
-      fecha: new Date(venta.fecha.includes("T") ? venta.fecha : `${venta.fecha}T12:00:00`).toLocaleDateString(
-        "es-PE",
-        { day: "2-digit", month: "2-digit", year: "numeric" },
-      ),
-      total: Number(venta.total),
-    }));
+    const ventaRows = ventas ?? [];
+    const codigosSinItems: string[] = [];
+
+    ventasRecientes = ventaRows.map((venta) => {
+      const codigo = venta.codigo_comprobante ?? venta.numero;
+      const items = mapVentaItems(venta.venta_items as VentaItemRow[] | null);
+      if (items.length === 0 && codigo) {
+        codigosSinItems.push(codigo);
+      }
+
+      return {
+        codigo,
+        fecha: new Date(venta.fecha.includes("T") ? venta.fecha : `${venta.fecha}T12:00:00`).toLocaleDateString(
+          "es-PE",
+          { day: "2-digit", month: "2-digit", year: "numeric" },
+        ),
+        total: Number(venta.total),
+        items,
+      };
+    });
+
+    if (codigosSinItems.length > 0) {
+      const legacyByCodigo = await loadLegacyItemsByComprobante(codigosSinItems);
+      ventasRecientes = ventasRecientes.map((venta) => {
+        if (venta.items.length > 0) return venta;
+        const legacyItems = legacyByCodigo.get(venta.codigo);
+        return legacyItems?.length ? { ...venta, items: legacyItems } : venta;
+      });
+    }
   }
 
   const fechaCierre = row.fecha_cierre_estimada

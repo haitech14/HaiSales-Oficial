@@ -257,6 +257,13 @@ export default function ParametrosPage() {
                 onChange={(e) => updateField("serieNotaCredito", e.target.value)}
               />
             </Field>
+            <Field label="Serie nota de venta">
+              <input
+                className={inputClass}
+                value={form.serieNotaVenta}
+                onChange={(e) => updateField("serieNotaVenta", e.target.value)}
+              />
+            </Field>
             <Field label="Serie nota de débito">
               <input
                 className={inputClass}

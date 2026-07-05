@@ -5,7 +5,8 @@ export type PeriodPreset =
   | "trimestre_anterior"
   | "semestre_actual"
   | "anio_actual"
-  | "todos";
+  | "todos"
+  | "mes_con_ventas";
 
 export type PeriodRange = {
   preset: PeriodPreset;
@@ -72,6 +73,20 @@ function formatRangeLabel(start: Date, end: Date): string {
     year: "numeric",
   });
   return `${startText} - ${endText}`;
+}
+
+export function resolveMonthKeyRange(monthKey: string): PeriodRange {
+  const [year, month] = monthKey.split("-").map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+
+  return {
+    preset: "mes_con_ventas",
+    start: toIsoDate(start),
+    end: toIsoDate(end),
+    label: formatMonthLabel(start),
+    shortLabel: start.toLocaleDateString("es-PE", { month: "short", year: "numeric" }),
+  };
 }
 
 export function resolvePeriodRange(

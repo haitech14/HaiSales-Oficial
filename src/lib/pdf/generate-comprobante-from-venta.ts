@@ -35,6 +35,7 @@ export type VentaPdfData = {
 
 function getComprobanteTitle(tipo: string): string {
   if (tipo.includes("boleta")) return "BOLETA DE VENTA ELECTRÓNICA";
+  if (tipo.includes("nota_venta") || tipo.includes("nota de venta")) return "NOTA DE VENTA";
   if (tipo.includes("nota")) return "NOTA DE CRÉDITO ELECTRÓNICA";
   return "FACTURA ELECTRÓNICA";
 }

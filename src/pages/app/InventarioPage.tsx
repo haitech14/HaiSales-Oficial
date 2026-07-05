@@ -23,6 +23,7 @@ import { InventarioRightPanel } from "@/components/app/InventarioRightPanel";
 import { NuevoProductoModal } from "@/components/app/NuevoProductoModal";
 import { Button } from "@/components/ui/button";
 import { useInventario } from "@/hooks/useInventario";
+import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import {
   formatProductCurrency,
   getProductStatusStyles,
@@ -50,6 +51,7 @@ export default function InventarioPage() {
     isCreatingProduct,
     isImportingProducts,
   } = useInventario();
+  useSearchQueryParam(setSearch);
 
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [productModalOpen, setProductModalOpen] = useState(false);

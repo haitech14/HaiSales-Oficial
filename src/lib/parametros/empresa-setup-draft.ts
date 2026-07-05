@@ -105,6 +105,7 @@ export function empresaConfigToSetupForm(
     serieBoleta: config.serieBoleta,
     serieNotaCredito: config.serieNotaCredito,
     serieNotaDebito: config.serieNotaDebito,
+    serieNotaVenta: config.serieNotaVenta,
     serieGuiaRemision: config.serieGuiaRemision,
     serieProforma: config.serieProforma,
     serieOrdenCompra: config.serieOrdenCompra,

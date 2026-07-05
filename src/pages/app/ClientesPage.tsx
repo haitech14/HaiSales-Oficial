@@ -17,11 +17,13 @@ import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { ClientesRightPanel } from "@/components/app/ClientesRightPanel";
+import { ClientesToolbarFilter } from "@/components/app/ClientesToolbarFilter";
 import { ClientesTableHeader } from "@/components/app/ClientesTableHeader";
 import { ClientesTableRow } from "@/components/app/ClientesTableRow";
 import { NuevoClienteModal } from "@/components/app/NuevoClienteModal";
 import { Button } from "@/components/ui/button";
 import { useClientes } from "@/hooks/useClientes";
+import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import { clientesTabs } from "@/lib/clientes/clientes-service";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export default function ClientesPage() {
   const {
     snapshot,
     filteredClients,
+    hasActiveFilters,
+    clearFilters,
     activeTab,
     setActiveTab,
     search,
@@ -49,6 +53,7 @@ export default function ClientesPage() {
     sortDirection,
     handleSort,
   } = useClientes();
+  useSearchQueryParam(setSearch);
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevoClienteOpen, setNuevoClienteOpen] = useState(false);
 
@@ -169,6 +174,13 @@ export default function ClientesPage() {
                   Estado: Todos
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
+                <ClientesToolbarFilter
+                  label="Ciudad"
+                  allLabel="Todas"
+                  value={columnFilters.ciudad}
+                  options={columnFilterOptions.ciudad}
+                  onChange={(value) => setColumnFilter("ciudad", value)}
+                />
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
                   <Calendar className="h-3.5 w-3.5" />
                   Rango de fechas
@@ -235,6 +247,16 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("tipoCliente", value)}
                       />
                       <ClientesTableHeader
+                        label="Segmento"
+                        columnKey="segmento"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.segmento}
+                        filterOptions={columnFilterOptions.segmento}
+                        onFilterChange={(value) => setColumnFilter("segmento", value)}
+                      />
+                      <ClientesTableHeader
                         label="Equipo/interés"
                         columnKey="equipoInteres"
                         sortField={sortField}
@@ -265,16 +287,6 @@ export default function ClientesPage() {
                         filterValue={columnFilters.fechaToner}
                         filterOptions={columnFilterOptions.fechaToner}
                         onFilterChange={(value) => setColumnFilter("fechaToner", value)}
-                      />
-                      <ClientesTableHeader
-                        label="Segmento"
-                        columnKey="segmento"
-                        sortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                        filterValue={columnFilters.segmento}
-                        filterOptions={columnFilterOptions.segmento}
-                        onFilterChange={(value) => setColumnFilter("segmento", value)}
                       />
                       <ClientesTableHeader
                         label="Contacto"
@@ -417,6 +429,26 @@ export default function ClientesPage() {
                           Cargando clientes...
                         </td>
                       </tr>
+                    ) : filteredClients.length === 0 ? (
+                      <tr>
+                        <td colSpan={22} className="px-4 py-12 text-center text-slate-500">
+                          <p className="text-sm font-medium text-slate-700">
+                            No hay clientes que coincidan con los filtros
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Prueba con otro término o limpia los filtros activos.
+                          </p>
+                          {hasActiveFilters && (
+                            <button
+                              type="button"
+                              onClick={clearFilters}
+                              className="mt-4 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                              Limpiar filtros
+                            </button>
+                          )}
+                        </td>
+                      </tr>
                     ) : (
                     filteredClients.map((client) => (
                       <ClientesTableRow
@@ -429,7 +461,11 @@ export default function ClientesPage() {
                 </table>
               </div>
 
-              <AppTablePagination shownCount={filteredClients.length} totalCount={totalRecords} />
+              <AppTablePagination
+                shownCount={filteredClients.length}
+                totalCount={totalRecords}
+                filteredCount={hasActiveFilters ? filteredClients.length : totalRecords}
+              />
             </section>
           </div>
         </div>

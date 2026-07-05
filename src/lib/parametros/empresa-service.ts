@@ -32,6 +32,7 @@ export type EmpresaConfig = {
   serieBoleta: string;
   serieNotaCredito: string;
   serieNotaDebito: string;
+  serieNotaVenta: string;
   serieGuiaRemision: string;
   serieProforma: string;
   serieOrdenCompra: string;
@@ -96,6 +97,7 @@ export const defaultEmpresaConfig: EmpresaConfig = {
   serieBoleta: "B001",
   serieNotaCredito: "FC01",
   serieNotaDebito: "FD01",
+  serieNotaVenta: "NV01",
   serieGuiaRemision: "T001",
   serieProforma: "PR001",
   serieOrdenCompra: "OC001",
@@ -132,6 +134,7 @@ type EmpresaRow = {
   serie_boleta: string | null;
   serie_nota_credito: string | null;
   serie_nota_debito: string | null;
+  serie_nota_venta: string | null;
   serie_guia_remision: string | null;
   serie_proforma: string | null;
   serie_orden_compra: string | null;
@@ -217,6 +220,7 @@ function mapRowToConfig(row: EmpresaRow): EmpresaConfig {
     serieBoleta: row.serie_boleta ?? "B001",
     serieNotaCredito: row.serie_nota_credito ?? "FC01",
     serieNotaDebito: row.serie_nota_debito ?? "FD01",
+    serieNotaVenta: row.serie_nota_venta ?? "NV01",
     serieGuiaRemision: row.serie_guia_remision ?? "T001",
     serieProforma: row.serie_proforma ?? "PR001",
     serieOrdenCompra: row.serie_orden_compra ?? "OC001",
@@ -346,6 +350,7 @@ function buildEmpresaPayload(userId: string, config: EmpresaConfig, setupComplet
     serie_boleta: synced.serieBoleta.trim() || null,
     serie_nota_credito: synced.serieNotaCredito.trim() || null,
     serie_nota_debito: synced.serieNotaDebito.trim() || null,
+    serie_nota_venta: synced.serieNotaVenta.trim() || null,
     serie_guia_remision: synced.serieGuiaRemision.trim() || null,
     serie_proforma: synced.serieProforma.trim() || null,
     serie_orden_compra: synced.serieOrdenCompra.trim() || null,

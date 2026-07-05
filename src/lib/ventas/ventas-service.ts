@@ -8,6 +8,16 @@ import {
   type VentaRecord,
   type VentaSunatStatus,
 } from "@/lib/ventas-mock-data";
+import { normalizeFechaIso, resolvePeriodMonth } from "@/lib/ventas/ventas-period-utils";
+import {
+  registerVentaItemStockMovement,
+  resolveProductoIdForVenta,
+} from "@/lib/inventario/ventas-productos-sync";
+import {
+  calculateCartTotals,
+  resolveVentaLineItems,
+  type VentaCartLine,
+} from "@/lib/nueva-venta-types";
 
 type VentaRow = Database["public"]["Tables"]["ventas"]["Row"];
 
@@ -19,11 +29,10 @@ export type VentasSnapshot = {
   source: "supabase" | "mock";
 };
 
-const TIPO_FROM_DB: Record<string, VentaDocumentType> = {
-  factura: "Factura",
-  boleta: "Boleta",
-  nota_credito: "Nota de crédito",
-};
+import {
+  mapDbTipoToDisplay,
+  mapFormTipoToDb,
+} from "@/lib/ventas/comprobantes";
 
 const SUNAT_FROM_DB: Record<string, VentaSunatStatus> = {
   aceptado: "Aceptado",
@@ -47,8 +56,8 @@ function formatDateParts(iso: string, hora?: string | null) {
   };
 }
 
-function periodMonthFromIso(iso: string): string {
-  return iso.slice(0, 7);
+function periodMonthFromIso(iso: string, notas?: string | null): string {
+  return resolvePeriodMonth(iso, notas);
 }
 
 function extractPaymentMeta(notas?: string | null) {
@@ -58,27 +67,28 @@ function extractPaymentMeta(notas?: string | null) {
 }
 
 function mapRowToVenta(row: VentaRow): VentaRecord {
-  const { date, time } = formatDateParts(row.fecha, row.hora_emision);
+  const fechaIso = normalizeFechaIso(row.fecha);
+  const { date, time } = formatDateParts(fechaIso, row.hora_emision);
   const seller = row.vendedor_nombre ?? "Sin asignar";
   const paymentMeta = extractPaymentMeta(row.notas);
   return {
     id: row.id,
     date,
     time,
-    documentType: TIPO_FROM_DB[row.tipo_comprobante] ?? "Factura",
+    documentType: mapDbTipoToDisplay(row.tipo_comprobante),
     documentCode: row.codigo_comprobante ?? row.numero,
     client: row.cliente_nombre ?? "Cliente",
     ruc: row.cliente_ruc ?? "—",
     amount: Number(row.total),
     status: SUNAT_FROM_DB[row.estado_sunat] ?? "Pendiente",
     businessStatus: row.estado === "anulada" ? "Anulada" : "Activa",
-    periodMonth: periodMonthFromIso(row.fecha),
+    periodMonth: periodMonthFromIso(fechaIso, row.notas),
     formaPago: paymentMeta.formaPago,
     cuentaCobro: paymentMeta.cuentaCobro,
     hasCdr: row.tiene_cdr,
     seller,
     sellerInitials: row.vendedor_iniciales ?? seller.slice(0, 2).toUpperCase(),
-    fechaIso: row.fecha,
+    fechaIso,
   };
 }
 
@@ -89,6 +99,7 @@ export function buildVentasSnapshotFromRecords(records: VentaRecord[]): VentasSn
 function buildSnapshot(records: VentaRecord[], source: "supabase" | "mock"): VentasSnapshot {
   const facturas = records.filter((r) => r.documentType === "Factura").length;
   const boletas = records.filter((r) => r.documentType === "Boleta").length;
+  const notasVenta = records.filter((r) => r.documentType === "Nota de venta").length;
   const notas = records.filter((r) => r.documentType === "Nota de crédito").length;
   const pendientes = records.filter((r) => r.status === "Pendiente").length;
   const rechazados = records.filter((r) => r.status === "Rechazado").length;
@@ -101,6 +112,7 @@ function buildSnapshot(records: VentaRecord[], source: "supabase" | "mock"): Ven
     todos: null,
     facturas,
     boletas,
+    "notas-venta": notasVenta,
     notas,
     anulados,
     pendientes,
@@ -236,12 +248,6 @@ export async function fetchVentasSnapshot(userId: string | null): Promise<Ventas
   return buildSnapshot(data.map(mapRowToVenta), "supabase");
 }
 
-const TIPO_TO_DB: Record<string, string> = {
-  "Factura Electrónica (01)": "factura",
-  "Boleta de Venta (03)": "boleta",
-  "Nota de Crédito (07)": "nota_credito",
-};
-
 function parseFechaEmision(value: string) {
   const [day, month, year] = value.split("/");
   if (day && month && year) {
@@ -251,17 +257,23 @@ function parseFechaEmision(value: string) {
 }
 
 export async function createVentaFromForm(userId: string, form: import("@/lib/nueva-venta-types").NuevaVentaFormData) {
-  const { subtotal, igv, total } = calculateVentaTotals(form.cantidad, form.precioUnitario);
+  const lineItems = resolveVentaLineItems(form);
+  if (lineItems.length === 0) {
+    throw new Error("Agrega al menos un producto o servicio");
+  }
+
+  const { subtotal, igv, total } = calculateCartTotals(lineItems);
   const numero = `VTA-${Date.now().toString().slice(-8)}`;
   const codigoComprobante = `${form.serie}-${Math.floor(Math.random() * 90000 + 10000)}`;
-  const tipo = TIPO_TO_DB[form.tipoComprobante] ?? "factura";
+  const tipo = mapFormTipoToDb(form.tipoComprobante);
+  const fechaMovimiento = parseFechaEmision(form.fechaEmision);
 
   const { data: venta, error } = await supabase
     .from("ventas")
     .insert({
       user_id: userId,
       numero,
-      fecha: parseFechaEmision(form.fechaEmision),
+      fecha: fechaMovimiento,
       estado: "confirmada",
       subtotal,
       igv,
@@ -282,19 +294,64 @@ export async function createVentaFromForm(userId: string, form: import("@/lib/nu
     throw new Error(error?.message ?? "No se pudo registrar la venta");
   }
 
+  for (const line of lineItems) {
+    await insertVentaLineItem({
+      userId,
+      ventaId: venta.id,
+      line,
+      codigoComprobante,
+      clienteNombre: form.cliente,
+      fechaMovimiento,
+    });
+  }
+
+  return mapRowToVenta(venta);
+}
+
+async function insertVentaLineItem({
+  userId,
+  ventaId,
+  line,
+  codigoComprobante,
+  clienteNombre,
+  fechaMovimiento,
+}: {
+  userId: string;
+  ventaId: string;
+  line: VentaCartLine;
+  codigoComprobante: string;
+  clienteNombre: string;
+  fechaMovimiento: string;
+}) {
+  const lineSubtotal = line.cantidad * line.precioUnitario;
+  const descripcion = line.producto || "Producto o servicio";
+  const productoId =
+    line.productoId ??
+    (await resolveProductoIdForVenta(userId, descripcion, line.productoCodigo || null));
+
   const { error: itemError } = await supabase.from("venta_items").insert({
-    venta_id: venta.id,
-    descripcion: form.producto || "Producto o servicio",
-    cantidad: form.cantidad,
-    precio_unitario: form.precioUnitario,
-    subtotal,
+    venta_id: ventaId,
+    producto_id: productoId,
+    descripcion,
+    cantidad: line.cantidad,
+    precio_unitario: line.precioUnitario,
+    subtotal: lineSubtotal,
   });
 
   if (itemError) {
     throw new Error(itemError.message);
   }
 
-  return mapRowToVenta(venta);
+  if (productoId) {
+    await registerVentaItemStockMovement({
+      userId,
+      productoId,
+      cantidad: line.cantidad,
+      documentoReferencia: codigoComprobante,
+      clienteNombre,
+      fechaMovimiento,
+    });
+  }
 }
 
 export {

@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogistica } from "@/hooks/useLogistica";
+import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import { logisticaGuiaTabs } from "@/lib/logistica-mock-data";
 import type { GuiaRemision } from "@/lib/logistica/types";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,7 @@ export default function LogisticaPage() {
     importGuiasLegacyDb,
     isImportingGuiasLegacyDb,
   } = useLogistica({ scope: "guias" });
+  useSearchQueryParam(setSearch);
 
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [rotuloGuia, setRotuloGuia] = useState<GuiaRemision | null>(null);

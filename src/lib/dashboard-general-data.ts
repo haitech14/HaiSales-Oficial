@@ -111,14 +111,6 @@ export const flujoCajaChart = [
   { mes: "Jun", entradas: 248, salidas: 187, neto: 61 },
 ];
 
-export const indicadoresFinancieros = [
-  { label: "Liquidez corriente", value: "2.45", status: "Sólido", tone: "emerald" },
-  { label: "Endeudamiento total", value: "0.38", status: "Sólido", tone: "emerald" },
-  { label: "Rotación de activos", value: "1.12", status: "Moderado", tone: "amber" },
-  { label: "Periodo promedio de cobro", value: "28 días", status: "Bueno", tone: "emerald" },
-  { label: "Periodo promedio de pago", value: "21 días", status: "Bueno", tone: "emerald" },
-];
-
 export const topClientesGeneral = [
   { cliente: "Distribuidora Norte SAC", facturacion: 48600, participacion: 19.6 },
   { cliente: "Tech Solutions Perú EIRL", facturacion: 38400, participacion: 15.5 },

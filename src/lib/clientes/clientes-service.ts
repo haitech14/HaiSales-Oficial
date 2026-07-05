@@ -1,10 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import { joinUbicacion, parseUbicacion } from "@/lib/clientes/location-utils";
 import {
-  formatEquiposInteres,
+  addPurchaseItemToStats,
+  createEmptyPurchaseStats,
+  formatEquipoInteres,
   formatUltimaFechaToner,
   getGuiaClienteStats,
   loadGuiasStatsMaps,
+  mergePurchaseStats,
+  purchaseStatsToLabels,
+  resolvePurchaseItemDescripcion,
+  shortenProductoLabel,
+  type ClientePurchaseStats,
   type GuiasStatsMaps,
 } from "@/lib/clientes/guias-cliente-analytics";
 import { withRealKpi } from "@/lib/kpi-utils";
@@ -206,6 +213,7 @@ type ClientVentasStats = {
   fechas: string[];
   totalSum: number;
   modelos: Set<string>;
+  purchase: ClientePurchaseStats;
 };
 
 type VentasStatsMaps = {
@@ -275,7 +283,7 @@ function buildAnalytics(
 }
 
 function createEmptyVentasStats(): ClientVentasStats {
-  return { fechas: [], totalSum: 0, modelos: new Set() };
+  return { fechas: [], totalSum: 0, modelos: new Set(), purchase: createEmptyPurchaseStats() };
 }
 
 function isValidRuc(ruc: string | null | undefined) {
@@ -283,31 +291,60 @@ function isValidRuc(ruc: string | null | undefined) {
   return Boolean(value && value !== "—" && value !== "00000000");
 }
 
+type VentaItemInput = {
+  descripcion: string;
+  productos?: { nombre: string; sku: string | null } | null;
+};
+
 function addVentaToStats(
   stats: ClientVentasStats,
   fecha: string,
   total: number,
-  items: { descripcion: string }[] | null,
+  items: VentaItemInput[] | null,
 ) {
   stats.fechas.push(fecha);
   stats.totalSum += total;
 
   for (const item of items ?? []) {
-    const descripcion = item.descripcion?.trim();
-    if (descripcion) stats.modelos.add(descripcion);
+    const descripcion = resolvePurchaseItemDescripcion({
+      descripcion: item.descripcion,
+      producto: item.productos,
+    });
+    if (!descripcion) continue;
+
+    addPurchaseItemToStats(stats.purchase, fecha, descripcion);
+    stats.modelos.add(shortenProductoLabel(descripcion));
   }
 }
 
 function getClientVentasStats(client: ClientRecord, maps: VentasStatsMaps): ClientVentasStats | null {
   const byId = maps.byClientId.get(client.id);
-  if (byId && byId.fechas.length > 0) return byId;
+  const byRuc = isValidRuc(client.ruc) ? maps.byRuc.get(client.ruc.trim()) : null;
 
-  if (isValidRuc(client.ruc)) {
-    const byRuc = maps.byRuc.get(client.ruc.trim());
-    if (byRuc && byRuc.fechas.length > 0) return byRuc;
-  }
+  if (!byId && !byRuc) return null;
 
-  return byId ?? null;
+  const hasPurchaseData = (stats: ClientVentasStats) =>
+    stats.purchase.equipos.size > 0 ||
+    stats.purchase.toners.size > 0 ||
+    stats.purchase.repuestos.size > 0 ||
+    stats.purchase.productos.size > 0;
+
+  const hasActivity = (stats: ClientVentasStats) =>
+    stats.fechas.length > 0 || hasPurchaseData(stats);
+
+  if (byId && !byRuc) return hasActivity(byId) ? byId : null;
+  if (!byId && byRuc) return hasActivity(byRuc) ? byRuc : null;
+
+  if (!hasActivity(byId!) && !hasActivity(byRuc!)) return byId;
+
+  if (byId === byRuc) return byId;
+
+  return {
+    fechas: byId!.fechas.length > 0 ? byId!.fechas : byRuc!.fechas,
+    totalSum: byId!.fechas.length > 0 ? byId!.totalSum : byRuc!.totalSum,
+    modelos: new Set([...byId!.modelos, ...byRuc!.modelos]),
+    purchase: mergePurchaseStats(byId!.purchase, byRuc!.purchase),
+  };
 }
 
 function formatFrecuenciaCompra(stats: ClientVentasStats | null): string {
@@ -346,10 +383,46 @@ function mergeModelosInteres(stored: string, purchased: Set<string>): string {
   return Array.from(modelos).slice(0, 5).join(", ");
 }
 
+async function augmentVentasStatsFromLegacy(
+  byRuc: Map<string, ClientVentasStats>,
+): Promise<void> {
+  const legacyClient = supabase as unknown as {
+    from: (table: string) => ReturnType<typeof supabase.from>;
+  };
+
+  const { data, error } = await legacyClient
+    .from("venta_legacy_import_items")
+    .select("cliente_ruc, descripcion, fecha, codigo")
+    .not("cliente_ruc", "is", null);
+
+  if (error) {
+    console.warn("[clientes] venta_legacy_import_items:", error.message);
+    return;
+  }
+
+  for (const row of data ?? []) {
+    const ruc = row.cliente_ruc?.trim();
+    if (!isValidRuc(ruc)) continue;
+
+    const descripcion = resolvePurchaseItemDescripcion({
+      descripcion: row.descripcion,
+      codigo: row.codigo,
+    });
+    if (!descripcion) continue;
+
+    const stats = byRuc.get(ruc!) ?? createEmptyVentasStats();
+    addPurchaseItemToStats(stats.purchase, row.fecha, descripcion);
+    stats.modelos.add(shortenProductoLabel(descripcion));
+    byRuc.set(ruc!, stats);
+  }
+}
+
 async function loadVentasStatsMaps(userId: string): Promise<VentasStatsMaps> {
+  await ensureVentaItemsLegacyImported(userId);
+
   const { data, error } = await supabase
     .from("ventas")
-    .select("cliente_id, cliente_ruc, fecha, total, venta_items(descripcion)")
+    .select("cliente_id, cliente_ruc, fecha, total, venta_items(descripcion, productos(nombre, sku))")
     .eq("user_id", userId)
     .neq("estado", "anulada")
     .order("fecha", { ascending: true });
@@ -367,7 +440,7 @@ async function loadVentasStatsMaps(userId: string): Promise<VentasStatsMaps> {
   for (const venta of data ?? []) {
     ventaCount += 1;
     ventaTotalSum += venta.total;
-    const items = venta.venta_items as { descripcion: string }[] | null;
+    const items = venta.venta_items as VentaItemInput[] | null;
 
     if (venta.cliente_id) {
       const stats = byClientId.get(venta.cliente_id) ?? createEmptyVentasStats();
@@ -383,35 +456,41 @@ async function loadVentasStatsMaps(userId: string): Promise<VentasStatsMaps> {
     }
   }
 
+  await augmentVentasStatsFromLegacy(byRuc);
+
   return { byClientId, byRuc, ventaCount, ventaTotalSum };
 }
 
-function enrichClientWithGuiasStats(client: ClientRecord, maps: GuiasStatsMaps): ClientRecord {
-  const stats = getGuiaClienteStats(client.ruc, maps);
-  const tonerAuto = formatUltimaFechaToner(stats?.tonerFechas);
+function enrichClientWithPurchaseStats(
+  client: ClientRecord,
+  ventasMaps: VentasStatsMaps,
+  guiasMaps: GuiasStatsMaps,
+): ClientRecord {
+  const ventasStats = getClientVentasStats(client, ventasMaps);
+  const guiaStats = getGuiaClienteStats(client.ruc, guiasMaps);
+  const purchase = mergePurchaseStats(
+    ventasStats?.purchase ?? createEmptyPurchaseStats(),
+    guiaStats ?? createEmptyPurchaseStats(),
+  );
+  const ultimaFecha = ventasStats?.fechas[ventasStats.fechas.length - 1];
+  const tonerAuto = formatUltimaFechaToner(purchase.tonerFechas);
   const fechaTonerStored = client.fechaToner !== "—";
 
   return {
     ...client,
-    equipoInteres: formatEquiposInteres(stats),
+    ultimaCompra: ultimaFecha ? formatDate(ultimaFecha) : client.ultimaCompra,
+    frecuenciaCompra: formatFrecuenciaCompra(ventasStats),
+    ticketCompra: formatTicketCompra(ventasStats),
+    modelosInteres: mergeModelosInteres(
+      client.modelosInteres,
+      ventasStats?.modelos ?? purchaseStatsToLabels(purchase),
+    ),
+    equipoInteres: formatEquipoInteres(purchase),
     fechaToner: fechaTonerStored
       ? client.fechaToner
       : tonerAuto
         ? formatDate(tonerAuto)
         : "—",
-  };
-}
-
-function enrichClientWithVentasStats(client: ClientRecord, maps: VentasStatsMaps): ClientRecord {
-  const stats = getClientVentasStats(client, maps);
-  const ultimaFecha = stats?.fechas[stats.fechas.length - 1];
-
-  return {
-    ...client,
-    ultimaCompra: ultimaFecha ? formatDate(ultimaFecha) : client.ultimaCompra,
-    frecuenciaCompra: formatFrecuenciaCompra(stats),
-    ticketCompra: formatTicketCompra(stats),
-    modelosInteres: mergeModelosInteres(client.modelosInteres, stats?.modelos ?? new Set()),
   };
 }
 
@@ -437,7 +516,7 @@ async function enrichClientsWithVentasStats(
     loadGuiasStatsMaps(userId),
   ]);
   const enriched = clients.map((client) =>
-    enrichClientWithGuiasStats(enrichClientWithVentasStats(client, maps), guiasMaps),
+    enrichClientWithPurchaseStats(client, maps, guiasMaps),
   );
   const avgTicket = maps.ventaCount > 0 ? maps.ventaTotalSum / maps.ventaCount : 0;
 

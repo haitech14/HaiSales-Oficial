@@ -1,4 +1,4 @@
--- Refuerzo del import legacy de productos (idempotente y tolerante a fallos de kardex)
+-- Corrige import legacy: ultimo_movimiento_at no puede ser NULL en productos
 
 CREATE OR REPLACE FUNCTION public.import_productos_legacy_for_user(p_user_id UUID)
 RETURNS INTEGER

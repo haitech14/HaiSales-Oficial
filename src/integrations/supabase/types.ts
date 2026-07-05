@@ -238,6 +238,7 @@ export type Database = {
           serie_boleta: string | null;
           serie_nota_credito: string | null;
           serie_nota_debito: string | null;
+          serie_nota_venta: string | null;
           serie_guia_remision: string | null;
           serie_proforma: string | null;
           serie_orden_compra: string | null;
@@ -274,6 +275,7 @@ export type Database = {
           serie_boleta?: string | null;
           serie_nota_credito?: string | null;
           serie_nota_debito?: string | null;
+          serie_nota_venta?: string | null;
           serie_guia_remision?: string | null;
           serie_proforma?: string | null;
           serie_orden_compra?: string | null;
@@ -310,6 +312,7 @@ export type Database = {
           serie_boleta?: string | null;
           serie_nota_credito?: string | null;
           serie_nota_debito?: string | null;
+          serie_nota_venta?: string | null;
           serie_guia_remision?: string | null;
           serie_proforma?: string | null;
           serie_orden_compra?: string | null;

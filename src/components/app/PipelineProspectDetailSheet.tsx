@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Calendar, Loader2, Mail, MapPin, Phone, User } from "lucide-react";
+import { Building2, Calendar, Loader2, Mail, MapPin, User } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -122,16 +122,12 @@ export function PipelineProspectDetailSheet({
                 />
                 <DetailRow label="Segmento" value={detail.cliente?.segmento ?? "—"} />
                 <DetailRow label="Estado" value={detail.cliente?.estadoComercial ?? "Prospecto"} />
+                <DetailRow label="Contacto" value={detail.cliente?.contacto ?? "—"} />
+                <DetailRow label="Celular" value={detail.cliente?.celular ?? "—"} />
               </dl>
 
-              {(detail.cliente?.telefono || detail.cliente?.correo || detail.cliente?.direccion) && (
+              {(detail.cliente?.correo || detail.cliente?.direccion) && (
                 <ul className="mt-3 space-y-2 text-xs text-slate-600">
-                  {detail.cliente.telefono && (
-                    <li className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-slate-400" />
-                      {detail.cliente.telefono}
-                    </li>
-                  )}
                   {detail.cliente.correo && (
                     <li className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 text-slate-400" />
@@ -184,16 +180,43 @@ export function PipelineProspectDetailSheet({
                   {detail.ventasRecientes.map((venta) => (
                     <li
                       key={venta.codigo}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                      className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
                     >
-                      <div>
-                        <p className="font-medium text-slate-800">{venta.codigo}</p>
-                        <p className="flex items-center gap-1 text-xs text-slate-500">
-                          <Calendar className="h-3 w-3" />
-                          {venta.fecha}
-                        </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-slate-800">{venta.codigo}</p>
+                          <p className="flex items-center gap-1 text-xs text-slate-500">
+                            <Calendar className="h-3 w-3" />
+                            {venta.fecha}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold text-slate-900">
+                          {formatCurrency(venta.total)}
+                        </span>
                       </div>
-                      <span className="font-semibold text-slate-900">{formatCurrency(venta.total)}</span>
+
+                      {venta.items.length > 0 ? (
+                        <ul className="mt-2 space-y-1.5 border-t border-slate-200/80 pt-2">
+                          {venta.items.map((item, index) => (
+                            <li
+                              key={`${venta.codigo}-${index}`}
+                              className="flex items-start justify-between gap-3 text-xs"
+                            >
+                              <span className="min-w-0 text-slate-700">
+                                <span className="font-medium text-slate-500">{item.cantidad}×</span>{" "}
+                                {item.descripcion}
+                              </span>
+                              <span className="shrink-0 font-medium text-slate-600">
+                                {formatCurrency(item.subtotal)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 border-t border-slate-200/80 pt-2 text-xs text-slate-400">
+                          Sin detalle de productos
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>

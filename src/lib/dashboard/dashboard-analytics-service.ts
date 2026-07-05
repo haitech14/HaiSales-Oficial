@@ -2,20 +2,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { withRealKpi } from "@/lib/kpi-utils";
 import {
   generalKpis as staticGeneralKpis,
-  indicadoresFinancieros as staticIndicadores,
 } from "@/lib/dashboard-general-data";
 import { reportesKpis as staticReportesKpis } from "@/lib/dashboard-reportes-data";
 import {
   buildPeriodChartBuckets,
   isIsoDateInRange,
   isPeriodMonthInRange,
+  resolveMonthKeyRange,
   resolvePreviousPeriodRange,
   type PeriodRange,
 } from "@/lib/period-filter";
 import type { VentaRecord } from "@/lib/ventas-mock-data";
+import {
+  ensureVentasImported,
+  normalizeFechaIso,
+  resolvePeriodMonth,
+} from "@/lib/ventas/ventas-period-utils";
+import { INGRESO_DISTRIBUCION_LABELS, mapDbTipoToDisplay } from "@/lib/ventas/comprobantes";
+import { syncVentasProductosKardex } from "@/lib/inventario/ventas-productos-sync";
 
 export type DonutSlice = { name: string; value: number; color: string };
 export type RankingRow = { name: string; value: number; participacion: number };
+export type ProductSaleLine = { name: string; subtotal: number };
 export type FinancialChartRow = {
   mes: string;
   ingresos: number;
@@ -33,7 +41,6 @@ export type DashboardAnalytics = {
   flujoCajaChart: FinancialChartRow[];
   ingresosDistribucion: DonutSlice[];
   gastosDistribucion: DonutSlice[];
-  indicadoresFinancieros: typeof staticIndicadores;
   topClientes: RankingRow[];
   topProductos: RankingRow[];
   ventasMensualesChart: { mes: string; monto: number }[];
@@ -43,6 +50,199 @@ export type DashboardAnalytics = {
 
 const INGRESO_COLORS = ["#3b82f6", "#8b5cf6", "#22c55e", "#f97316", "#14b8a6"];
 const GASTO_COLORS = ["#ef4444", "#f97316", "#8b5cf6", "#94a3b8"];
+const PLACEHOLDER_VENTA_ITEM =
+  /^(Factura|Boleta|Nota de crédito|Nota de Credito|FACTURA|BOLETA|NOTA DE CR[EÉ]DITO)\s*·\s*/i;
+
+type LegacyVentaItemRow = {
+  descripcion: string;
+  subtotal: number;
+  codigo: string | null;
+  periodo_mes: string | null;
+  fecha: string;
+};
+
+type VentaItemWithProducto = {
+  descripcion: string;
+  subtotal: number;
+  venta_id: string;
+  productos: { nombre: string; sku: string | null } | null;
+};
+
+function normalizeProductKey(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+function resolveProductDisplayName(input: {
+  descripcion: string;
+  codigo?: string | null;
+  producto?: { nombre: string; sku: string | null } | null;
+}): string | null {
+  if (input.producto?.nombre) {
+    const sku = input.producto.sku?.trim();
+    return sku ? `${input.producto.nombre} (${sku})` : input.producto.nombre;
+  }
+
+  const descripcion = input.descripcion.trim();
+  if (!descripcion || PLACEHOLDER_VENTA_ITEM.test(descripcion)) {
+    return null;
+  }
+
+  const codigo = input.codigo?.trim();
+  return codigo ? `${codigo} · ${descripcion}` : descripcion;
+}
+
+function isLegacyItemInRange(item: LegacyVentaItemRow, range: PeriodRange): boolean {
+  if (item.periodo_mes && isPeriodMonthInRange(item.periodo_mes, range)) {
+    return true;
+  }
+
+  const fechaIso = normalizeFechaIso(item.fecha);
+  return isIsoDateInRange(fechaIso, range);
+}
+
+function buildTopProductos(lines: ProductSaleLine[]): RankingRow[] {
+  const totals = new Map<string, number>();
+
+  for (const line of lines) {
+    const key = normalizeProductKey(line.name);
+    if (!key) continue;
+    totals.set(key, (totals.get(key) ?? 0) + line.subtotal);
+  }
+
+  const ranked = [...totals.entries()]
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const grandTotal = ranked.reduce((sum, [, value]) => sum + value, 0);
+  if (grandTotal <= 0) return [];
+
+  return ranked.map(([name, value]) => ({
+    name,
+    value,
+    participacion: Math.round((value / grandTotal) * 1000) / 10,
+  }));
+}
+
+async function loadLegacyProductSalesFromBundle(range: PeriodRange): Promise<ProductSaleLine[]> {
+  try {
+    const response = await fetch("/data/venta-items-legacy-bundle.json");
+    if (!response.ok) return [];
+
+    const payload = (await response.json()) as {
+      files?: Array<{
+        items?: Array<{
+          descripcion: string;
+          subtotal: number;
+          codigo: string | null;
+          periodo_mes: string | null;
+          fecha: string;
+        }>;
+      }>;
+    };
+
+    const lines: ProductSaleLine[] = [];
+
+    for (const file of payload.files ?? []) {
+      for (const item of file.items ?? []) {
+        if (!isLegacyItemInRange(item, range)) continue;
+
+        const name = resolveProductDisplayName({
+          descripcion: item.descripcion,
+          codigo: item.codigo,
+        });
+        if (!name) continue;
+
+        lines.push({ name, subtotal: Number(item.subtotal) });
+      }
+    }
+
+    return lines;
+  } catch (error) {
+    console.warn("[dashboard] Bundle venta ítems:", error);
+    return [];
+  }
+}
+
+async function loadLegacyProductSalesForRange(range: PeriodRange): Promise<ProductSaleLine[]> {
+  const legacyTable = supabase as unknown as {
+    from: (table: string) => ReturnType<typeof supabase.from>;
+  };
+
+  const { data, error } = await legacyTable
+    .from("venta_legacy_import_items")
+    .select("descripcion, subtotal, codigo, periodo_mes, fecha");
+
+  if (error) {
+    console.warn("[dashboard] Legacy venta ítems:", error.message);
+    return loadLegacyProductSalesFromBundle(range);
+  }
+
+  const lines: ProductSaleLine[] = [];
+
+  for (const item of (data ?? []) as LegacyVentaItemRow[]) {
+    if (!isLegacyItemInRange(item, range)) continue;
+
+    const name = resolveProductDisplayName({
+      descripcion: item.descripcion,
+      codigo: item.codigo,
+    });
+    if (!name) continue;
+
+    lines.push({ name, subtotal: Number(item.subtotal) });
+  }
+
+  if (lines.length > 0) return lines;
+  return loadLegacyProductSalesFromBundle(range);
+}
+
+async function loadVentaItemProductSales(
+  ventaIds: string[],
+): Promise<ProductSaleLine[]> {
+  if (ventaIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("venta_items")
+    .select("descripcion, subtotal, venta_id, productos(nombre, sku)")
+    .in("venta_id", ventaIds);
+
+  if (error) {
+    console.warn("[dashboard] venta_items:", error.message);
+    return [];
+  }
+
+  const lines: ProductSaleLine[] = [];
+
+  for (const item of (data ?? []) as VentaItemWithProducto[]) {
+    const name = resolveProductDisplayName({
+      descripcion: item.descripcion,
+      producto: item.productos,
+    });
+    if (!name) continue;
+
+    lines.push({ name, subtotal: Number(item.subtotal) });
+  }
+
+  return lines;
+}
+
+async function loadProductSalesForRange(
+  range: PeriodRange,
+  ventaRows: Array<{ id: string; fecha: string; notas: string | null }>,
+): Promise<ProductSaleLine[]> {
+  const ventasInRange = ventaRows.filter((row) => {
+    const fechaIso = normalizeFechaIso(row.fecha);
+    const periodMonth = resolvePeriodMonth(row.fecha, row.notas);
+    return isIsoDateInRange(fechaIso, range) || isPeriodMonthInRange(periodMonth, range);
+  });
+
+  const legacyLines = await loadLegacyProductSalesForRange(range);
+  if (legacyLines.length > 0) {
+    return legacyLines;
+  }
+
+  return loadVentaItemProductSales(ventasInRange.map((row) => row.id));
+}
 
 function formatPen(amount: number): string {
   return `S/ ${Math.round(amount).toLocaleString("es-PE")}`;
@@ -58,7 +258,8 @@ function pctChangeLabel(current: number, previous: number): string {
 
 function isVentaInRange(venta: VentaRecord, range: PeriodRange): boolean {
   if (venta.businessStatus === "Anulada") return false;
-  if (venta.fechaIso) return isIsoDateInRange(venta.fechaIso, range);
+  const fechaIso = normalizeFechaIso(venta.fechaIso);
+  if (fechaIso && isIsoDateInRange(fechaIso, range)) return true;
   return isPeriodMonthInRange(venta.periodMonth, range);
 }
 
@@ -112,7 +313,7 @@ function buildFinancialChart(
 
   return buckets.map((bucket) => {
     const ingresos = ventas
-      .filter((venta) => isIsoDateInRange(venta.fechaIso ?? null, {
+      .filter((venta) => isVentaInRange(venta, {
         preset: range.preset,
         start: bucket.start,
         end: bucket.end,
@@ -182,7 +383,6 @@ function emptyAnalytics(range: PeriodRange): DashboardAnalytics {
     flujoCajaChart: zeroChart,
     ingresosDistribucion: [],
     gastosDistribucion: [],
-    indicadoresFinancieros: staticIndicadores,
     topClientes: [],
     topProductos: [],
     ventasMensualesChart: zeroChart.map((row) => ({ mes: row.mes, monto: 0 })),
@@ -195,14 +395,23 @@ export function buildDashboardAnalytics(input: {
   range: PeriodRange;
   ventas: VentaRecord[];
   ordenesCompra: Array<{ importe: number; created_at: string; tipo: string }>;
-  productos: Array<{ descripcion: string; subtotal: number }>;
+  productSales: ProductSaleLine[];
   clientesActivos: number;
   porCobrarTotal: number;
   porCobrarDocs: number;
 }): DashboardAnalytics {
-  const { range, ventas, ordenesCompra, productos, clientesActivos, porCobrarTotal, porCobrarDocs } =
+  const { range, ventas, ordenesCompra, productSales, clientesActivos, porCobrarTotal, porCobrarDocs } =
     input;
-  const prevRange = resolvePreviousPeriodRange(range.preset);
+  const prevRange =
+    range.preset === "mes_con_ventas"
+      ? resolveMonthKeyRange(
+          (() => {
+            const start = new Date(`${range.start}T12:00:00`);
+            const prev = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+          })(),
+        )
+      : resolvePreviousPeriodRange(range.preset);
 
   const periodVentas = ventas.filter((venta) => isVentaInRange(venta, range));
   const prevVentas = ventas.filter((venta) => isVentaInRange(venta, prevRange));
@@ -232,11 +441,12 @@ export function buildDashboardAnalytics(input: {
     neto: row.utilidad,
   }));
 
-  const ingresosPorTipo = [
-    { name: "Facturas", value: periodVentas.filter((v) => v.documentType === "Factura").reduce((s, v) => s + v.amount, 0) },
-    { name: "Boletas", value: periodVentas.filter((v) => v.documentType === "Boleta").reduce((s, v) => s + v.amount, 0) },
-    { name: "Notas de crédito", value: periodVentas.filter((v) => v.documentType === "Nota de crédito").reduce((s, v) => s + v.amount, 0) },
-  ];
+  const ingresosPorTipo = INGRESO_DISTRIBUCION_LABELS.map(({ documentType, label }) => ({
+    name: label,
+    value: periodVentas
+      .filter((venta) => venta.documentType === documentType)
+      .reduce((sum, venta) => sum + venta.amount, 0),
+  }));
 
   const gastosPorTipo = [
     { name: "Compras", value: periodOrdenes.filter((o) => o.tipo === "compra").reduce((s, o) => s + Number(o.importe), 0) },
@@ -246,23 +456,10 @@ export function buildDashboardAnalytics(input: {
   const ingresosDistribucion = buildDistribution(ingresosPorTipo, INGRESO_COLORS);
   const gastosDistribucion = buildDistribution(gastosPorTipo, GASTO_COLORS);
 
-  const productTotals = new Map<string, number>();
-  for (const item of productos) {
-    const key = item.descripcion.trim() || "Sin descripción";
-    productTotals.set(key, (productTotals.get(key) ?? 0) + Number(item.subtotal));
-  }
-  const productGrandTotal = [...productTotals.values()].reduce((sum, value) => sum + value, 0);
-  const topProductos =
-    productGrandTotal > 0
-      ? [...productTotals.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([name, value]) => ({
-            name,
-            value,
-            participacion: Math.round((value / productGrandTotal) * 1000) / 10,
-          }))
-      : [];
+  const topProductos = buildTopProductos(productSales);
+  const distinctProducts = new Set(
+    productSales.map((line) => normalizeProductKey(line.name)).filter(Boolean),
+  ).size;
 
   const marginPct = ingresos > 0 ? ((utilidad / ingresos) * 100).toFixed(2) : "0.00";
 
@@ -299,7 +496,7 @@ export function buildDashboardAnalytics(input: {
   const reportesKpis = staticReportesKpis.map((kpi, index) => {
     if (index === 0) return withRealKpi(kpi, String(facturas), `Comprobantes del periodo`);
     if (index === 1) return withRealKpi(kpi, formatPen(ingresos), `Ingresos de ${range.shortLabel}`);
-    if (index === 2) return withRealKpi(kpi, String(topProductos.length), `Productos facturados`);
+    if (index === 2) return withRealKpi(kpi, String(distinctProducts), `Productos facturados`);
     return withRealKpi(kpi, topClientes.length > 0 ? `${topClientes.length}` : "0", `Clientes del periodo`);
   });
   const ventasMensualesChart = resumenFinancieroChart.map((row) => ({
@@ -332,7 +529,6 @@ export function buildDashboardAnalytics(input: {
     })),
     ingresosDistribucion,
     gastosDistribucion,
-    indicadoresFinancieros: staticIndicadores,
     topClientes,
     topProductos,
     ventasMensualesChart,
@@ -349,10 +545,18 @@ export async function fetchDashboardAnalytics(
     return emptyAnalytics(range);
   }
 
+  await ensureVentasImported(userId);
+
+  try {
+    await syncVentasProductosKardex(userId);
+  } catch (syncError) {
+    console.warn("[dashboard] Sync ventas/productos:", syncError);
+  }
+
   const [ventasRes, ordenesRes, cxcRes] = await Promise.all([
     supabase
       .from("ventas")
-      .select("id, fecha, total, estado, tipo_comprobante, cliente_nombre, cliente_ruc, estado_sunat, vendedor_nombre, vendedor_iniciales, hora_emision, numero, codigo_comprobante")
+      .select("id, fecha, total, estado, tipo_comprobante, cliente_nombre, cliente_ruc, estado_sunat, vendedor_nombre, vendedor_iniciales, hora_emision, numero, codigo_comprobante, notas")
       .eq("user_id", userId)
       .neq("estado", "anulada"),
     supabase
@@ -367,55 +571,32 @@ export async function fetchDashboardAnalytics(
   ]);
 
   const ventaRows = ventasRes.data ?? [];
-  const ventaIds = ventaRows.map((row) => row.id);
+  const productSales = await loadProductSalesForRange(range, ventaRows);
 
-  let productos: Array<{ descripcion: string; subtotal: number }> = [];
-  if (ventaIds.length > 0) {
-    const { data: items } = await supabase
-      .from("venta_items")
-      .select("descripcion, subtotal, venta_id")
-      .in("venta_id", ventaIds);
-
-    const ventasInRange = new Set(
-      ventaRows
-        .filter((row) => isIsoDateInRange(row.fecha, range))
-        .map((row) => row.id),
-    );
-
-    productos = (items ?? [])
-      .filter((item) => ventasInRange.has(item.venta_id))
-      .map((item) => ({
-        descripcion: item.descripcion,
-        subtotal: Number(item.subtotal),
-      }));
-  }
-
-  const ventas: VentaRecord[] = ventaRows.map((row) => ({
-    id: row.id,
-    date: new Date(row.fecha.includes("T") ? row.fecha : `${row.fecha}T12:00:00`).toLocaleDateString("es-PE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }),
-    time: row.hora_emision ?? "00:00",
-    documentType:
-      row.tipo_comprobante === "boleta"
-        ? "Boleta"
-        : row.tipo_comprobante === "nota_credito"
-          ? "Nota de crédito"
-          : "Factura",
-    documentCode: row.codigo_comprobante ?? row.numero,
-    client: row.cliente_nombre ?? "Cliente",
-    ruc: row.cliente_ruc ?? "—",
-    amount: Number(row.total),
-    status: row.estado_sunat === "aceptado" ? "Aceptado" : row.estado_sunat === "rechazado" ? "Rechazado" : "Pendiente",
-    businessStatus: "Activa",
-    periodMonth: row.fecha.slice(0, 7),
-    fechaIso: row.fecha,
-    hasCdr: false,
-    seller: row.vendedor_nombre ?? "Sin asignar",
-    sellerInitials: row.vendedor_iniciales ?? "SA",
-  }));
+  const ventas: VentaRecord[] = ventaRows.map((row) => {
+    const fechaIso = normalizeFechaIso(row.fecha);
+    return {
+      id: row.id,
+      date: new Date(`${fechaIso}T12:00:00`).toLocaleDateString("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+      time: row.hora_emision ?? "00:00",
+      documentType: mapDbTipoToDisplay(row.tipo_comprobante),
+      documentCode: row.codigo_comprobante ?? row.numero,
+      client: row.cliente_nombre ?? "Cliente",
+      ruc: row.cliente_ruc ?? "—",
+      amount: Number(row.total),
+      status: row.estado_sunat === "aceptado" ? "Aceptado" : row.estado_sunat === "rechazado" ? "Rechazado" : "Pendiente",
+      businessStatus: row.estado === "anulada" ? "Anulada" : "Activa",
+      periodMonth: resolvePeriodMonth(row.fecha, row.notas),
+      fechaIso,
+      hasCdr: false,
+      seller: row.vendedor_nombre ?? "Sin asignar",
+      sellerInitials: row.vendedor_iniciales ?? "SA",
+    };
+  });
 
   const clientesActivos = new Set(
     ventas.filter((venta) => isVentaInRange(venta, range)).map((venta) => venta.ruc || venta.client),
@@ -428,7 +609,7 @@ export async function fetchDashboardAnalytics(
     range,
     ventas,
     ordenesCompra: ordenesRes.data ?? [],
-    productos,
+    productSales,
     clientesActivos,
     porCobrarTotal,
     porCobrarDocs,

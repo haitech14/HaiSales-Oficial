@@ -66,6 +66,19 @@ export function ClientesTableRow({ client, onUpdateField }: ClientesTableRowProp
           }
         />
       </td>
+      <td className="app-table-cell">
+        <ClienteEditableCell
+          value={client.segmento}
+          onSave={save("segmento")}
+          type="select"
+          options={clienteSegmentoOptions}
+          displayValue={
+            <span className={cn("app-table-badge", getSegmentStyles(client.segmento))}>
+              {client.segmento}
+            </span>
+          }
+        />
+      </td>
       <td className="app-table-cell max-w-[220px]">
         <ReadOnlyCell
           value={client.equipoInteres}
@@ -86,19 +99,6 @@ export function ClientesTableRow({ client, onUpdateField }: ClientesTableRowProp
           onSave={save("fechaToner")}
           inputType="date"
           title="Fecha toner"
-        />
-      </td>
-      <td className="app-table-cell">
-        <ClienteEditableCell
-          value={client.segmento}
-          onSave={save("segmento")}
-          type="select"
-          options={clienteSegmentoOptions}
-          displayValue={
-            <span className={cn("app-table-badge", getSegmentStyles(client.segmento))}>
-              {client.segmento}
-            </span>
-          }
         />
       </td>
       <td className="app-table-cell">

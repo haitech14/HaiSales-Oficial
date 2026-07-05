@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useCrm } from "@/hooks/useCrm";
+import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import {
   formatCurrency,
   formatPipelineCurrency,
@@ -124,6 +125,7 @@ export default function PipelinePage() {
     isFetching,
     refresh,
   } = useCrm();
+  useSearchQueryParam(setSearch);
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);

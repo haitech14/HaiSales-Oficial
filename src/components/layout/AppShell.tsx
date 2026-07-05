@@ -5,6 +5,7 @@ import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { SupabaseHealthBanner } from "@/components/layout/SupabaseHealthBanner";
 import { useEmpresaSetupStatus } from "@/hooks/useEmpresaConfig";
 import { AppPeriodProvider } from "@/hooks/useAppPeriod";
+import { GlobalSearchProvider } from "@/components/app/GlobalSearch";
 import { cn } from "@/lib/utils";
 import { AppMobileHeader, AppMobileNav, AppSidebar } from "./AppSidebar";
 
@@ -28,9 +29,11 @@ export function AppShell() {
           <SupabaseHealthBanner />
           <ErrorBoundary fallbackTitle="Error en el módulo">
             <AppPeriodProvider>
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <Outlet />
-              </div>
+              <GlobalSearchProvider>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <Outlet />
+                </div>
+              </GlobalSearchProvider>
             </AppPeriodProvider>
           </ErrorBoundary>
         </div>

@@ -56,6 +56,7 @@ export function useVentas() {
         activeTab === "todos" ||
         (activeTab === "facturas" && item.documentType === "Factura") ||
         (activeTab === "boletas" && item.documentType === "Boleta") ||
+        (activeTab === "notas-venta" && item.documentType === "Nota de venta") ||
         (activeTab === "notas" && item.documentType === "Nota de crédito") ||
         (activeTab === "anulados" && item.businessStatus === "Anulada") ||
         (activeTab === "pendientes" && item.status === "Pendiente") ||

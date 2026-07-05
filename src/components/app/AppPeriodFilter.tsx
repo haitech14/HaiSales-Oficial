@@ -17,7 +17,8 @@ type AppPeriodFilterProps = {
 };
 
 export function AppPeriodFilter({ className, size = "sm" }: AppPeriodFilterProps) {
-  const { preset, range, setPreset, options } = useAppPeriod();
+  const { preset, salesMonthKey, range, setPreset, setSalesMonth, options, salesMonthOptions } =
+    useAppPeriod();
 
   return (
     <DropdownMenu>
@@ -33,18 +34,38 @@ export function AppPeriodFilter({ className, size = "sm" }: AppPeriodFilterProps
           <ChevronDown className="h-3.5 w-3.5 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="max-h-[min(420px,70vh)] w-64 overflow-y-auto">
         <DropdownMenuLabel>Periodo de análisis</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {options.map((option) => (
           <DropdownMenuItem
             key={option.id}
             onClick={() => setPreset(option.id)}
-            className={cn(preset === option.id && "bg-blue-50 text-blue-700")}
+            className={cn(
+              !salesMonthKey && preset === option.id && "bg-blue-50 text-blue-700",
+            )}
           >
             {option.label}
           </DropdownMenuItem>
         ))}
+
+        {salesMonthOptions.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Meses con ventas</DropdownMenuLabel>
+            {salesMonthOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.key}
+                onClick={() => setSalesMonth(option.key)}
+                className={cn(
+                  salesMonthKey === option.key && "bg-blue-50 text-blue-700",
+                )}
+              >
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

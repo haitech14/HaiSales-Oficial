@@ -4,11 +4,17 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   inventarioKpis as staticKpis,
 } from "@/lib/inventario-mock-data";
+import type { InventarioMovimiento } from "@/lib/inventario/ventas-productos-sync";
+import {
+  fetchRecentInventarioMovimientos,
+  syncVentasProductosKardex,
+} from "@/lib/inventario/ventas-productos-sync";
 import type {
   InventarioProduct,
   InventarioSnapshot,
 } from "@/lib/inventario/types";
 import type { ProductStatus, ProductType } from "@/lib/inventario-mock-data";
+import { importProductosLegacyForUser } from "@/lib/inventario/import-productos-legacy";
 
 type ProductoRow = Database["public"]["Tables"]["productos"]["Row"];
 
@@ -218,6 +224,7 @@ function buildSnapshot(
   products: InventarioProduct[],
   source: "supabase" | "mock",
   importError?: string,
+  recentMovements: InventarioMovimiento[] = [],
 ): InventarioSnapshot {
   return {
     products,
@@ -226,6 +233,7 @@ function buildSnapshot(
     stockByCategory: buildStockByCategory(products),
     topRotationProducts: buildTopRotation(products),
     inventoryAlerts: buildAlerts(products),
+    recentMovements,
     totalRecords: products.length,
     source,
     importError,
@@ -249,16 +257,7 @@ async function loadProductosForUser(userId: string) {
 }
 
 async function importLegacyProductosIfNeeded(userId: string): Promise<{ count: number; error?: string }> {
-  const { data, error } = await supabase.rpc("import_productos_legacy_for_user", {
-    p_user_id: userId,
-  });
-
-  if (error) {
-    console.warn("[inventario] Import legacy:", error.message);
-    return { count: 0, error: error.message };
-  }
-
-  return { count: typeof data === "number" ? data : 0 };
+  return importProductosLegacyForUser(userId);
 }
 
 export async function fetchInventarioSnapshot(userId: string | null): Promise<InventarioSnapshot> {
@@ -288,7 +287,19 @@ export async function fetchInventarioSnapshot(userId: string | null): Promise<In
     }
   }
 
-  return buildSnapshot(rows.map(mapRowToProduct), "supabase", importError);
+  try {
+    await syncVentasProductosKardex(userId);
+    const refreshed = await loadProductosForUser(userId);
+    if (!refreshed.error && refreshed.rows.length > 0) {
+      rows = refreshed.rows;
+    }
+  } catch (syncError) {
+    console.warn("[inventario] Sync ventas/productos/kardex:", syncError);
+  }
+
+  const recentMovements = await fetchRecentInventarioMovimientos(userId);
+
+  return buildSnapshot(rows.map(mapRowToProduct), "supabase", importError, recentMovements);
 }
 
 async function generateNextSku(userId: string) {

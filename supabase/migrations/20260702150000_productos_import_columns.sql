@@ -101,10 +101,7 @@ BEGIN
     END,
     src.marca,
     src.afectacion_igv,
-    CASE
-      WHEN src.stock > 0 AND src.tipo <> 'service' THEN now()
-      ELSE NULL
-    END
+    now()
   FROM public.productos_legacy_import src
   ON CONFLICT (user_id, sku)
   DO UPDATE SET

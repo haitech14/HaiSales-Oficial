@@ -69,6 +69,7 @@ function calcTotals(importeSoles: number, anulada: boolean) {
 function mapTipoDb(tipo: VentaReporteRow["tipoComprobante"]): string {
   if (tipo === "boleta") return "boleta";
   if (tipo === "nota_credito") return "nota_credito";
+  if (tipo === "nota_venta") return "nota_venta";
   return "factura";
 }
 

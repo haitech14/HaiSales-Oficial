@@ -83,6 +83,51 @@ function uniqueSorted(values: string[]) {
   );
 }
 
+function splitFilterTokens(value: string) {
+  if (!value || value === "—") return [] as string[];
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function buildColumnFilterOptions(clients: ClientRecord[]) {
+  return COLUMN_KEYS.reduce(
+    (options, key) => {
+      if (key === "equipoInteres" || key === "modelosInteres") {
+        options[key] = uniqueSorted(clients.flatMap((client) => splitFilterTokens(client[key])));
+        return options;
+      }
+
+      options[key] = uniqueSorted(clients.map((client) => client[key]));
+      return options;
+    },
+    {} as Record<ClienteColumnKey, string[]>,
+  );
+}
+
+function matchesColumnFilter(client: ClientRecord, key: ClienteColumnKey, filterValue: string) {
+  if (filterValue === "todos") return true;
+
+  const cellValue = client[key] ?? "—";
+  if (cellValue === "—") return false;
+
+  if (key === "equipoInteres" || key === "modelosInteres") {
+    const normalizedCell = cellValue.toLowerCase();
+    const normalizedFilter = filterValue.toLowerCase();
+    return (
+      normalizedCell === normalizedFilter ||
+      splitFilterTokens(cellValue).some((token) => token.toLowerCase() === normalizedFilter)
+    );
+  }
+
+  return cellValue === filterValue;
+}
+
+function fieldIncludesQuery(value: string | undefined, query: string) {
+  return (value ?? "—").toLowerCase().includes(query);
+}
+
 function parseDisplayDate(value: string) {
   if (!value || value === "—") return 0;
   const parts = value.split("/");
@@ -125,14 +170,13 @@ export function useClientes() {
 
   const columnFilterOptions = useMemo(() => {
     const clients = data?.clients ?? [];
-    return COLUMN_KEYS.reduce(
-      (options, key) => {
-        options[key] = uniqueSorted(clients.map((client) => client[key]));
-        return options;
-      },
-      {} as Record<ClienteColumnKey, string[]>,
-    );
+    return buildColumnFilterOptions(clients);
   }, [data?.clients]);
+
+  const hasActiveFilters = useMemo(() => {
+    const hasColumnFilters = COLUMN_KEYS.some((key) => columnFilters[key] !== "todos");
+    return activeTab !== "todos" || search.trim().length > 0 || hasColumnFilters;
+  }, [activeTab, columnFilters, search]);
 
   const filteredClients = useMemo(() => {
     if (!data) return [] as ClientRecord[];
@@ -144,33 +188,32 @@ export function useClientes() {
         activeTab === "todos" ||
         normalizeTipoClienteKey(client.tipoCliente) === activeTab;
 
-      const matchesColumns = COLUMN_KEYS.every((key) => {
-        const filterValue = columnFilters[key];
-        return filterValue === "todos" || client[key] === filterValue;
-      });
+      const matchesColumns = COLUMN_KEYS.every((key) =>
+        matchesColumnFilter(client, key, columnFilters[key]),
+      );
 
       const matchesSearch =
         !query ||
-        client.razonSocial.toLowerCase().includes(query) ||
-        client.ruc.includes(query) ||
-        client.contacto.toLowerCase().includes(query) ||
-        client.correo.toLowerCase().includes(query) ||
-        client.telefono.includes(query) ||
-        client.direccion.toLowerCase().includes(query) ||
-        client.ciudad.toLowerCase().includes(query) ||
-        client.provincia.toLowerCase().includes(query) ||
-        client.distrito.toLowerCase().includes(query) ||
-        client.tipoCliente.toLowerCase().includes(query) ||
-        client.equipoInteres.toLowerCase().includes(query) ||
-        client.produccionMensual.toLowerCase().includes(query) ||
-        client.fechaToner.toLowerCase().includes(query) ||
-        client.segmento.toLowerCase().includes(query) ||
-        client.cumpleanos.toLowerCase().includes(query) ||
-        client.ultimaCompra.toLowerCase().includes(query) ||
-        client.frecuenciaCompra.toLowerCase().includes(query) ||
-        client.ticketCompra.toLowerCase().includes(query) ||
-        client.modelosInteres.toLowerCase().includes(query) ||
-        client.observaciones.toLowerCase().includes(query);
+        fieldIncludesQuery(client.razonSocial, query) ||
+        fieldIncludesQuery(client.ruc, query) ||
+        fieldIncludesQuery(client.contacto, query) ||
+        fieldIncludesQuery(client.correo, query) ||
+        fieldIncludesQuery(client.telefono, query) ||
+        fieldIncludesQuery(client.direccion, query) ||
+        fieldIncludesQuery(client.ciudad, query) ||
+        fieldIncludesQuery(client.provincia, query) ||
+        fieldIncludesQuery(client.distrito, query) ||
+        fieldIncludesQuery(client.tipoCliente, query) ||
+        fieldIncludesQuery(client.equipoInteres, query) ||
+        fieldIncludesQuery(client.produccionMensual, query) ||
+        fieldIncludesQuery(client.fechaToner, query) ||
+        fieldIncludesQuery(client.segmento, query) ||
+        fieldIncludesQuery(client.cumpleanos, query) ||
+        fieldIncludesQuery(client.ultimaCompra, query) ||
+        fieldIncludesQuery(client.frecuenciaCompra, query) ||
+        fieldIncludesQuery(client.ticketCompra, query) ||
+        fieldIncludesQuery(client.modelosInteres, query) ||
+        fieldIncludesQuery(client.observaciones, query);
 
       return matchesTab && matchesColumns && matchesSearch;
     });
@@ -191,6 +234,19 @@ export function useClientes() {
       return String(leftValue).localeCompare(String(rightValue), "es") * direction;
     });
   }, [activeTab, columnFilters, data, search, sortDirection, sortField]);
+
+  const setActiveTabWithReset = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setColumnFilters((current) => ({ ...current, tipoCliente: "todos" }));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setActiveTab("todos");
+    setSearch("");
+    setColumnFilters(createDefaultColumnFilters());
+    setSortField(null);
+    setSortDirection(null);
+  }, []);
 
   const setColumnFilter = useCallback((key: ClienteColumnKey, value: string) => {
     setColumnFilters((current) => ({ ...current, [key]: value }));
@@ -292,6 +348,7 @@ export function useClientes() {
   return {
     snapshot: data,
     filteredClients,
+    hasActiveFilters,
     columnFilterOptions,
     columnFilters,
     setColumnFilter,
@@ -299,7 +356,8 @@ export function useClientes() {
     sortDirection,
     handleSort,
     activeTab,
-    setActiveTab,
+    setActiveTab: setActiveTabWithReset,
+    clearFilters,
     search,
     setSearch,
     isLoading,

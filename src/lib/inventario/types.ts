@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { InventarioMovimiento } from "@/lib/inventario/ventas-productos-sync";
 
 export type ProductStatus = "Activo" | "Stock bajo" | "Sin movimiento";
 export type ProductType = "product" | "service" | "kit";
@@ -43,6 +44,7 @@ export type InventarioSnapshot = {
   stockByCategory: { label: string; count: number; percent: number; color: string }[];
   topRotationProducts: { name: string; rotation: string; percent: number }[];
   inventoryAlerts: { label: string; count: number; color: string; width: string }[];
+  recentMovements: InventarioMovimiento[];
   totalRecords: number;
   source: "supabase" | "mock";
   importError?: string;

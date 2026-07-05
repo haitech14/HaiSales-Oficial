@@ -10,7 +10,7 @@ export function useDashboardAnalytics() {
   const { range } = useAppPeriod();
 
   return useQuery({
-    queryKey: [...QUERY_KEY, user?.id ?? "guest", range.preset, range.start, range.end],
+    queryKey: [...QUERY_KEY, user?.id ?? "guest", range.start, range.end],
     queryFn: () => fetchDashboardAnalytics(user?.id ?? null, range),
     staleTime: 30_000,
   });

@@ -11,6 +11,8 @@ import {
   type NuevoMovimientoFormState,
 } from "@/lib/almacenes-form-data";
 import { withRealKpi } from "@/lib/kpi-utils";
+import { importProductosLegacyForUser } from "@/lib/inventario/import-productos-legacy";
+import { syncVentasProductosKardex } from "@/lib/inventario/ventas-productos-sync";
 
 type KardexRow = {
   id: string;
@@ -323,21 +325,22 @@ async function loadProductos(userId: string): Promise<ProductoRow[]> {
 }
 
 async function importLegacyProductosIfNeeded(userId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("import_productos_legacy_for_user", {
-    p_user_id: userId,
-  });
-
-  if (error) {
-    console.warn("[almacenes] Import legacy productos:", error.message);
-    return false;
+  const result = await importProductosLegacyForUser(userId);
+  if (result.error) {
+    console.warn("[almacenes] Import legacy productos:", result.error);
   }
-
-  return typeof data === "number" && data > 0;
+  return result.count > 0;
 }
 
 export async function fetchAlmacenesSnapshot(userId: string | null): Promise<AlmacenesSnapshot> {
   if (!userId) {
     return buildSnapshot([], [], [], "supabase");
+  }
+
+  try {
+    await syncVentasProductosKardex(userId);
+  } catch (syncError) {
+    console.warn("[almacenes] Sync ventas/productos/kardex:", syncError);
   }
 
   const [almacenesResult, movements, productos] = await Promise.all([

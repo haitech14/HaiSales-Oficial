@@ -2,6 +2,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Bell, ChevronDown, CircleHelp, Filter, PanelRightClose, Plus, RefreshCw } from "lucide-react";
 import { AppPeriodFilter } from "@/components/app/AppPeriodFilter";
+import { GlobalSearchTrigger } from "@/components/app/GlobalSearch";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,6 +66,8 @@ export function AppPageHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <GlobalSearchTrigger />
+
           {showDateRange && <AppPeriodFilter className="hidden sm:inline-flex" />}
 
           {showFiltersButton && (

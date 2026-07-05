@@ -86,11 +86,13 @@ function RankingTable({
   nameHeader,
   valueHeader,
   rows,
+  nameMaxWidthClass = "max-w-[140px]",
 }: {
   title: string;
   nameHeader: string;
   valueHeader: string;
   rows: { name: string; value: number; participacion: number }[];
+  nameMaxWidthClass?: string;
 }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -114,7 +116,9 @@ function RankingTable({
             ) : (
               rows.map((row) => (
               <tr key={row.name} className="border-b border-slate-50">
-                <td className="max-w-[140px] truncate py-2 pr-2 font-medium text-slate-700">{row.name}</td>
+                <td className={cn("truncate py-2 pr-2 font-medium text-slate-700", nameMaxWidthClass)} title={row.name}>
+                  {row.name}
+                </td>
                 <td className="whitespace-nowrap py-2 pr-2 font-semibold text-slate-900">
                   S/ {row.value.toLocaleString("es-PE")}
                 </td>
@@ -137,7 +141,7 @@ function RankingTable({
 }
 
 export function DashboardGeneralView() {
-  const { data: analytics, isLoading } = useDashboardAnalytics();
+  const { data: analytics, isLoading, refetch, isFetching } = useDashboardAnalytics();
   const { range } = useAppPeriod();
 
   if (isLoading || !analytics) {
@@ -209,29 +213,6 @@ export function DashboardGeneralView() {
         </div>
       </div>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="app-panel-title">Indicadores financieros</h3>
-        <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {analytics.indicadoresFinancieros.map((item) => (
-            <li key={item.label} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 text-xs">
-              <div className="min-w-0">
-                <p className="truncate text-slate-600">{item.label}</p>
-                <p className="font-semibold text-slate-900">{item.value}</p>
-              </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                  item.tone === "emerald" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-                  item.tone === "amber" && "border-amber-200 bg-amber-50 text-amber-700",
-                )}
-              >
-                {item.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </article>
-
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <RankingTable
           title="Top 10 clientes por facturación"
@@ -243,6 +224,7 @@ export function DashboardGeneralView() {
           title="Top 10 productos / servicios"
           nameHeader="Producto / Servicio"
           valueHeader="Ventas"
+          nameMaxWidthClass="max-w-[240px]"
           rows={analytics.topProductos}
         />
 
@@ -271,9 +253,18 @@ export function DashboardGeneralView() {
       </div>
 
       <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
-        <span>Actualizado: hace 31 minutos</span>
-        <button type="button" className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-500">
-          <RefreshCw className="h-3.5 w-3.5" />
+        <span>
+          {analytics.source === "empty"
+            ? "Sin ventas en este periodo. Prueba un mes con ventas en el filtro de periodo."
+            : "Indicadores sincronizados con comprobantes del periodo seleccionado."}
+        </span>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-500 disabled:opacity-60"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", isFetching && "animate-spin")} />
           Actualizar
         </button>
       </div>

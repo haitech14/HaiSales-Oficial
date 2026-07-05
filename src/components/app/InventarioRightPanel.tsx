@@ -1,4 +1,4 @@
-﻿import { RefreshCw } from "lucide-react";
+﻿import { ArrowDownLeft, ArrowUpRight, RefreshCw } from "lucide-react";
 import type { InventarioSnapshot } from "@/lib/inventario/types";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
   const stockByCategory = snapshot?.stockByCategory ?? [];
   const topRotationProducts = snapshot?.topRotationProducts ?? [];
   const inventoryAlerts = snapshot?.inventoryAlerts ?? [];
+  const recentMovements = snapshot?.recentMovements ?? [];
   const totalInChart = stockByCategory.reduce((sum, item) => sum + item.count, 0);
 
   let dashOffset = 0;
@@ -103,6 +104,56 @@ export function InventarioRightPanel({ className, snapshot }: InventarioRightPan
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="app-panel-title">Movimientos recientes</h3>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Kardex</span>
+          </div>
+          {recentMovements.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">
+              Sin movimientos aún. Al sincronizar ventas se registran salidas automáticamente.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2.5">
+              {recentMovements.map((movement) => {
+                const isEntrada = movement.tipo === "Entrada";
+                return (
+                  <li
+                    key={movement.id}
+                    className="rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-800">{movement.producto}</p>
+                        <p className="truncate text-[10px] text-slate-500">
+                          {movement.sku} · {movement.referencia}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "flex shrink-0 items-center gap-0.5 text-[10px] font-semibold",
+                          isEntrada ? "text-emerald-600" : "text-red-600",
+                        )}
+                      >
+                        {isEntrada ? (
+                          <ArrowDownLeft className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpRight className="h-3 w-3" />
+                        )}
+                        {isEntrada ? "+" : "−"}
+                        {movement.cantidad} {movement.unidad}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-400">
+                      {movement.fecha} {movement.hora} · {movement.almacen}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
 
         <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">

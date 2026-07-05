@@ -21,6 +21,7 @@ import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useVentas } from "@/hooks/useVentas";
+import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import {
   formatCurrency,
   formatPeriodMonth,
@@ -52,6 +53,7 @@ export default function VentasPage() {
     isImportingLegacyDb,
     downloadComprobantePdf,
   } = useVentas();
+  useSearchQueryParam(setSearch);
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);

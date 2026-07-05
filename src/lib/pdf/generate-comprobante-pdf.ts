@@ -1,5 +1,5 @@
 import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
-import { calculateVentaTotals } from "@/lib/nueva-venta-types";
+import { calculateCartTotals, resolveVentaLineItems } from "@/lib/nueva-venta-types";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
 import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
@@ -20,6 +20,7 @@ function buildComprobanteNumber(serie: string): string {
 
 function getComprobanteTitle(tipo: string): string {
   if (tipo.includes("Boleta")) return "BOLETA DE VENTA ELECTRÓNICA";
+  if (tipo.includes("Nota de Venta")) return "NOTA DE VENTA";
   if (tipo.includes("Nota")) return "NOTA DE CRÉDITO ELECTRÓNICA";
   return "FACTURA ELECTRÓNICA";
 }
@@ -30,7 +31,8 @@ export async function generateComprobantePdf(
 ): Promise<void> {
   const doc = await createPdfDocument();
   const number = buildComprobanteNumber(data.serie);
-  const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
+  const lineItems = resolveVentaLineItems(data);
+  const { subtotal, igv, total } = calculateCartTotals(lineItems);
   const title = getComprobanteTitle(data.tipoComprobante);
 
   let y = drawPdfHeader(doc, title, number, data.fechaEmision);
@@ -50,16 +52,14 @@ export async function generateComprobantePdf(
   }
   y += 8;
 
-  y = drawItemsTable(doc, y, [
-    {
-      codigo: data.productoCodigo || "—",
-      descripcion: data.producto || "Producto o servicio",
-      cantidad: data.cantidad,
-      unidad: data.unidad,
-      precio: data.precioUnitario,
-      subtotal,
-    },
-  ]);
+  y = drawItemsTable(doc, y, lineItems.map((line) => ({
+    codigo: line.productoCodigo || "—",
+    descripcion: line.producto || "Producto o servicio",
+    cantidad: line.cantidad,
+    unidad: line.unidad,
+    precio: line.precioUnitario,
+    subtotal: line.cantidad * line.precioUnitario,
+  })));
 
   y = drawTotalsBlock(doc, y, subtotal, igv, total);
 

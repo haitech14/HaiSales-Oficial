@@ -1,5 +1,6 @@
 import { Bell, ChevronDown, CircleHelp, Filter, Plus } from "lucide-react";
 import { AppPeriodFilter } from "@/components/app/AppPeriodFilter";
+import { GlobalSearchTrigger } from "@/components/app/GlobalSearch";
 import { Button } from "@/components/ui/button";
 export type DashboardView = "dashboard" | "resumen" | "reportes";
 
@@ -31,6 +32,7 @@ export function DashboardPageHeader({ view }: DashboardPageHeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <GlobalSearchTrigger />
           <AppPeriodFilter />
 
           {view === "dashboard" && (            <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">

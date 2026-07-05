@@ -13,11 +13,13 @@ export function VentasRightPanel({ className, snapshot }: VentasRightPanelProps)
   const total = records.length;
   const facturas = records.filter((item) => item.documentType === "Factura").length;
   const boletas = records.filter((item) => item.documentType === "Boleta").length;
+  const notasVenta = records.filter((item) => item.documentType === "Nota de venta").length;
   const notas = records.filter((item) => item.documentType === "Nota de crédito").length;
-  const otros = Math.max(0, total - facturas - boletas - notas);
+  const otros = Math.max(0, total - facturas - boletas - notasVenta - notas);
   const distribution = [
     { label: "Facturas", count: facturas, color: "bg-blue-500" },
     { label: "Boletas", count: boletas, color: "bg-violet-500" },
+    { label: "Notas de venta", count: notasVenta, color: "bg-teal-500" },
     { label: "Notas crédito", count: notas, color: "bg-orange-500" },
     { label: "Otros", count: otros, color: "bg-slate-400" },
   ].filter((item) => item.count > 0);

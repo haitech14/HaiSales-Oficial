@@ -110,6 +110,7 @@ function createDefaultEmpresa(email = ""): EmpresaSetupFormState {
     serieBoleta: defaultEmpresaConfig.serieBoleta,
     serieNotaCredito: defaultEmpresaConfig.serieNotaCredito,
     serieNotaDebito: defaultEmpresaConfig.serieNotaDebito,
+    serieNotaVenta: defaultEmpresaConfig.serieNotaVenta,
     serieGuiaRemision: defaultEmpresaConfig.serieGuiaRemision,
     serieProforma: defaultEmpresaConfig.serieProforma,
     serieOrdenCompra: defaultEmpresaConfig.serieOrdenCompra,
@@ -599,6 +600,14 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                 value={empresa.serieNotaCredito}
                 onChange={(e) => updateEmpresa("serieNotaCredito", e.target.value.toUpperCase())}
                 placeholder="FC01"
+              />
+            </Field>
+            <Field label="Serie nota de venta" required>
+              <input
+                className={inputClass}
+                value={empresa.serieNotaVenta}
+                onChange={(e) => updateEmpresa("serieNotaVenta", e.target.value.toUpperCase())}
+                placeholder="NV01"
               />
             </Field>
             <Field label="Serie nota de débito" required>

@@ -1,4 +1,5 @@
-export type VentaDocumentType = "Factura" | "Boleta" | "Nota de crédito";
+export type { VentaDocumentType } from "@/lib/ventas/comprobantes";
+import type { VentaDocumentType } from "@/lib/ventas/comprobantes";
 export type VentaSunatStatus = "Aceptado" | "Pendiente" | "Rechazado";
 export type VentaBusinessStatus = "Activa" | "Anulada";
 
@@ -61,6 +62,7 @@ export const ventasTabs = [
   { id: "todos", label: "Todos", count: null as number | null },
   { id: "facturas", label: "Facturas", count: 144 },
   { id: "boletas", label: "Boletas", count: 98 },
+  { id: "notas-venta", label: "Notas de venta", count: 0 },
   { id: "notas", label: "Notas crédito", count: 28 },
   { id: "anulados", label: "Anulados", count: 0 },
   { id: "pendientes", label: "Pendientes", count: 12 },
@@ -260,5 +262,7 @@ export function getDocumentTypeStyles(type: VentaDocumentType): string {
       return "text-violet-600";
     case "Nota de crédito":
       return "text-orange-600";
+    case "Nota de venta":
+      return "text-teal-600";
   }
 }
