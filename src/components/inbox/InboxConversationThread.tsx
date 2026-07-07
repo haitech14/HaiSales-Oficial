@@ -20,13 +20,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useInboxMessages } from "@/hooks/useInboxMessages";
 import { inboxChannelMeta } from "@/lib/inbox/channels";
 import { sendInboxMessage } from "@/lib/inbox/inbox-service";
-import { getMessagesForConversation } from "@/lib/inbox/mock-data";
 import type { InboxConversation } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
 type InboxConversationThreadProps = {
   conversation: InboxConversation;
-  useLiveMessages?: boolean;
+  canSendWhatsApp?: boolean;
   onMessageSent?: () => void;
 };
 
@@ -65,17 +64,16 @@ const contactTypeLabel: Record<NonNullable<InboxConversation["contactType"]>, st
 
 export function InboxConversationThread({
   conversation,
-  useLiveMessages = false,
+  canSendWhatsApp = false,
   onMessageSent,
 }: InboxConversationThreadProps) {
   const [composerTab, setComposerTab] = useState<"reply" | "note">("reply");
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  const liveMessages = useInboxMessages(useLiveMessages ? conversation.id : null);
-  const mockMessages = getMessagesForConversation(conversation.id);
-  const messages = useLiveMessages ? (liveMessages.data ?? []) : mockMessages;
-  const isLoadingMessages = useLiveMessages && liveMessages.isLoading;
+  const liveMessages = useInboxMessages(conversation.id);
+  const messages = liveMessages.data ?? [];
+  const isLoadingMessages = liveMessages.isLoading;
 
   const channelMeta = inboxChannelMeta[conversation.channel];
   const dateDivider = messages[0] ? formatDateDivider(messages[0].sentAt) : "Hoy";
@@ -84,7 +82,7 @@ export function InboxConversationThread({
     const body = draft.trim();
     if (!body || composerTab !== "reply") return;
 
-    if (!useLiveMessages || conversation.channel !== "whatsapp") {
+    if (!canSendWhatsApp || conversation.channel !== "whatsapp") {
       toast.message("Conecta WhatsApp Kapso para enviar mensajes reales.");
       return;
     }

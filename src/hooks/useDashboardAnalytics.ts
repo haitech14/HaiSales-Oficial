@@ -12,6 +12,8 @@ export function useDashboardAnalytics() {
   return useQuery({
     queryKey: [...QUERY_KEY, user?.id ?? "guest", range.start, range.end],
     queryFn: () => fetchDashboardAnalytics(user?.id ?? null, range),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: (previous) => previous,
   });
 }

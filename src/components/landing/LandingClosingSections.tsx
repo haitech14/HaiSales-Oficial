@@ -1,8 +1,9 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   CreditCard,
   Headphones,
   Lock,
@@ -26,6 +27,7 @@ import {
   type BillingCycle,
   type Currency,
   type PricingPlan,
+  type PlanFeature,
 } from "@/lib/pricing/plans";
 import { REGISTER_LOGIN_PATH } from "@/lib/auth-routes";
 import { CheckoutModal } from "@/components/landing/CheckoutModal";
@@ -117,17 +119,37 @@ const faqs = [
   {
     question: "¿Incluye facturación electrónica?",
     answer:
-      "Todos los planes incluyen facturación electrónica válida ante SUNAT. El plan Pro y Empresa ofrecen emisión ilimitada de comprobantes.",
+      "Todos los planes incluyen facturación electrónica válida ante SUNAT. El plan Corporativo ofrece emisión ilimitada de comprobantes.",
   },
   {
     question: "¿Hay prueba gratis?",
     answer:
-      "Ofrecemos 14 días de prueba gratuita con acceso completo al plan Pro. No necesitas tarjeta de crédito para comenzar.",
+      "Ofrecemos 14 días de prueba gratuita con acceso completo. No necesitas tarjeta de crédito para comenzar.",
   },
   {
     question: "¿Funciona para equipos de ventas?",
     answer:
       "Sí. HaiSales está diseñado para equipos comerciales con pipeline de ventas, asignación de responsables, reportes por vendedor y permisos por rol.",
+  },
+  {
+    question: "¿Puedo conectar WhatsApp?",
+    answer:
+      "Sí. Puedes vincular WhatsApp Business para recibir y responder mensajes desde la bandeja de entrada, centralizar conversaciones y dar seguimiento a tus leads.",
+  },
+  {
+    question: "¿Funciona en celular?",
+    answer:
+      "Sí. HaiSales está disponible en la web y en apps para Android e iOS, para que gestiones ventas, cobranzas e inventario desde cualquier lugar.",
+  },
+  {
+    question: "¿Puedo cambiar de plan después?",
+    answer:
+      "Claro. Puedes subir o bajar de plan cuando lo necesites. El cambio se aplica en tu siguiente ciclo de facturación y solo pagas la diferencia proporcional.",
+  },
+  {
+    question: "¿Ofrecen soporte y capacitación?",
+    answer:
+      "Todos los planes incluyen asesoría. Los planes Microempresa y Corporativo cuentan con soporte personalizado y acompañamiento en la implementación inicial.",
   },
 ];
 
@@ -150,6 +172,39 @@ function QuoteIcon() {
   );
 }
 
+function splitPlanFeatures(features: PlanFeature[]) {
+  const moduleFeatures = features.filter((feature) => feature.label.startsWith("Módulo "));
+  const summaryFeatures = features.filter((feature) => !feature.label.startsWith("Módulo "));
+  return { summaryFeatures, moduleFeatures };
+}
+
+function PlanFeatureItem({ feature }: { feature: PlanFeature }) {
+  return (
+    <li
+      className={cn(
+        "flex items-start gap-2.5 text-xs sm:text-[13px]",
+        feature.included ? "text-slate-700" : "text-slate-400",
+      )}
+    >
+      <FeatureIcon included={feature.included} />
+      <div className="min-w-0">
+        <span className={feature.subItems?.length ? "font-medium text-slate-800" : undefined}>
+          {feature.label}
+        </span>
+        {feature.subItems && feature.subItems.length > 0 && (
+          <ul className="mt-1 space-y-0.5">
+            {feature.subItems.map((item) => (
+              <li key={item} className="pl-0.5 text-slate-500">
+                - {item}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function PricingPlanCard({
   plan,
   billingCycle,
@@ -163,6 +218,9 @@ function PricingPlanCard({
   featured?: boolean;
   onBuyNow: () => void;
 }) {
+  const [featuresExpanded, setFeaturesExpanded] = useState(false);
+  const { summaryFeatures, moduleFeatures } = splitPlanFeatures(plan.features);
+  const visibleFeatures = featuresExpanded ? plan.features : summaryFeatures;
   const currencyPrefix = getCurrencyPrefix(currency);
   const showAnnualFormat = billingCycle === "annual";
   const displayPrice = getPlanDisplayPrice(plan, billingCycle, currency);
@@ -219,32 +277,23 @@ function PricingPlanCard({
           </div>
 
           <ul className="mt-5 flex flex-1 flex-col gap-2.5">
-            {plan.features.map((feature) => (
-              <li
-                key={feature.label}
-                className={cn(
-                  "flex items-start gap-2.5 text-xs sm:text-[13px]",
-                  feature.included ? "text-slate-700" : "text-slate-400",
-                )}
-              >
-                <FeatureIcon included={feature.included} />
-                <div className="min-w-0">
-                  <span className={feature.subItems?.length ? "font-medium text-slate-800" : undefined}>
-                    {feature.label}
-                  </span>
-                  {feature.subItems && feature.subItems.length > 0 && (
-                    <ul className="mt-1 space-y-0.5">
-                      {feature.subItems.map((item) => (
-                        <li key={item} className="pl-0.5 text-slate-500">
-                          - {item}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </li>
+            {visibleFeatures.map((feature) => (
+              <PlanFeatureItem key={feature.label} feature={feature} />
             ))}
           </ul>
+
+          {moduleFeatures.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setFeaturesExpanded((current) => !current)}
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition hover:text-blue-500 sm:text-[13px]"
+            >
+              {featuresExpanded ? "Ver menos" : "Ver más"}
+              <ChevronDown
+                className={cn("h-4 w-4 transition-transform", featuresExpanded && "rotate-180")}
+              />
+            </button>
+          )}
 
           <div className="mt-auto space-y-2 pt-6">
             <Link
@@ -460,29 +509,42 @@ function TestimonialsSection() {
   );
 }
 
+function FaqColumn({ items, idPrefix }: { items: typeof faqs; idPrefix: string }) {
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      {items.map((faq, index) => (
+        <AccordionItem
+          key={faq.question}
+          value={`${idPrefix}-${index}`}
+          className="border-slate-200"
+        >
+          <AccordionTrigger className="py-5 text-left text-[15px] font-semibold text-[#0f172a] hover:no-underline [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-slate-400">
+            {faq.question}
+          </AccordionTrigger>
+          <AccordionContent className="pb-5 text-sm leading-relaxed text-slate-500">
+            {faq.answer}
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  );
+}
+
 function FaqSection() {
+  const midpoint = Math.ceil(faqs.length / 2);
+  const leftFaqs = faqs.slice(0, midpoint);
+  const rightFaqs = faqs.slice(midpoint);
+
   return (
     <div className="mt-20 sm:mt-24">
       <h2 className="text-center text-3xl font-bold tracking-tight text-[#0f172a] sm:text-4xl">
         Preguntas frecuentes
       </h2>
 
-      <Accordion type="single" collapsible className="mx-auto mt-10 max-w-2xl w-full">
-        {faqs.map((faq, index) => (
-          <AccordionItem
-            key={faq.question}
-            value={`item-${index}`}
-            className="border-slate-200"
-          >
-            <AccordionTrigger className="py-5 text-left text-[15px] font-semibold text-[#0f172a] hover:no-underline [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-slate-400">
-              {faq.question}
-            </AccordionTrigger>
-            <AccordionContent className="pb-5 text-sm leading-relaxed text-slate-500">
-              {faq.answer}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+      <div className="mx-auto mt-10 grid max-w-5xl gap-x-10 md:grid-cols-2">
+        <FaqColumn items={leftFaqs} idPrefix="left" />
+        <FaqColumn items={rightFaqs} idPrefix="right" />
+      </div>
     </div>
   );
 }

@@ -213,6 +213,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      usuarios_empresa: {
+        Row: {
+          id: string;
+          user_id: string;
+          codigo: string | null;
+          nombre_completo: string;
+          correo: string;
+          telefono: string | null;
+          sede_id: string | null;
+          sede_nombre: string | null;
+          cargo: string | null;
+          usuario_interno: string;
+          rol: "admin" | "ventas" | "tecnico";
+          estado: "activo" | "invitado" | "inactivo";
+          autenticacion_2fa: "obligatorio" | "opcional" | "deshabilitado";
+          enviar_invitacion: string | null;
+          has_2fa: boolean;
+          es_borrador: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          codigo?: string | null;
+          nombre_completo: string;
+          correo: string;
+          telefono?: string | null;
+          sede_id?: string | null;
+          sede_nombre?: string | null;
+          cargo?: string | null;
+          usuario_interno: string;
+          rol?: "admin" | "ventas" | "tecnico";
+          estado?: "activo" | "invitado" | "inactivo";
+          autenticacion_2fa?: "obligatorio" | "opcional" | "deshabilitado";
+          enviar_invitacion?: string | null;
+          has_2fa?: boolean;
+          es_borrador?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          codigo?: string | null;
+          nombre_completo?: string;
+          correo?: string;
+          telefono?: string | null;
+          sede_id?: string | null;
+          sede_nombre?: string | null;
+          cargo?: string | null;
+          usuario_interno?: string;
+          rol?: "admin" | "ventas" | "tecnico";
+          estado?: "activo" | "invitado" | "inactivo";
+          autenticacion_2fa?: "obligatorio" | "opcional" | "deshabilitado";
+          enviar_invitacion?: string | null;
+          has_2fa?: boolean;
+          es_borrador?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       empresa_config: {
         Row: {
           user_id: string;

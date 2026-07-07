@@ -1,4 +1,4 @@
-﻿import {
+import {
   BellRing,
   Download,
   FileBarChart,
@@ -29,7 +29,7 @@ const quickActions = [
     iconColor: "text-blue-600",
   },
   {
-    label: "Exportar cuentas por cobrar",
+    label: "Exportar cobranzas",
     icon: Download,
     iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
@@ -53,12 +53,12 @@ export function CuentasPorCobrarRightPanel({
     { label: "Vencidas", balance: records.filter((r) => r.status === "Vencida").reduce((s, r) => s + r.balance, 0) },
   ].filter((bucket) => bucket.balance > 0);
 
-  const topClientes = [...records]
+  const topClientes = [...records
     .reduce((map, record) => {
       map.set(record.client, (map.get(record.client) ?? 0) + record.balance);
       return map;
     }, new Map<string, number>())
-    .entries()
+    .entries()]
     .map(([name, balance]) => ({ name, balance }))
     .sort((a, b) => b.balance - a.balance)
     .slice(0, 5)
@@ -82,7 +82,7 @@ export function CuentasPorCobrarRightPanel({
         <section>
           <h3 className="app-panel-title">Antigüedad de saldos</h3>
           {records.length === 0 ? (
-            <p className="mt-3 text-xs text-slate-500">Sin cuentas por cobrar registradas.</p>
+            <p className="mt-3 text-xs text-slate-500">Sin cobranzas registradas.</p>
           ) : (
             <div className="mt-4 flex items-center gap-4">
               <div className="relative h-28 w-28 shrink-0">

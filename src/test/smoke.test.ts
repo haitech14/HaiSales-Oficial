@@ -14,12 +14,13 @@ describe("calculateVentaTotals", () => {
 describe("roles", () => {
   it("normaliza roles desconocidos a admin", () => {
     expect(normalizeRole("otro")).toBe("admin");
-    expect(normalizeRole("vendedor")).toBe("vendedor");
+    expect(normalizeRole("vendedor")).toBe("ventas");
+    expect(normalizeRole("contador")).toBe("tecnico");
   });
 
-  it("oculta módulos administrativos para vendedor", () => {
-    expect(isHrefAllowedForRole("/app/contabilidad", "vendedor")).toBe(false);
-    expect(isHrefAllowedForRole("/app/ventas", "vendedor")).toBe(true);
+  it("oculta módulos administrativos para ventas", () => {
+    expect(isHrefAllowedForRole("/app/contabilidad", "ventas")).toBe(false);
+    expect(isHrefAllowedForRole("/app/ventas", "ventas")).toBe(true);
   });
 
   it("filtra secciones vacías tras RBAC", () => {
@@ -30,7 +31,7 @@ describe("roles", () => {
           items: [{ href: "/app/contabilidad" }, { href: "/app/ventas" }],
         },
       ],
-      "vendedor",
+      "ventas",
     );
     expect(sections[0].items).toHaveLength(1);
     expect(sections[0].items[0].href).toBe("/app/ventas");

@@ -11,6 +11,11 @@ export type UsuarioRecord = {
   sede: string;
   estado: UsuarioEstado;
   has2fa: boolean;
+  telefono?: string;
+  sedeId?: string;
+  cargo?: string;
+  usuarioInterno?: string;
+  autenticacion2fa?: string;
 };
 
 export const usuariosKpis = [
@@ -26,7 +31,7 @@ export const usuariosKpis = [
   },
   {
     label: "Roles",
-    value: "12",
+    value: "3",
     change: "+1 vs. mes anterior",
     changePositive: true,
     sparkColor: "#a855f7",
@@ -76,7 +81,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-violet-100",
     avatarColor: "text-violet-700",
     correo: "ana.martinez@haisales.pe",
-    rol: "Gerente Comercial",
+    rol: "Ventas",
     sede: "Lima Surco",
     estado: "Activo",
     has2fa: true,
@@ -88,7 +93,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-emerald-100",
     avatarColor: "text-emerald-700",
     correo: "maria.gomez@haisales.pe",
-    rol: "Contador",
+    rol: "Tecnico",
     sede: "Lima Centro",
     estado: "Activo",
     has2fa: true,
@@ -100,7 +105,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-orange-100",
     avatarColor: "text-orange-700",
     correo: "juan.campos@haisales.pe",
-    rol: "Vendedor",
+    rol: "Ventas",
     sede: "Arequipa",
     estado: "Activo",
     has2fa: false,
@@ -112,7 +117,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-cyan-100",
     avatarColor: "text-cyan-700",
     correo: "carlos.vargas@haisales.pe",
-    rol: "Almacenero",
+    rol: "Tecnico",
     sede: "Callao",
     estado: "Invitado",
     has2fa: false,
@@ -124,7 +129,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-pink-100",
     avatarColor: "text-pink-700",
     correo: "veronica.salas@haisales.pe",
-    rol: "Analista RR.HH.",
+    rol: "Tecnico",
     sede: "Lima Surco",
     estado: "Activo",
     has2fa: true,
@@ -136,7 +141,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-indigo-100",
     avatarColor: "text-indigo-700",
     correo: "roberto.diaz@haisales.pe",
-    rol: "Supervisor Logística",
+    rol: "Tecnico",
     sede: "Trujillo",
     estado: "Activo",
     has2fa: true,
@@ -148,7 +153,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-amber-100",
     avatarColor: "text-amber-700",
     correo: "patricia.rios@haisales.pe",
-    rol: "Ejecutiva de Ventas",
+    rol: "Ventas",
     sede: "Lima Centro",
     estado: "Invitado",
     has2fa: false,
@@ -160,7 +165,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-red-100",
     avatarColor: "text-red-700",
     correo: "luis.mendoza@haisales.pe",
-    rol: "Operador",
+    rol: "Tecnico",
     sede: "Piura",
     estado: "Inactivo",
     has2fa: false,
@@ -172,7 +177,7 @@ export const usuarios: UsuarioRecord[] = [
     avatarBg: "bg-teal-100",
     avatarColor: "text-teal-700",
     correo: "carmen.delgado@haisales.pe",
-    rol: "Asistente Administrativa",
+    rol: "Tecnico",
     sede: "Lima Surco",
     estado: "Activo",
     has2fa: true,
@@ -181,11 +186,8 @@ export const usuarios: UsuarioRecord[] = [
 
 export const usuariosPorRol = [
   { label: "Administrador", count: 12, percent: 25, color: "#3b82f6" },
-  { label: "Gerente", count: 10, percent: 21, color: "#a855f7" },
-  { label: "Contador", count: 8, percent: 17, color: "#22c55e" },
-  { label: "Vendedor", count: 7, percent: 15, color: "#f97316" },
-  { label: "Almacenero", count: 6, percent: 12, color: "#06b6d4" },
-  { label: "Otros", count: 5, percent: 10, color: "#94a3b8" },
+  { label: "Ventas", count: 17, percent: 35, color: "#f97316" },
+  { label: "Tecnico", count: 19, percent: 40, color: "#22c55e" },
 ];
 
 export const actividadReciente = [
@@ -201,25 +203,9 @@ export const alertasSeguridad = [
   { label: "1 sesión expirada por inactividad", color: "bg-amber-400", width: "33%" },
 ];
 
-export const usuarioSedes = [
-  "Lima Centro",
-  "Lima Surco",
-  "Callao",
-  "Arequipa",
-  "Trujillo",
-  "Piura",
-];
+import { USER_ROLE_OPTIONS } from "@/lib/auth/roles";
 
-export const usuarioRoles = [
-  "Administrador",
-  "Gerente Comercial",
-  "Contador",
-  "Vendedor",
-  "Almacenero",
-  "Analista RR.HH.",
-  "Supervisor Logística",
-  "Operador",
-];
+export const usuarioRoles = USER_ROLE_OPTIONS;
 
 export const usuarioPermisosEspeciales = [
   "Aprobación de compras",

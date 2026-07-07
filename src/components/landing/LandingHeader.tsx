@@ -18,7 +18,7 @@ export function LandingHeader() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#050816]/90 backdrop-blur-xl">
       <div className="mx-auto grid h-[72px] w-full max-w-[90rem] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6 lg:px-10 xl:px-12">
-        <HaiSalesLogo variant="landing" />
+        <HaiSalesLogo variant="landing" theme="onDark" imageClassName="h-11 w-auto max-w-[220px]" />
 
         <nav className="hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
@@ -64,7 +64,7 @@ export function LandingHeader() {
             <SheetContent side="right" className="border-white/10 bg-[#050816] text-white">
               <SheetHeader>
                 <SheetTitle className="text-left text-white">
-                  <HaiSalesLogo variant="landing" />
+                  <HaiSalesLogo variant="landing" theme="onDark" imageClassName="h-11 w-auto max-w-[220px]" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="mt-8 flex flex-col gap-1">

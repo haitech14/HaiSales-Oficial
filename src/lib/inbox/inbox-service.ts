@@ -54,26 +54,8 @@ function buildSnapshotWithSource(
   conversations: InboxConversation[],
   source: "supabase" | "mock",
 ): InboxDataSnapshot {
-  const base = buildInboxSnapshot(conversations);
-
-  const openCount = conversations.filter((c) => c.status === "activa").length;
-  const newLeads = conversations.filter((c) => c.stage === "nuevo").length;
-
-  const kpis = base.kpis.map((kpi, index) => {
-    if (index === 0) return { ...kpi, value: String(openCount || kpi.value) };
-    if (index === 1) return { ...kpi, value: String(newLeads || kpi.value) };
-    return kpi;
-  });
-
-  const stageStats = base.stageStats.map((stat) => ({
-    ...stat,
-    count: conversations.filter((c) => c.stage === stat.stage).length || stat.count,
-  }));
-
   return {
-    ...base,
-    kpis,
-    stageStats,
+    ...buildInboxSnapshot(conversations),
     source,
   };
 }

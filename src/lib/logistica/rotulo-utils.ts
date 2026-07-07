@@ -6,8 +6,10 @@ export type RotuloEnvioData = {
   destinatario: string;
   ruc: string;
   contacto: string;
+  dni: string;
   telefono: string;
   direccion: string;
+  ciudad: string;
   sucursal: string;
   conductor: string;
   placa: string;
@@ -103,15 +105,38 @@ export function splitEmbeddedDni(value: string): { contacto: string; dni: string
   return { contacto: trimmed, dni: "—" };
 }
 
+export function splitDireccionYCiudad(direccion: string): { direccionCalle: string; ciudad: string } {
+  if (!direccion || direccion === "—") {
+    return { direccionCalle: "—", ciudad: "—" };
+  }
+
+  const parts = direccion.split(/\s*-\s*/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) {
+    return { direccionCalle: "—", ciudad: "—" };
+  }
+  if (parts.length === 1) {
+    return { direccionCalle: parts[0], ciudad: "—" };
+  }
+
+  return {
+    direccionCalle: parts[0],
+    ciudad: parts[parts.length - 1],
+  };
+}
+
 export function buildRotuloEnvioData(guia: GuiaRemision): RotuloEnvioData {
+  const { direccionCalle, ciudad } = splitDireccionYCiudad(guia.direccionDestino);
+
   return {
     codigoGuia: guia.codigoGuia,
     fecha: guia.fecha,
     destinatario: guia.destinatario,
     ruc: guia.ruc,
     contacto: guia.contacto,
+    dni: guia.dni,
     telefono: guia.telefono,
-    direccion: guia.direccionDestino,
+    direccion: direccionCalle,
+    ciudad,
     sucursal: guia.sucursal,
     conductor: guia.conductor,
     placa: guia.placa ?? "—",
@@ -232,8 +257,10 @@ export function buildRotuloPlainText(data: RotuloEnvioData): string {
     data.destinatario,
     `RUC: ${data.ruc}`,
     `Contacto: ${data.contacto}`,
+    `DNI: ${data.dni}`,
     `Teléfono: ${data.telefono}`,
     `Dirección: ${data.direccion}`,
+    data.ciudad !== "—" ? `Ciudad: ${data.ciudad}` : "",
     "",
     "DATOS DEL ENVÍO",
     `Guía: ${data.codigoGuia}`,

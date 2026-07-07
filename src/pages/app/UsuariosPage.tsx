@@ -2,12 +2,10 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Loader2,
   MoreHorizontal,
+  Pencil,
   RefreshCw,
   Search,
   Shield,
@@ -22,11 +20,16 @@ import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { NuevoUsuarioModal } from "@/components/app/NuevoUsuarioModal";
 import { UsuariosRightPanel } from "@/components/app/UsuariosRightPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useUsuarios } from "@/hooks/useUsuarios";
+import type { UsuarioRecord } from "@/lib/usuarios-mock-data";
 import { getUsuarioEstadoStyles } from "@/lib/usuarios/usuarios-service";
 import { cn } from "@/lib/utils";
-
 const kpiIcons = [UserRound, Users, Shield, AlertTriangle];
 
 export default function UsuariosPage() {
@@ -38,23 +41,45 @@ export default function UsuariosPage() {
     isLoading,
     isFetching,
     refresh,
+    submitNewUsuario,
+    submitUpdateUsuario,
+    isCreatingUsuario,
+    isUpdatingUsuario,
   } = useUsuarios();
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
-  const [nuevoUsuarioOpen, setNuevoUsuarioOpen] = useState(false);
+  const [usuarioModalOpen, setUsuarioModalOpen] = useState(false);
+  const [editingUsuario, setEditingUsuario] = useState<UsuarioRecord | null>(null);
+
+  const openCreateModal = () => {
+    setEditingUsuario(null);
+    setUsuarioModalOpen(true);
+  };
+
+  const openEditModal = (usuario: UsuarioRecord) => {
+    setEditingUsuario(usuario);
+    setUsuarioModalOpen(true);
+  };
+
+  const handleModalOpenChange = (open: boolean) => {
+    setUsuarioModalOpen(open);
+    if (!open) {
+      setEditingUsuario(null);
+    }
+  };
 
   const totalRecords = snapshot?.totalRecords ?? filteredUsers.length;
 
   return (
     <div className="flex min-h-screen flex-col">
       <AppPageHeader
-        title="Usuarios, Roles y Permisos"
+        title="Usuarios/Planillas"
         subtitle="Administra accesos, roles, permisos, sucursales, seguridad e historial de actividad."
         showPanelToggle
         panelHidden={!isPanelVisible}
         onTogglePanel={togglePanel}
         actionLabel="Nuevo usuario"
         showActionDropdown
-        onActionClick={() => setNuevoUsuarioOpen(true)}
+        onActionClick={openCreateModal}
       />
 
       {snapshot?.source === "supabase" && (
@@ -63,7 +88,14 @@ export default function UsuariosPage() {
         </div>
       )}
 
-      <NuevoUsuarioModal open={nuevoUsuarioOpen} onOpenChange={setNuevoUsuarioOpen} />
+      <NuevoUsuarioModal
+        open={usuarioModalOpen}
+        onOpenChange={handleModalOpenChange}
+        usuarioToEdit={editingUsuario}
+        onSubmit={submitNewUsuario}
+        onUpdate={submitUpdateUsuario}
+        isSubmitting={isCreatingUsuario || isUpdatingUsuario}
+      />
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
@@ -199,13 +231,26 @@ export default function UsuariosPage() {
                           )}
                         </td>
                         <td className="app-table-cell text-right">
-                          <button
-                            type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            aria-label="Más acciones"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                aria-label="Más acciones"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={() => openEditModal(usuario)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     )))}

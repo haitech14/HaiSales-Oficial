@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const legacyImportCompletedUsers = new Set<string>();
+const legacyImportInFlight = new Map<string, Promise<void>>();
+
 export function normalizeFechaIso(value: string | null | undefined): string {
   if (!value) return "";
   const trimmed = value.trim();
@@ -16,7 +19,7 @@ export function resolvePeriodMonth(fecha: string, notas?: string | null): string
   return extractPeriodMonthFromNotas(notas) ?? normalizeFechaIso(fecha).slice(0, 7);
 }
 
-export async function ensureVentasImported(userId: string): Promise<void> {
+async function runVentasLegacyImport(userId: string): Promise<void> {
   const { count, error } = await supabase
     .from("ventas")
     .select("*", { count: "exact", head: true })
@@ -35,12 +38,47 @@ export async function ensureVentasImported(userId: string): Promise<void> {
     }
   }
 
-  const { error: itemsError } = await supabase.rpc("import_venta_items_legacy_for_user", {
-    p_user_id: userId,
-  });
-  if (itemsError) {
-    console.warn("[ventas] Import ítems legacy:", itemsError.message);
+  const { count: itemCount, error: itemCountError } = await supabase
+    .from("venta_items")
+    .select("id, ventas!inner(user_id)", { count: "exact", head: true })
+    .eq("ventas.user_id", userId);
+
+  if (itemCountError) {
+    console.warn("[ventas] Conteo venta_items:", itemCountError.message);
   }
+
+  if ((itemCount ?? 0) === 0) {
+    const { error: itemsError } = await supabase.rpc("import_venta_items_legacy_for_user", {
+      p_user_id: userId,
+    });
+    if (itemsError) {
+      console.warn("[ventas] Import ítems legacy:", itemsError.message);
+    }
+  }
+}
+
+export async function ensureVentasImported(userId: string): Promise<void> {
+  if (legacyImportCompletedUsers.has(userId)) return;
+
+  const inFlight = legacyImportInFlight.get(userId);
+  if (inFlight) {
+    await inFlight;
+    return;
+  }
+
+  const task = runVentasLegacyImport(userId).finally(() => {
+    legacyImportCompletedUsers.add(userId);
+    legacyImportInFlight.delete(userId);
+  });
+
+  legacyImportInFlight.set(userId, task);
+  await task;
+}
+
+/** Importación legacy en segundo plano; no bloquea la UI. */
+export function scheduleVentasLegacyImport(userId: string): void {
+  if (legacyImportCompletedUsers.has(userId) || legacyImportInFlight.has(userId)) return;
+  void ensureVentasImported(userId);
 }
 
 export async function fetchAvailableVentaMonths(userId: string): Promise<string[]> {

@@ -44,13 +44,24 @@ export default function InboxPage() {
     [countsByChannel],
   );
 
-  const filterTabs = useMemo(
-    () =>
-      inboxViewTabs.map((tab) =>
-        tab.id === "team-chat" ? { ...tab, count: teamChatTotal } : tab,
-      ),
-    [teamChatTotal],
-  );
+  const filterTabs = useMemo(() => {
+    const conversations = snapshot?.conversations ?? [];
+    return inboxViewTabs.map((tab) => {
+      if (tab.id === "all") {
+        return { ...tab, count: conversations.length };
+      }
+      if (tab.id === "unread") {
+        return { ...tab, count: conversations.filter((item) => !item.isRead).length };
+      }
+      if (tab.id === "team-chat") {
+        return { ...tab, count: teamChatTotal };
+      }
+      return {
+        ...tab,
+        count: conversations.filter((item) => item.channel === tab.id).length,
+      };
+    });
+  }, [snapshot?.conversations, teamChatTotal]);
 
   const updateFilter = <K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -146,35 +157,42 @@ export default function InboxPage() {
         </div>
       )}
 
-      <InboxFilterBar
-        tabs={filterTabs}
-        activeView={filters.view}
-        onViewChange={(view: InboxViewFilter) => updateFilter("view", view)}
-      />
-
-      {showWhatsAppSelector && (
-        <WhatsAppNumberSelector
-          connections={whatsappConnections}
-          value={whatsappConnectionFilter}
-          onChange={setWhatsappConnectionFilter}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <InboxFilterBar
+          tabs={filterTabs}
+          activeView={filters.view}
+          onViewChange={(view: InboxViewFilter) => updateFilter("view", view)}
         />
-      )}
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {isTeamChatView ? (
-          <InboxTeamChatView activeChannel={teamChatChannel} onChannelChange={setTeamChatChannel} />
-        ) : (
-          <InboxMessengerView
-            conversations={filteredConversations}
-            search={filters.search}
-            onSearchChange={(search) => updateFilter("search", search)}
-            activeView={filters.view}
-            contactPanelHidden={contactPanelHidden}
-            useLiveWhatsApp={hasWhatsAppConnected}
-            showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasWhatsAppConnected}
-            onMessageSent={invalidate}
-          />
-        )}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {showWhatsAppSelector && (
+            <WhatsAppNumberSelector
+              connections={whatsappConnections}
+              value={whatsappConnectionFilter}
+              onChange={setWhatsappConnectionFilter}
+            />
+          )}
+
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {isTeamChatView ? (
+              <InboxTeamChatView
+                activeChannel={teamChatChannel}
+                onChannelChange={setTeamChatChannel}
+              />
+            ) : (
+              <InboxMessengerView
+                conversations={filteredConversations}
+                search={filters.search}
+                onSearchChange={(search) => updateFilter("search", search)}
+                activeView={filters.view}
+                contactPanelHidden={contactPanelHidden}
+                useLiveWhatsApp={hasWhatsAppConnected}
+                showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasWhatsAppConnected}
+                onMessageSent={invalidate}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       <NuevaCampanaWhatsAppModal open={campanaOpen} onOpenChange={setCampanaOpen} />

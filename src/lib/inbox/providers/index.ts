@@ -1,6 +1,6 @@
 import type { InboxChannel, InboxConversation, InboxSnapshot } from "../types";
 import type { InboxProvider, InboxProviderConfig } from "./types";
-import { getMockConversationsByChannel } from "../mock-data";
+import { withRealKpi } from "@/lib/kpi-utils";
 
 function createStubProvider(channel: InboxChannel): InboxProvider {
   let config: InboxProviderConfig = {};
@@ -17,7 +17,7 @@ function createStubProvider(channel: InboxChannel): InboxProvider {
       config = {};
     },
     async syncConversations() {
-      return getMockConversationsByChannel(channel);
+      return [];
     },
     async sendMessage(conversationExternalId, body) {
       if (!this.isConfigured()) {
@@ -43,68 +43,84 @@ export function getAllInboxProviders(): InboxProvider[] {
 }
 
 export async function syncAllInboxProviders(): Promise<InboxConversation[]> {
-  const batches = await Promise.all(providers.map((provider) => provider.syncConversations()));
-  return batches
-    .flat()
-    .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+  return [];
 }
 
+const STAGE_META = [
+  { stage: "nuevo" as const, label: "Nuevos", color: "#38bdf8" },
+  { stage: "seguimiento" as const, label: "En seguimiento", color: "#3b82f6" },
+  { stage: "cotizado" as const, label: "Cotizados", color: "#8b5cf6" },
+  { stage: "cerrado" as const, label: "Cerrados", color: "#22c55e" },
+  { stage: "perdido" as const, label: "Perdidos", color: "#f43f5e" },
+];
+
+const KPI_TEMPLATES = [
+  {
+    label: "Conversaciones abiertas",
+    value: "0",
+    change: "Sin datos en el periodo",
+    sparkColor: "#22c55e",
+    sparkPoints: [0],
+  },
+  {
+    label: "Leads nuevos",
+    value: "0",
+    change: "Sin datos en el periodo",
+    sparkColor: "#8b5cf6",
+    sparkPoints: [0],
+  },
+  {
+    label: "Respuesta promedio",
+    value: "—",
+    change: "Sin datos en el periodo",
+    sparkColor: "#f97316",
+    sparkPoints: [0],
+  },
+  {
+    label: "Conversión a venta",
+    value: "0%",
+    change: "Sin datos en el periodo",
+    sparkColor: "#3b82f6",
+    sparkPoints: [0],
+  },
+];
+
 export function buildInboxSnapshot(conversations: InboxConversation[]): InboxSnapshot {
-  const stageStats = [
-    { stage: "nuevo" as const, label: "Nuevos", count: 32, color: "#38bdf8" },
-    { stage: "seguimiento" as const, label: "En seguimiento", count: 28, color: "#3b82f6" },
-    { stage: "cotizado" as const, label: "Cotizados", count: 18, color: "#8b5cf6" },
-    { stage: "cerrado" as const, label: "Cerrados", count: 12, color: "#22c55e" },
-    { stage: "perdido" as const, label: "Perdidos", count: 8, color: "#f43f5e" },
-  ];
+  const openCount = conversations.filter((conversation) => conversation.status === "activa").length;
+  const newLeads = conversations.filter((conversation) => conversation.stage === "nuevo").length;
+  const unanswered = conversations.filter(
+    (conversation) => conversation.status === "activa" && !conversation.isRead,
+  ).length;
+  const waitingCustomer = conversations.filter(
+    (conversation) => conversation.status === "activa" && conversation.stage === "seguimiento",
+  ).length;
+  const assigned = conversations.filter((conversation) => conversation.isAssigned).length;
+
+  const stageStats = STAGE_META.map((meta) => ({
+    ...meta,
+    count: conversations.filter((conversation) => conversation.stage === meta.stage).length,
+  }));
+
+  const kpis = KPI_TEMPLATES.map((kpi, index) => {
+    if (index === 0) return withRealKpi(kpi, String(openCount));
+    if (index === 1) return withRealKpi(kpi, String(newLeads));
+    if (index === 2) {
+      return conversations.length > 0
+        ? { ...kpi, value: "—", change: "Calculando..." }
+        : withRealKpi(kpi, "—");
+    }
+    return withRealKpi(kpi, conversations.length > 0 ? "0%" : "0%");
+  });
 
   return {
     conversations,
-    kpis: [
-      {
-        label: "Conversaciones abiertas",
-        value: "186",
-        change: "+12.5% vs. ayer",
-        changePositive: true,
-        sparkColor: "#22c55e",
-        sparkPoints: [142, 148, 151, 158, 162, 168, 172, 178, 182, 186],
-      },
-      {
-        label: "Leads nuevos",
-        value: "54",
-        change: "+8.0% vs. ayer",
-        changePositive: true,
-        sparkColor: "#8b5cf6",
-        sparkPoints: [38, 40, 42, 44, 46, 48, 50, 51, 53, 54],
-      },
-      {
-        label: "Respuesta promedio",
-        value: "3m 20s",
-        change: "-15% vs. ayer",
-        changePositive: true,
-        sparkColor: "#f97316",
-        sparkPoints: [280, 260, 250, 240, 230, 220, 210, 205, 202, 200],
-      },
-      {
-        label: "Conversión a venta",
-        value: "18.4%",
-        change: "+2.3% vs. ayer",
-        changePositive: true,
-        sparkColor: "#3b82f6",
-        sparkPoints: [14, 14.5, 15, 15.5, 16, 16.8, 17.2, 17.8, 18.1, 18.4],
-      },
-    ],
+    kpis,
     stageStats,
-    advisorStats: [
-      { name: "Laura Martínez", initials: "LM", responseRate: 94 },
-      { name: "Carlos Ruiz", initials: "CR", responseRate: 88 },
-      { name: "Ana Pérez", initials: "AP", responseRate: 82 },
-      { name: "Jorge Díaz", initials: "JD", responseRate: 76 },
-    ],
+    advisorStats: [],
     pending: {
-      unanswered: 42,
-      waitingCustomer: 27,
-      assigned: 16,
+      unanswered,
+      waitingCustomer,
+      assigned,
     },
     updatedAt: new Date().toISOString(),
   };

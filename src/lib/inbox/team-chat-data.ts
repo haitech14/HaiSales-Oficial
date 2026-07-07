@@ -35,58 +35,38 @@ export const teamChatChannels: Array<{
   },
 ];
 
-const seedMessages: TeamChatMessage[] = [
-  {
-    id: "tc-ventas-1",
-    channel: "ventas",
-    authorName: "Ana Pérez",
-    authorInitials: "AP",
-    body: "¿Alguien puede confirmar stock del modelo Oslo antes de la reunión de las 3pm?",
-    sentAt: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
-  },
-  {
-    id: "tc-ventas-2",
-    channel: "ventas",
-    authorName: "Carlos Ruiz",
-    authorInitials: "CR",
-    body: "Sí, hay 12 unidades en almacén central.",
-    sentAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-  },
-  {
-    id: "tc-soporte-1",
-    channel: "soporte",
-    authorName: "Laura Martínez",
-    authorInitials: "LM",
-    body: "Ticket #1842 resuelto. Era configuración de facturación en SUNAT.",
-    sentAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-  },
-  {
-    id: "tc-envios-1",
-    channel: "envios",
-    authorName: "Jorge Díaz",
-    authorInitials: "JD",
-    body: "Guía GR-2026-0412 salió con courier. ETA mañana 10am.",
-    sentAt: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
-  },
-];
+const DEMO_MESSAGE_IDS = new Set([
+  "tc-ventas-1",
+  "tc-ventas-2",
+  "tc-soporte-1",
+  "tc-envios-1",
+]);
+
+function withoutDemoMessages(messages: TeamChatMessage[]): TeamChatMessage[] {
+  return messages.filter((message) => !DEMO_MESSAGE_IDS.has(message.id));
+}
 
 function storageKey(userId: string) {
   return `haisales_team_chat_${userId}`;
 }
 
 export function loadTeamChatMessages(userId: string | undefined): TeamChatMessage[] {
-  if (!userId) return seedMessages;
+  if (!userId) return [];
 
   try {
     const raw = localStorage.getItem(storageKey(userId));
-    if (!raw) {
-      localStorage.setItem(storageKey(userId), JSON.stringify(seedMessages));
-      return seedMessages;
-    }
+    if (!raw) return [];
+
     const parsed = JSON.parse(raw) as TeamChatMessage[];
-    return Array.isArray(parsed) ? parsed : seedMessages;
+    if (!Array.isArray(parsed)) return [];
+
+    const cleaned = withoutDemoMessages(parsed);
+    if (cleaned.length !== parsed.length) {
+      saveTeamChatMessages(userId, cleaned);
+    }
+    return cleaned;
   } catch {
-    return seedMessages;
+    return [];
   }
 }
 

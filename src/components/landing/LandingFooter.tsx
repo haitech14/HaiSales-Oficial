@@ -101,7 +101,7 @@ export function LandingFooter() {
       <div className="border-t border-white/[0.06] px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-5 lg:gap-8">
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-            <HaiSalesLogo />
+            <HaiSalesLogo theme="onDark" imageClassName="h-11 w-auto max-w-[220px]" />
             <p className="mt-4 max-w-[220px] text-sm leading-relaxed text-slate-400">
               La plataforma de ventas, CRM y facturación electrónica para negocios de LATAM.
             </p>

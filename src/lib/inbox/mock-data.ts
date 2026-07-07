@@ -236,34 +236,12 @@ export const mockInboxMessages: InboxMessage[] = [
   },
 ];
 
-export function getMessagesForConversation(conversationId: string): InboxMessage[] {
-  const messages = mockInboxMessages.filter((m) => m.conversationId === conversationId);
-  if (messages.length > 0) return messages;
-
-  const conversation = mockInboxConversations.find((c) => c.id === conversationId);
-  if (!conversation) return [];
-
-  return [
-    {
-      id: `auto-${conversationId}`,
-      conversationId,
-      direction: "inbound",
-      body: conversation.lastMessage,
-      sentAt: conversation.lastMessageAt,
-    },
-    {
-      id: `reply-${conversationId}`,
-      conversationId,
-      direction: "outbound",
-      body: `Hola ${conversation.contact.name.split(" ")[0]}, gracias por escribirnos. Un asesor te atenderá en breve.`,
-      sentAt: conversation.lastMessageAt,
-      isAutoReply: true,
-    },
-  ];
+export function getMessagesForConversation(_conversationId: string): InboxMessage[] {
+  return [];
 }
 
-export function getMockConversationsByChannel(channel: InboxChannel): InboxConversation[] {
-  return mockInboxConversations.filter((conversation) => conversation.channel === channel);
+export function getMockConversationsByChannel(_channel: InboxChannel): InboxConversation[] {
+  return [];
 }
 
 export function filterInboxConversations(

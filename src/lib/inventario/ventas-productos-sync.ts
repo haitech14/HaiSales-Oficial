@@ -327,17 +327,7 @@ export async function syncVentasProductosKardex(
   summary.productosImportados = productosImport.count;
 
   await ensureVentasImported(userId);
-
-  const { data: rpcCount, error: rpcError } = await supabase.rpc(
-    "import_venta_items_legacy_for_user",
-    { p_user_id: userId },
-  );
-
-  if (!rpcError && typeof rpcCount === "number") {
-    summary.ventaItemsRpc = rpcCount;
-  } else if (rpcError) {
-    console.warn("[sync] import venta_items RPC:", rpcError.message);
-  }
+  summary.ventaItemsRpc = 0;
 
   const [productos, ventas] = await Promise.all([
     loadProductosIndex(userId),

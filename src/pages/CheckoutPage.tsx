@@ -53,7 +53,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-[#f4f6f9]">
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          <HaiSalesLogo href="/" imageClassName="h-8 max-w-[150px]" />
+          <HaiSalesLogo href="/" theme="onLight" />
           <Link
             to="/#planes"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900"

@@ -11,6 +11,11 @@ import { lazyWithRetry } from "@/lib/lazy-with-retry";
 const AppShell = lazyWithRetry(() =>
   import("@/components/layout/AppShell").then((module) => ({ default: module.AppShell })),
 );
+const ConfiguracionLayout = lazyWithRetry(() =>
+  import("@/components/layout/ConfiguracionLayout").then((module) => ({
+    default: module.ConfiguracionLayout,
+  })),
+);
 const CheckoutPage = lazyWithRetry(() => import("@/pages/CheckoutPage"));
 const Landing = lazyWithRetry(() => import("@/pages/Landing"));
 const Login = lazyWithRetry(() => import("@/pages/Login"));
@@ -26,7 +31,7 @@ const LogisticaPage = lazyWithRetry(() => import("@/pages/app/LogisticaPage"));
 const PipelinePage = lazyWithRetry(() => import("@/pages/app/PipelinePage"));
 const VentasPage = lazyWithRetry(() => import("@/pages/app/VentasPage"));
 const DashboardPage = lazyWithRetry(() => import("@/pages/app/DashboardPage"));
-const CajaBancosPage = lazyWithRetry(() => import("@/pages/app/CajaBancosPage"));
+const TesoreriaPage = lazyWithRetry(() => import("@/pages/app/TesoreriaPage"));
 const ContabilidadPage = lazyWithRetry(() => import("@/pages/app/ContabilidadPage"));
 const CuentasPorCobrarPage = lazyWithRetry(() => import("@/pages/app/CuentasPorCobrarPage"));
 const PlanillasPage = lazyWithRetry(() => import("@/pages/app/PlanillasPage"));
@@ -37,6 +42,7 @@ const PlanesMantenimientoSuministroPage = lazyWithRetry(() =>
   import("@/pages/app/PlanesMantenimientoSuministroPage"),
 );
 const ServiciosPage = lazyWithRetry(() => import("@/pages/app/ServiciosPage"));
+const AnunciosPage = lazyWithRetry(() => import("@/pages/app/AnunciosPage"));
 
 const placeholderRoutes: string[] = [];
 
@@ -66,11 +72,22 @@ export default function App() {
                   >
                     <Route index element={<AppIndexPage />} />
                     <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="anuncios" element={<AppPlaceholderPage />} />
+                    <Route path="anuncios" element={<AnunciosPage />} />
                     <Route path="modulo" element={<Navigate to="/app/anuncios" replace />} />
                     <Route path="reportes" element={<Navigate to="/app/dashboard?mode=reportes" replace />} />
-                    <Route path="tesoreria" element={<Navigate to="/app/caja-bancos" replace />} />
-                    <Route path="caja-bancos" element={<CajaBancosPage />} />
+                    <Route path="tesoreria" element={<TesoreriaPage />} />
+                    <Route
+                      path="caja-bancos"
+                      element={<Navigate to="/app/tesoreria" replace />}
+                    />
+                    <Route
+                      path="caja-chica"
+                      element={<Navigate to="/app/tesoreria?modulo=caja-chica" replace />}
+                    />
+                    <Route
+                      path="bancos"
+                      element={<Navigate to="/app/tesoreria?modulo=bancos" replace />}
+                    />
                     <Route path="inbox" element={<InboxPage />} />
                     <Route path="whatsapp-crm" element={<Navigate to="/app/inbox" replace />} />
                     <Route path="ventas-crm" element={<Navigate to="/app/pipeline" replace />} />
@@ -91,10 +108,12 @@ export default function App() {
                       element={<PlanesMantenimientoSuministroPage />}
                     />
                     <Route path="servicios" element={<ServiciosPage />} />
-                    <Route path="integraciones" element={<IntegracionesPage />} />
+                    <Route element={<ConfiguracionLayout />}>
+                      <Route path="integraciones" element={<IntegracionesPage />} />
+                      <Route path="parametros" element={<ParametrosPage />} />
+                    </Route>
                     <Route path="planillas" element={<PlanillasPage />} />
                     <Route path="usuarios" element={<UsuariosPage />} />
-                    <Route path="parametros" element={<ParametrosPage />} />
                     <Route path="cotizaciones" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="oportunidades" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="comprobantes" element={<Navigate to="/app/ventas" replace />} />

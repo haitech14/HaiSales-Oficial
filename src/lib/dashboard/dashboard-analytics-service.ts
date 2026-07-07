@@ -14,12 +14,11 @@ import {
 } from "@/lib/period-filter";
 import type { VentaRecord } from "@/lib/ventas-mock-data";
 import {
-  ensureVentasImported,
   normalizeFechaIso,
   resolvePeriodMonth,
+  scheduleVentasLegacyImport,
 } from "@/lib/ventas/ventas-period-utils";
 import { INGRESO_DISTRIBUCION_LABELS, mapDbTipoToDisplay } from "@/lib/ventas/comprobantes";
-import { syncVentasProductosKardex } from "@/lib/inventario/ventas-productos-sync";
 
 export type DonutSlice = { name: string; value: number; color: string };
 export type RankingRow = { name: string; value: number; participacion: number };
@@ -236,12 +235,12 @@ async function loadProductSalesForRange(
     return isIsoDateInRange(fechaIso, range) || isPeriodMonthInRange(periodMonth, range);
   });
 
-  const legacyLines = await loadLegacyProductSalesForRange(range);
-  if (legacyLines.length > 0) {
-    return legacyLines;
+  const ventaItemLines = await loadVentaItemProductSales(ventasInRange.map((row) => row.id));
+  if (ventaItemLines.length > 0) {
+    return ventaItemLines;
   }
 
-  return loadVentaItemProductSales(ventasInRange.map((row) => row.id));
+  return loadLegacyProductSalesForRange(range);
 }
 
 function formatPen(amount: number): string {
@@ -545,13 +544,7 @@ export async function fetchDashboardAnalytics(
     return emptyAnalytics(range);
   }
 
-  await ensureVentasImported(userId);
-
-  try {
-    await syncVentasProductosKardex(userId);
-  } catch (syncError) {
-    console.warn("[dashboard] Sync ventas/productos:", syncError);
-  }
+  scheduleVentasLegacyImport(userId);
 
   const [ventasRes, ordenesRes, cxcRes] = await Promise.all([
     supabase

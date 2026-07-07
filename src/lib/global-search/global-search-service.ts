@@ -87,11 +87,14 @@ function searchModules(query: string): GlobalSearchResult[] {
 
   const entries: Array<{ label: string; href: string; hint?: string }> = [
     { label: dashboardNavGroup.label, href: dashboardNavGroup.href ?? "/app/dashboard" },
-    ...appNavSections.flatMap((section) =>
-      section.items
+    ...appNavSections.flatMap((section) => [
+      ...section.items
         .filter((item) => item.href)
         .map((item) => ({ label: item.label, href: item.href! })),
-    ),
+      ...(section.groups?.flatMap((group) =>
+        group.items.map((item) => ({ label: item.label, href: item.href })),
+      ) ?? []),
+    ]),
   ];
 
   return entries

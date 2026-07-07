@@ -27,11 +27,165 @@ export interface PricingPlan {
   features: PlanFeature[];
 }
 
-const crmModule: PlanFeature = {
-  label: "Módulo CRM",
-  included: true,
-  subItems: ["Pipeline", "Inbox Mensajería"],
+type SystemModuleKey =
+  | "dashboard"
+  | "anuncios"
+  | "inbox"
+  | "crm"
+  | "clientes"
+  | "comprobantes"
+  | "cobranzas"
+  | "cajaChica"
+  | "bancos"
+  | "contabilidad"
+  | "inventario"
+  | "compras"
+  | "logistica"
+  | "almacenes"
+  | "servicios"
+  | "alquileres"
+  | "planesMantenimiento"
+  | "usuarios"
+  | "planillas";
+
+const systemModuleCatalog: Record<
+  SystemModuleKey,
+  { label: string; subItems?: string[] }
+> = {
+  dashboard: { label: "Módulo Dashboard", subItems: ["Resumen", "Reportes"] },
+  anuncios: { label: "Módulo Anuncios" },
+  inbox: { label: "Módulo Bandeja / Leads" },
+  crm: { label: "Módulo CRM", subItems: ["Pipeline"] },
+  clientes: { label: "Módulo Clientes / Empresas" },
+  comprobantes: { label: "Módulo Comprobantes" },
+  cobranzas: { label: "Módulo Cobranzas" },
+  cajaChica: { label: "Módulo Caja Chica" },
+  bancos: { label: "Módulo Bancos" },
+  contabilidad: { label: "Módulo Contabilidad" },
+  inventario: { label: "Módulo Productos / Inventario" },
+  compras: { label: "Módulo Compras" },
+  logistica: { label: "Módulo Guías de Remisión / Envíos" },
+  almacenes: { label: "Módulo Almacenes / Kardex" },
+  servicios: { label: "Módulo Servicios" },
+  alquileres: { label: "Módulo Alquileres" },
+  planesMantenimiento: {
+    label: "Módulo Planes de Mantenimiento y Suministro",
+  },
+  usuarios: { label: "Módulo Usuarios" },
+  planillas: { label: "Módulo Planillas" },
 };
+
+const moduleDisplayOrder: SystemModuleKey[] = [
+  "dashboard",
+  "anuncios",
+  "inbox",
+  "crm",
+  "clientes",
+  "comprobantes",
+  "cobranzas",
+  "cajaChica",
+  "bancos",
+  "contabilidad",
+  "planillas",
+  "inventario",
+  "compras",
+  "logistica",
+  "almacenes",
+  "servicios",
+  "alquileres",
+  "planesMantenimiento",
+  "usuarios",
+];
+
+const planModuleAccess: Record<PlanSlug, Set<SystemModuleKey>> = {
+  /** Emprendedor: operación básica para una sola persona. */
+  microempresa: new Set([
+    "dashboard",
+    "clientes",
+    "comprobantes",
+    "cobranzas",
+    "inventario",
+    "almacenes",
+    "usuarios",
+  ]),
+  /** Microempresa: equipo comercial pequeño con alquileres y operación ampliada. */
+  emprendedor: new Set([
+    "dashboard",
+    "inbox",
+    "crm",
+    "clientes",
+    "comprobantes",
+    "cobranzas",
+    "cajaChica",
+    "bancos",
+    "inventario",
+    "compras",
+    "logistica",
+    "almacenes",
+    "servicios",
+    "alquileres",
+    "usuarios",
+  ]),
+  /** Corporativo: todos los módulos del sistema. */
+  corporativo: new Set(Object.keys(systemModuleCatalog) as SystemModuleKey[]),
+};
+
+function buildModuleFeatures(slug: PlanSlug): PlanFeature[] {
+  const included = planModuleAccess[slug];
+  return moduleDisplayOrder.map((key) => ({
+    label: systemModuleCatalog[key].label,
+    subItems: systemModuleCatalog[key].subItems,
+    included: included.has(key),
+  }));
+}
+
+const corporateExtras: PlanFeature[] = [
+  { label: "WhatsApp Business integrado", included: true },
+  { label: "Integraciones API y webhooks", included: true },
+  { label: "Reportes consolidados multi-sede", included: true },
+  { label: "Onboarding y capacitación dedicada", included: true },
+];
+
+const baseLimits = {
+  microempresa: [
+    { label: "100 documentos / mes", included: true },
+    { label: "01 establecimiento", included: true },
+    { label: "01 almacén", included: true },
+    { label: "01 usuario", included: true },
+    { label: "1,000 productos", included: true },
+  ],
+  emprendedor: [
+    { label: "300 documentos / mes", included: true },
+    { label: "02 establecimientos", included: true },
+    { label: "02 almacenes", included: true },
+    { label: "04 usuarios", included: true },
+    { label: "5,000 productos", included: true },
+  ],
+  corporativo: [
+    { label: "Documentos ilimitados", included: true },
+    { label: "06 establecimientos", included: true },
+    { label: "06 almacenes", included: true },
+    { label: "08 usuarios", included: true },
+    { label: "Productos ilimitados", included: true },
+  ],
+} satisfies Record<PlanSlug, PlanFeature[]>;
+
+const planSupportLabel: Record<PlanSlug, string> = {
+  microempresa: "Asesoría por chat y correo",
+  emprendedor: "Soporte personalizado",
+  corporativo: "Soporte prioritario 24/7",
+};
+
+function buildPlanFeatures(slug: PlanSlug): PlanFeature[] {
+  return [
+    ...baseLimits[slug],
+    { label: "Certificado digital", included: true },
+    ...buildModuleFeatures(slug),
+    ...(slug === "corporativo" ? corporateExtras : []),
+    { label: "Web, Android, iOS", included: true },
+    { label: planSupportLabel[slug], included: true },
+  ];
+}
 
 export const billingOptions: { id: BillingCycle; label: string; discount: number }[] = [
   { id: "monthly", label: "Mensual", discount: 0 },
@@ -57,83 +211,40 @@ export function getCurrencyPrefix(currency: Currency) {
   return currency === "pen" ? "S/" : "USD";
 }
 
-const microempresaExtraModules: PlanFeature[] = [
-  {
-    label: "Módulo Contable",
-    included: true,
-    subItems: ["Planillas", "Asistencia"],
-  },
-  { label: "Módulo Alquileres", included: true },
-  { label: "Módulo Planes de Mantenimiento", included: true },
-  { label: "Módulo Planes de Suministros", included: true },
-];
-
 export const pricingPlans: PricingPlan[] = [
   {
     slug: "microempresa",
     name: "Emprendedor",
-    subtitle: "Ideal para empezar y organizar tu negocio",
+    subtitle: "Para emprendedores que operan solos",
     monthlyPricePen: 129,
     annualPricePen: 99,
     monthlyPriceUsd: 39,
     annualPriceUsd: 29,
     icon: Store,
-    features: [
-      { label: "100 documentos / mes", included: true },
-      { label: "01 establecimiento", included: true },
-      { label: "01 almacén", included: true },
-      { label: "02 usuarios", included: true },
-      { label: "1,000 productos", included: true },
-      { label: "Certificado digital", included: true },
-      crmModule,
-      { label: "Web, Android, iOS", included: true },
-      { label: "Asesoría personalizada", included: true },
-    ],
+    features: buildPlanFeatures("microempresa"),
   },
   {
     slug: "emprendedor",
     name: "Microempresa",
-    subtitle: "Para negocios en crecimiento que buscan más control",
+    subtitle: "Para equipos de hasta 4 usuarios con operación comercial",
     monthlyPricePen: 169,
     annualPricePen: 149,
     monthlyPriceUsd: 49,
     annualPriceUsd: 39,
     icon: Rocket,
     highlighted: true,
-    features: [
-      { label: "300 documentos / mes", included: true },
-      { label: "02 establecimientos", included: true },
-      { label: "02 almacenes", included: true },
-      { label: "04 usuarios", included: true },
-      { label: "5,000 productos", included: true },
-      { label: "Certificado digital", included: true },
-      crmModule,
-      ...microempresaExtraModules,
-      { label: "Web, Android, iOS", included: true },
-      { label: "Soporte personalizado", included: true },
-    ],
+    features: buildPlanFeatures("emprendedor"),
   },
   {
     slug: "corporativo",
     name: "Corporativo",
-    subtitle: "Para empresas que buscan escalar y soporte prioritario",
+    subtitle: "Para empresas en expansión con hasta 8 usuarios",
     monthlyPricePen: 239,
     annualPricePen: 199,
     monthlyPriceUsd: 69,
     annualPriceUsd: 59,
     icon: Building2,
-    features: [
-      { label: "Documentos ilimitados", included: true },
-      { label: "04 establecimientos", included: true },
-      { label: "04 almacenes", included: true },
-      { label: "08 usuarios", included: true },
-      { label: "10,000 productos", included: true },
-      { label: "Certificado digital", included: true },
-      crmModule,
-      ...microempresaExtraModules,
-      { label: "Web, Android, iOS", included: true },
-      { label: "Soporte personalizado", included: true },
-    ],
+    features: buildPlanFeatures("corporativo"),
   },
 ];
 
@@ -196,4 +307,8 @@ export function parseBillingCycle(value: string | null): BillingCycle {
 
 export function parseCurrency(value: string | null): Currency {
   return value === "usd" ? "usd" : "pen";
+}
+
+export function isModuleIncludedInPlan(slug: PlanSlug, moduleKey: SystemModuleKey) {
+  return planModuleAccess[slug].has(moduleKey);
 }

@@ -68,7 +68,7 @@ function buildSnapshot(items: IntegracionItem[], source: "supabase" | "mock"): I
 
 export async function fetchIntegracionesSnapshot(userId: string | null): Promise<IntegracionesSnapshot> {
   if (!userId) {
-    return buildSnapshot(catalogIntegraciones, "mock");
+    return buildSnapshot(catalogIntegraciones, "supabase");
   }
 
   const { data, error } = await supabase

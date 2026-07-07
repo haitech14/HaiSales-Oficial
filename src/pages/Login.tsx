@@ -74,12 +74,9 @@ function LoginPromoPanel() {
   return (
     <aside className="relative hidden min-h-screen flex-col justify-center lg:flex lg:w-[54%] xl:w-[56%]">
       <div className="relative z-10 flex w-full max-w-[600px] flex-col px-10 py-12 lg:ml-12 lg:pl-24 lg:pr-6 xl:ml-16 xl:pl-28 xl:pr-8">
-        <HaiSalesLogo
-          href="/"
-          imageClassName="h-11 w-auto max-w-[260px] object-contain object-left brightness-110"
-        />
+        <HaiSalesLogo href="/" theme="onDark" imageClassName="h-11 w-auto max-w-[240px]" />
         <p className="mt-2 text-sm text-slate-300">
-          Desarrollado por <span className="font-semibold text-white">HAITECH</span> | ERP
+          Plataforma ERP y CRM para negocios en LATAM
         </p>
 
         <div className="mt-10">
@@ -199,13 +196,9 @@ function LoginFormPanel() {
     <main className="flex min-h-screen w-full flex-col items-center justify-center px-5 py-10 sm:px-8 lg:w-[46%] lg:max-w-none lg:px-10 lg:pr-12 xl:pr-16">
       <div className="w-full max-w-[420px]">
         <div className="mb-8 flex flex-col items-center lg:hidden">
-          <HaiSalesLogo
-            href="/"
-            className="justify-center"
-            imageClassName="h-10 w-auto max-w-[220px] object-contain object-center"
-          />
-          <p className="mt-2 text-center text-xs text-slate-600">
-            Desarrollado por <span className="font-semibold text-slate-800">HAITECH</span> | ERP
+          <HaiSalesLogo href="/" theme="onLight" className="justify-center" />
+          <p className="mt-2 text-center text-xs text-slate-500">
+            Plataforma ERP y CRM para negocios en LATAM
           </p>
         </div>
 

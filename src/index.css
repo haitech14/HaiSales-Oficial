@@ -199,23 +199,23 @@
   }
 
   .app-sidebar-section {
-    @apply mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
+    @apply mb-1.5 px-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500;
   }
 
   .app-sidebar-link {
-    @apply flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs leading-tight transition;
+    @apply flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm leading-snug transition;
   }
 
   .app-sidebar-label {
-    @apply min-w-0 flex-1 text-left leading-tight;
+    @apply min-w-0 flex-1 text-left leading-snug;
   }
 
   .app-sidebar-badge {
-    @apply ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums;
+    @apply ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold leading-none tabular-nums;
   }
 
   .app-sidebar-sublink {
-    @apply flex w-full items-center rounded-lg px-2 py-1.5 text-[11px] leading-tight transition;
+    @apply flex w-full items-center rounded-lg px-2.5 py-2 text-xs leading-snug transition;
   }
 }
 

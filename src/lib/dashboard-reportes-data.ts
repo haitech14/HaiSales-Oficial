@@ -140,7 +140,7 @@ export const dashboardReports: DashboardReport[] = [
   },
   {
     id: "rep-005",
-    name: "Cuentas por cobrar",
+    name: "Cobranzas",
     category: "financiero",
     description: "Antigüedad de saldos, clientes morosos y proyección de cobranza.",
     lastRun: "14/03/2026 16:20",

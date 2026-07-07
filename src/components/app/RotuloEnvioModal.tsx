@@ -7,9 +7,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { buildRotuloEnvioData, buildRotuloPlainText } from "@/lib/logistica/rotulo-utils";
-import { buildEnvioWhatsAppCopyText } from "@/lib/logistica/guias-service";
+import { buildRotuloEnvioData, buildRotuloPlainText, buildEnvioWhatsAppFromGuia } from "@/lib/logistica/rotulo-utils";
+import { fetchPedidoLinesForGuia } from "@/lib/logistica/guias-service";
 import type { GuiaRemision } from "@/lib/logistica/types";
+import { copyTextToClipboard, withTimeout } from "@/lib/clipboard";
 import {
   configToRotuloRemitente,
   defaultRotuloRemitente,
@@ -24,7 +25,7 @@ import { toast } from "sonner";
 const FORMAT_OPTIONS: { id: RotuloPdfFormat; label: string; hint: string }[] = [
   { id: "a4", label: "A4", hint: "Horizontal" },
   { id: "a5", label: "A5", hint: "Horizontal" },
-  { id: "ticket", label: "Ticket", hint: "80 mm" },
+  { id: "ticket", label: "Ticket", hint: "80 mm vertical" },
 ];
 
 type RotuloEnvioModalProps = {
@@ -97,10 +98,15 @@ export function RotuloEnvioModal({ guia, open, userId, onOpenChange }: RotuloEnv
     if (!guia) return;
     setIsCopying(true);
     try {
-      const text = userId
-        ? await buildEnvioWhatsAppCopyText(userId, guia)
-        : buildRotuloPlainText(buildRotuloEnvioData(guia));
-      await navigator.clipboard.writeText(text);
+      const rotuloData = buildRotuloEnvioData(guia);
+      let text = buildRotuloPlainText(rotuloData);
+
+      if (userId) {
+        const pedidoLines = await withTimeout(fetchPedidoLinesForGuia(userId, guia), 2500, []);
+        text = buildEnvioWhatsAppFromGuia(guia, pedidoLines);
+      }
+
+      await copyTextToClipboard(text);
       toast.success("Datos de envío copiados al portapapeles");
     } catch {
       toast.error("No se pudo copiar los datos de envío");
@@ -240,9 +246,19 @@ export function RotuloEnvioModal({ guia, open, userId, onOpenChange }: RotuloEnv
               ))}
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+            <div
+              className={cn(
+                "overflow-hidden rounded-xl border border-slate-200 bg-slate-100",
+                pdfFormat === "ticket" && "flex justify-center bg-slate-200/80 p-3",
+              )}
+            >
               {isLoading ? (
-                <div className="flex h-[520px] items-center justify-center gap-2 text-sm text-slate-500">
+                <div
+                  className={cn(
+                    "flex items-center justify-center gap-2 text-sm text-slate-500",
+                    pdfFormat === "ticket" ? "h-[520px] w-[302px] bg-white" : "h-[520px] w-full",
+                  )}
+                >
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Generando vista previa PDF...
                 </div>
@@ -250,10 +266,20 @@ export function RotuloEnvioModal({ guia, open, userId, onOpenChange }: RotuloEnv
                 <iframe
                   title={`Rótulo ${guia?.codigoGuia ?? ""}`}
                   src={pdfUrl}
-                  className="h-[520px] w-full bg-white"
+                  className={cn(
+                    "bg-white",
+                    pdfFormat === "ticket"
+                      ? "h-[520px] w-[302px] max-w-full border border-slate-300 shadow-sm"
+                      : "h-[520px] w-full",
+                  )}
                 />
               ) : (
-                <div className="flex h-[520px] items-center justify-center text-sm text-slate-500">
+                <div
+                  className={cn(
+                    "flex items-center justify-center text-sm text-slate-500",
+                    pdfFormat === "ticket" ? "h-[520px] w-[302px] bg-white" : "h-[520px] w-full",
+                  )}
+                >
                   No hay vista previa disponible
                 </div>
               )}

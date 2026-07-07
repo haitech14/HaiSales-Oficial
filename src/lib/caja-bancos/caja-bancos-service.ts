@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { withRealKpi } from "@/lib/kpi-utils";
 import {
   cajaBancosKpis as staticKpis,
   cajaBancosTabs,
@@ -6,14 +7,6 @@ import {
   type MovimientoEstado,
   type MovimientoTipo,
 } from "@/lib/caja-bancos-mock-data";
-import { withRealKpi } from "@/lib/kpi-utils";
-
-type CuentaRow = {
-  id: string;
-  nombre: string;
-  numero_cuenta: string | null;
-  saldo_actual: number;
-};
 
 type MovimientoRow = {
   id: string;
@@ -32,61 +25,62 @@ type MovimientoRow = {
   cuentas_tesoreria?: { nombre: string; numero_cuenta: string | null } | null;
 };
 
-export type CajaBancosFlowItem = {
-  label: string;
-  percent: number;
-  color: string;
-  amount: number;
-};
-
-export type CajaBancosBankBalance = {
-  name: string;
-  number: string;
-  balance: number;
-  percent: number;
-};
-
-export type CajaBancosAlert = {
-  label: string;
-  color: string;
-};
-
 export type CajaBancosSnapshot = {
   records: CajaBancosRecord[];
   kpis: typeof staticKpis;
-  tabCounts: Record<string, number | null>;
-  flowByAccount: CajaBancosFlowItem[];
-  bankBalances: CajaBancosBankBalance[];
-  alerts: CajaBancosAlert[];
+  tabCounts: Record<string, number>;
+  movimientosPorBanco: { bank: string; count: number }[];
+  conciliacionMensual: { month: string; conciliados: number; pendientes: number }[];
+  cuentasMayorSaldo: { account: string; balance: number }[];
   totalRecords: number;
-  source: "supabase" | "mock";
+  source: "supabase";
 };
 
 function formatDateParts(fecha: string, hora: string) {
   const date = new Date(`${fecha}T${hora}`);
-  return {
-    date: date.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" }),
-    time: date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", hour12: false }),
-  };
+  return date.toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatCurrency(amount: number) {
+  return `S/ ${amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function inferBank(cuentaName: string): { bank: string; initials: string; color: string } {
+  const lower = cuentaName.toLowerCase();
+  if (lower.includes("bcp")) return { bank: "BCP", initials: "BCP", color: "bg-blue-600" };
+  if (lower.includes("bbva")) return { bank: "BBVA", initials: "BBV", color: "bg-blue-700" };
+  if (lower.includes("interbank")) return { bank: "Interbank", initials: "IBK", color: "bg-emerald-600" };
+  if (lower.includes("scotiabank")) return { bank: "Scotiabank", initials: "SCT", color: "bg-red-600" };
+  return { bank: "Otros", initials: "BNK", color: "bg-slate-500" };
 }
 
 function mapRowToRecord(row: MovimientoRow): CajaBancosRecord {
-  const { date, time } = formatDateParts(row.fecha, row.hora);
-  const estado: MovimientoEstado = row.estado === "conciliado" ? "Conciliado" : "Pendiente";
+  const cuentaName = row.cuentas_tesoreria?.nombre ?? "Cuenta";
+  const bank = inferBank(cuentaName);
   const ingreso = row.monto_ingreso ? Number(row.monto_ingreso) : null;
   const egreso = row.monto_egreso ? Number(row.monto_egreso) : null;
+  const amount = ingreso ? ingreso : egreso ? -egreso : 0;
 
-  let tab: CajaBancosRecord["tab"] = "conciliados";
-  if (row.tipo === "ingreso") tab = estado === "Pendiente" ? "pendientes" : "ingresos";
-  if (row.tipo === "egreso") tab = estado === "Pendiente" ? "pendientes" : "egresos";
-  if (row.tipo === "transferencia") tab = "transferencias";
+  let estado: MovimientoEstado = "Pendiente";
+  if (row.estado === "conciliado") estado = "Conciliado";
+  if (row.estado === "observado") estado = "Observado";
 
   return {
     id: row.id,
-    date,
-    time,
+    date: formatDateParts(row.fecha, row.hora),
+    bank: bank.bank,
+    bankInitials: bank.initials,
+    bankColor: bank.color,
+    account: cuentaName,
+    accountNumber: row.cuentas_tesoreria?.numero_cuenta ?? "—",
+    operationTitle: row.concepto,
+    operationEntity: row.responsable_nombre ?? "Sin asignar",
+    reference: row.documento ?? "—",
     tipo: row.tipo,
-    cuenta: row.cuentas_tesoreria?.nombre ?? "Cuenta",
+    estado,
+    amount,
+    time: row.hora,
+    cuenta: cuentaName,
     cuentaNumero: row.cuentas_tesoreria?.numero_cuenta ?? "—",
     documento: row.documento ?? "—",
     concepto: row.concepto,
@@ -95,110 +89,49 @@ function mapRowToRecord(row: MovimientoRow): CajaBancosRecord {
     saldo: Number(row.saldo_posterior),
     responsable: row.responsable_nombre ?? "Sin asignar",
     responsableInitials: row.responsable_iniciales ?? "SA",
-    estado,
-    tab,
   };
 }
 
-function computeFlowByAccount(records: CajaBancosRecord[]): CajaBancosFlowItem[] {
-  const totals = new Map<string, number>();
-  const colors = ["#3b82f6", "#8b5cf6", "#22c55e", "#f97316"];
-
-  for (const record of records) {
-    const flow = (record.ingreso ?? 0) + (record.egreso ?? 0);
-    totals.set(record.cuenta, (totals.get(record.cuenta) ?? 0) + flow);
-  }
-
-  const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
-  return [...totals.entries()].map(([label, amount], index) => ({
-    label,
-    amount,
-    percent: total > 0 ? Math.round((amount / total) * 100) : 0,
-    color: colors[index % colors.length],
-  }));
-}
-
-function computeBankBalances(cuentas: CuentaRow[]): CajaBancosBankBalance[] {
-  const saldoTotal = cuentas.reduce((sum, cuenta) => sum + Number(cuenta.saldo_actual), 0);
-
-  return cuentas.map((cuenta) => {
-    const balance = Number(cuenta.saldo_actual);
-    return {
-      name: cuenta.nombre,
-      number: cuenta.numero_cuenta ?? "—",
-      balance,
-      percent: saldoTotal > 0 ? Math.round((balance / saldoTotal) * 100) : 0,
-    };
-  });
-}
-
-function computeAlerts(records: CajaBancosRecord[]): CajaBancosAlert[] {
-  const pendientes = records.filter((record) => record.estado === "Pendiente").length;
-  if (pendientes === 0) return [];
-
-  return [
-    {
-      label: `${pendientes} movimiento${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de conciliar`,
-      color: "border-l-orange-500 bg-orange-50 text-orange-800",
-    },
-  ];
-}
-
-function buildSnapshot(records: CajaBancosRecord[], cuentas: CuentaRow[], source: "supabase" | "mock"): CajaBancosSnapshot {
-  const ingresos = records.filter((r) => r.tipo === "ingreso").length;
-  const egresos = records.filter((r) => r.tipo === "egreso").length;
-  const transferencias = records.filter((r) => r.tipo === "transferencia").length;
-  const pendientes = records.filter((r) => r.estado === "Pendiente").length;
-  const conciliados = records.filter((r) => r.estado === "Conciliado").length;
-  const saldoTotal = cuentas.reduce((sum, c) => sum + Number(c.saldo_actual), 0);
-  const totalIngresos = records.reduce((sum, r) => sum + (r.ingreso ?? 0), 0);
-  const totalEgresos = records.reduce((sum, r) => sum + (r.egreso ?? 0), 0);
+function buildSnapshot(records: CajaBancosRecord[]): CajaBancosSnapshot {
+  const ingresos = records.filter((record) => record.tipo === "ingreso");
+  const egresos = records.filter((record) => record.tipo === "egreso");
+  const transferencias = records.filter((record) => record.tipo === "transferencia");
+  const pendientes = records.filter((record) => record.estado === "Pendiente");
+  const conciliados = records.filter((record) => record.estado === "Conciliado");
+  const totalIngresos = ingresos.reduce((sum, record) => sum + Math.abs(record.amount), 0);
+  const totalEgresos = egresos.reduce((sum, record) => sum + Math.abs(record.amount), 0);
+  const saldo = records.length > 0 ? (records[0]?.saldo ?? 0) : 0;
+  const porConciliar = pendientes.reduce((sum, record) => sum + Math.abs(record.amount), 0);
 
   const kpis = staticKpis.map((kpi, index) => {
-    if (index === 0) {
-      return withRealKpi(
-        kpi,
-        saldoTotal > 0 ? `S/ ${Math.round(saldoTotal).toLocaleString("es-PE")}` : "S/ 0",
-      );
-    }
-    if (index === 1) {
-      return withRealKpi(
-        kpi,
-        totalIngresos > 0 ? `S/ ${Math.round(totalIngresos).toLocaleString("es-PE")}` : "S/ 0",
-      );
-    }
-    if (index === 2) {
-      return withRealKpi(
-        kpi,
-        totalEgresos > 0 ? `S/ ${Math.round(totalEgresos).toLocaleString("es-PE")}` : "S/ 0",
-      );
-    }
-    if (index === 3) return withRealKpi(kpi, String(pendientes));
-    return withRealKpi(kpi, "0");
+    if (index === 0) return withRealKpi(kpi, formatCurrency(saldo));
+    if (index === 1) return withRealKpi(kpi, formatCurrency(totalIngresos));
+    if (index === 2) return withRealKpi(kpi, formatCurrency(totalEgresos));
+    return withRealKpi(kpi, formatCurrency(porConciliar));
   });
 
   return {
     records,
     kpis,
     tabCounts: {
-      todos: null,
-      ingresos,
-      egresos,
-      transferencias,
-      pendientes,
-      conciliados,
+      todos: records.length,
+      ingresos: ingresos.length,
+      egresos: egresos.length,
+      transferencias: transferencias.length,
+      conciliados: conciliados.length,
+      pendientes: pendientes.length,
     },
-    flowByAccount: computeFlowByAccount(records),
-    bankBalances: computeBankBalances(cuentas),
-    alerts: computeAlerts(records),
+    movimientosPorBanco: [],
+    conciliacionMensual: [],
+    cuentasMayorSaldo: [],
     totalRecords: records.length,
-    source,
+    source: "supabase",
   };
 }
 
 export async function fetchCajaBancosSnapshot(userId: string | null): Promise<CajaBancosSnapshot> {
   if (!userId) {
-    return buildSnapshot([], [], "supabase");
+    return buildSnapshot([]);
   }
 
   const movimientosResult = await supabase
@@ -211,28 +144,55 @@ export async function fetchCajaBancosSnapshot(userId: string | null): Promise<Ca
 
   if (movimientosResult.error) {
     console.warn("[caja-bancos] Error:", movimientosResult.error.message);
-    return buildSnapshot([], [], "supabase");
+    return buildSnapshot([]);
   }
 
   const movimientos = (movimientosResult.data ?? []) as unknown as MovimientoRow[];
+  return buildSnapshot(movimientos.map(mapRowToRecord));
+}
 
-  const cuentasResult = await supabase
-    .from("cuentas_tesoreria" as "almacenes")
-    .select("id, nombre, numero_cuenta, saldo_actual")
-    .eq("user_id", userId)
-    .eq("activo", true);
+export function filterCajaBancosRecords(
+  records: CajaBancosRecord[],
+  {
+    activeTab,
+    search,
+    selectedCuenta,
+  }: {
+    activeTab: string;
+    search: string;
+    selectedCuenta: string;
+  },
+) {
+  const query = search.trim().toLowerCase();
 
-  const cuentas = (cuentasResult.data ?? []) as unknown as CuentaRow[];
+  return records.filter((item) => {
+    const matchesTab =
+      activeTab === "todos" ||
+      (activeTab === "ingresos" && item.tipo === "ingreso") ||
+      (activeTab === "egresos" && item.tipo === "egreso") ||
+      (activeTab === "transferencias" && item.tipo === "transferencia") ||
+      (activeTab === "pendientes" && item.estado === "Pendiente") ||
+      (activeTab === "conciliados" && item.estado === "Conciliado");
 
-  if (!movimientos.length) {
-    return buildSnapshot([], cuentas, "supabase");
-  }
+    const matchesCuenta =
+      selectedCuenta === "todos" || item.account === selectedCuenta || item.cuenta === selectedCuenta;
 
-  return buildSnapshot(movimientos.map(mapRowToRecord), cuentas, "supabase");
+    const matchesSearch =
+      !query ||
+      item.bank.toLowerCase().includes(query) ||
+      item.operationTitle.toLowerCase().includes(query) ||
+      item.operationEntity.toLowerCase().includes(query) ||
+      item.reference.toLowerCase().includes(query) ||
+      item.account.toLowerCase().includes(query);
+
+    return matchesTab && matchesCuenta && matchesSearch;
+  });
 }
 
 export {
   cajaBancosTabs,
   formatCajaAmount,
   getMovimientoEstadoStyles,
+  getMovimientoTipoLabel,
+  getMovimientoTipoStyles,
 } from "@/lib/caja-bancos-mock-data";

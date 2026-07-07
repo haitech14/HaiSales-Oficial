@@ -1,4 +1,4 @@
-﻿import {
+import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -46,8 +46,8 @@ export default function CuentasPorCobrarPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <AppPageHeader
-        title="Cuentas por Cobrar"
-        subtitle="Gestiona y controla todas tus cuentas por cobrar y el estado de tus clientes."
+        title="Cobranzas"
+        subtitle="Gestiona y controla tus cobranzas y el estado de tus clientes."
         showDateRange
         showFiltersButton
         showPanelToggle
@@ -169,7 +169,7 @@ export default function CuentasPorCobrarPage() {
                       <tr>
                         <td colSpan={11} className="px-4 py-12 text-center text-slate-500">
                           <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
-                          Cargando cuentas por cobrar...
+                          Cargando cobranzas...
                         </td>
                       </tr>
                     ) : (

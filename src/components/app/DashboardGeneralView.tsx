@@ -1,4 +1,4 @@
-﻿import {
+import {
   Bar,
   CartesianGrid,
   Cell,
@@ -144,12 +144,16 @@ export function DashboardGeneralView() {
   const { data: analytics, isLoading, refetch, isFetching } = useDashboardAnalytics();
   const { range } = useAppPeriod();
 
-  if (isLoading || !analytics) {
+  if (isLoading && !analytics) {
     return (
       <div className="flex min-h-[320px] items-center justify-center text-sm text-slate-500">
         Cargando indicadores del periodo...
       </div>
     );
+  }
+
+  if (!analytics) {
+    return null;
   }
 
   const ingresosTotal = analytics.ingresosDistribucion.reduce((sum, item) => sum + item.value, 0);

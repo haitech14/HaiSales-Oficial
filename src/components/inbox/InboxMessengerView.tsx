@@ -51,7 +51,7 @@ export function InboxMessengerView({
   const threadContent = selectedConversation ? (
     <InboxConversationThread
       conversation={selectedConversation}
-      useLiveMessages={useLiveWhatsApp && selectedConversation.channel === "whatsapp"}
+      canSendWhatsApp={useLiveWhatsApp && selectedConversation.channel === "whatsapp"}
       onMessageSent={onMessageSent}
     />
   ) : (

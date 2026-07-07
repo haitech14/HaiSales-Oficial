@@ -16,86 +16,81 @@ export type IntegracionItem = {
 };
 
 export const integracionesKpis = [
-  { label: "Integraciones activas", value: "5", change: "+1 este mes", changePositive: true },
-  { label: "Pendientes de configurar", value: "3", change: "-1 vs. semana anterior", changePositive: true },
-  { label: "Errores de sincronización", value: "1", change: "Requiere atención", changePositive: false },
+  { label: "Integraciones activas", value: "0", change: "Sin conexiones activas", changePositive: true },
+  { label: "Pendientes de configurar", value: "0", change: "Sin datos en el periodo", changePositive: true },
+  { label: "Errores de sincronización", value: "0", change: "Sin errores", changePositive: true },
 ];
 
+function catalogItem(
+  item: Omit<IntegracionItem, "estado" | "ultimaSync">,
+): IntegracionItem {
+  return { ...item, estado: "Pendiente" };
+}
+
 export const integraciones: IntegracionItem[] = [
-  {
+  catalogItem({
     id: "sunat",
     nombre: "SUNAT — Facturación electrónica",
     descripcion: "Emisión y validación de comprobantes electrónicos en tiempo real.",
     categoria: "Facturación",
-    estado: "Conectado",
     icon: FileText,
     iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
-    ultimaSync: "Hace 2 min",
-  },
-  {
+  }),
+  catalogItem({
     id: "whatsapp",
     nombre: "WhatsApp Business API",
     descripcion: "Sincroniza conversaciones del Inbox y envía notificaciones automáticas.",
     categoria: "Mensajería",
-    estado: "Conectado",
     icon: MessageCircle,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
-    ultimaSync: "Hace 5 min",
-  },
-  {
+  }),
+  catalogItem({
     id: "woocommerce",
     nombre: "WooCommerce",
     descripcion: "Importa pedidos, clientes y actualiza stock desde tu tienda online.",
     categoria: "E-commerce",
-    estado: "Pendiente",
     icon: ShoppingBag,
     iconBg: "bg-violet-50",
     iconColor: "text-violet-600",
-  },
-  {
+  }),
+  catalogItem({
     id: "bcp",
     nombre: "BCP — Conciliación bancaria",
-    descripcion: "Concilia pagos recibidos con cuentas por cobrar automáticamente.",
+    descripcion: "Concilia pagos recibidos con cobranzas automáticamente.",
     categoria: "Pagos",
-    estado: "Pendiente",
     icon: CreditCard,
     iconBg: "bg-orange-50",
     iconColor: "text-orange-600",
-  },
-  {
+  }),
+  catalogItem({
     id: "olva",
     nombre: "Olva Courier",
     descripcion: "Rastrea envíos y actualiza estados de entrega en logística.",
     categoria: "Logística",
-    estado: "Conectado",
     icon: Truck,
     iconBg: "bg-cyan-50",
     iconColor: "text-cyan-600",
-    ultimaSync: "Hace 15 min",
-  },
-  {
+  }),
+  catalogItem({
     id: "sap",
     nombre: "SAP Business One",
     descripcion: "Sincroniza contabilidad, inventario y planillas con tu ERP.",
     categoria: "ERP",
-    estado: "Error",
     icon: Building2,
     iconBg: "bg-red-50",
     iconColor: "text-red-600",
-    ultimaSync: "Error hace 3 h",
-  },
-  {
+  }),
+  catalogItem({
     id: "shopify",
     nombre: "Shopify",
     descripcion: "Conecta catálogo y pedidos de Shopify con inventario HaiSales.",
     categoria: "E-commerce",
-    estado: "Pendiente",
     icon: Package,
     iconBg: "bg-amber-50",
     iconColor: "text-amber-600",
-  },
+  }),
 ];
 
 export function getIntegracionEstadoStyles(estado: IntegracionEstado): string {

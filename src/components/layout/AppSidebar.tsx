@@ -18,8 +18,9 @@ export function AppSidebar() {
       <div className="flex items-center justify-between gap-2 px-3 py-3">
         <HaiSalesLogo
           to="/app/dashboard"
+          theme="onDark"
           iconOnly={collapsed}
-          imageClassName={collapsed ? "h-8 w-8 object-cover object-left" : "h-10 max-w-[220px]"}
+          imageClassName={collapsed ? "h-8 w-8 object-contain object-left" : "h-11 w-auto max-w-[210px]"}
         />
         <button
           type="button"
@@ -31,7 +32,7 @@ export function AppSidebar() {
         </button>
       </div>
 
-      <AppSidebarContent collapsed={collapsed} showBrand={false} />
+      <AppSidebarContent collapsed={collapsed} showBrand={false} className="min-h-0 flex-1" />
     </aside>
   );
 }
@@ -51,7 +52,12 @@ export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
       >
         <Menu className="h-5 w-5" />
       </button>
-      <HaiSalesLogo to="/app/dashboard" iconOnly imageClassName="h-8 w-8 object-cover object-left" />
+      <HaiSalesLogo
+        to="/app/dashboard"
+        theme="onDark"
+        iconOnly
+        imageClassName="h-8 w-8 object-contain object-left"
+      />
       <div className="h-10 w-10" aria-hidden="true" />
     </header>
   );

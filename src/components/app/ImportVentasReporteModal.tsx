@@ -128,7 +128,7 @@ export function ImportVentasReporteModal({
     try {
       const summary = await onImport(allRows);
       toast.success(
-        `Importación completada: ${summary.ventasInsertadas} nuevos, ${summary.ventasActualizados} actualizados, ${summary.movimientosTesoreria} movimientos y ${summary.cuentasCobrar} cuentas por cobrar`,
+        `Importación completada: ${summary.ventasInsertadas} nuevos, ${summary.ventasActualizados} actualizados, ${summary.movimientosTesoreria} movimientos y ${summary.cuentasCobrar} cobranzas`,
       );
       handleClose();
     } catch (error) {

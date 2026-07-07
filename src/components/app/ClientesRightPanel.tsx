@@ -1,4 +1,4 @@
-﻿import { RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { ClientesAnalytics } from "@/lib/clientes/clientes-service";
 import { formatDebtAmount } from "@/lib/clientes-mock-data";
 import { cn } from "@/lib/utils";
@@ -140,7 +140,7 @@ export function ClientesRightPanel({
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">Sin cuentas por cobrar pendientes.</p>
+            <p className="mt-3 text-sm text-slate-500">Sin cobranzas pendientes.</p>
           )}
         </section>
 

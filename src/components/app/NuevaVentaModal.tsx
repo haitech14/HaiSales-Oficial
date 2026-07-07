@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Building2,
   Calendar,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { SearchableAutocomplete, type AutocompleteOption } from "@/components/app/SearchableAutocomplete";
 import { ProductLineThumb, ProductMultiPicker } from "@/components/app/ProductMultiPicker";
+import { NuevoClienteModal } from "@/components/app/NuevoClienteModal";
 import { useClientes } from "@/hooks/useClientes";
 import { useInventario } from "@/hooks/useInventario";
 import type { ClientRecord } from "@/lib/clientes-mock-data";
+import type { NuevoClienteFormState } from "@/lib/clientes-form-data";
 import {
   ventaClientes,
   ventaEstadosIniciales,
@@ -195,6 +199,37 @@ function createCartLineId() {
   return `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+type VendedorOption = {
+  name: string;
+  initials: string;
+};
+
+function buildVendedorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "??";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
+function mergeVendedores(...lists: VendedorOption[][]): VendedorOption[] {
+  const seen = new Set<string>();
+  const merged: VendedorOption[] = [];
+
+  for (const list of lists) {
+    for (const vendedor of list) {
+      const key = vendedor.name.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push({
+        name: vendedor.name.trim(),
+        initials: vendedor.initials || buildVendedorInitials(vendedor.name),
+      });
+    }
+  }
+
+  return merged;
+}
+
 export function NuevaVentaModal({
   open,
   onOpenChange,
@@ -204,8 +239,12 @@ export function NuevaVentaModal({
   const [form, setForm] = useState<NuevaVentaFormData>(defaultNuevaVentaForm);
   const [cartLines, setCartLines] = useState<VentaCartLine[]>([]);
   const [contextSearch, setContextSearch] = useState("");
+  const [extraVendedores, setExtraVendedores] = useState<VendedorOption[]>([]);
+  const [vendedorPopoverOpen, setVendedorPopoverOpen] = useState(false);
+  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState("");
+  const [nuevoClienteOpen, setNuevoClienteOpen] = useState(false);
 
-  const { snapshot } = useClientes();
+  const { snapshot, createCliente, isCreating: isCreatingCliente } = useClientes();
   const { data: inventarioSnapshot } = useInventario();
   const { data: empresaConfig } = useEmpresaConfig();
   const emisor = useMemo(
@@ -222,6 +261,10 @@ export function NuevaVentaModal({
   );
 
   const totals = useMemo(() => calculateCartTotals(cartLines), [cartLines]);
+  const vendedoresOptions = useMemo(
+    () => mergeVendedores(ventaVendedores, extraVendedores),
+    [extraVendedores],
+  );
 
   const hasClienteResumen = Boolean(form.cliente.trim() || form.oportunidad.trim());
 
@@ -344,6 +387,25 @@ export function NuevaVentaModal({
     }));
   };
 
+  const applyClienteToForm = (client: ClientRecord) => {
+    setContextSearch("");
+    setForm((current) => ({
+      ...current,
+      cliente: client.razonSocial,
+      clienteRuc: client.ruc !== "—" ? client.ruc : "",
+      contacto: formatContactoLabel(client) ?? "",
+      oportunidad: "",
+    }));
+  };
+
+  const handleNuevoClienteSubmit = async (
+    formData: NuevoClienteFormState,
+    mode: "draft" | "create",
+  ) => {
+    const client = await createCliente({ form: formData, esBorrador: mode === "draft" });
+    applyClienteToForm(client);
+  };
+
   const clearClienteContext = () => {
     setContextSearch("");
     setForm((current) => ({
@@ -407,15 +469,42 @@ export function NuevaVentaModal({
   };
 
   const handleVendedorChange = (value: string) => {
-    const vendedor = ventaVendedores.find((item) => item.name === value);
+    const vendedor = vendedoresOptions.find((item) => item.name === value);
     updateField("vendedor", value);
-    if (vendedor) updateField("vendedorInitials", vendedor.initials);
+    updateField("vendedorInitials", vendedor?.initials ?? buildVendedorInitials(value));
+  };
+
+  const handleAddVendedor = () => {
+    const name = nuevoVendedorNombre.trim();
+    if (!name) {
+      toast.error("Ingresa el nombre del vendedor");
+      return;
+    }
+
+    const exists = vendedoresOptions.some(
+      (vendedor) => vendedor.name.toLowerCase() === name.toLowerCase(),
+    );
+    const initials = buildVendedorInitials(name);
+
+    if (!exists) {
+      setExtraVendedores((current) => [...current, { name, initials }]);
+    }
+
+    updateField("vendedor", name);
+    updateField("vendedorInitials", initials);
+    setNuevoVendedorNombre("");
+    setVendedorPopoverOpen(false);
+    toast.success(exists ? `Vendedor "${name}" seleccionado` : `Vendedor "${name}" agregado`);
   };
 
   const resetModal = () => {
     setForm(defaultNuevaVentaForm);
     setCartLines([]);
     setContextSearch("");
+    setExtraVendedores([]);
+    setNuevoVendedorNombre("");
+    setVendedorPopoverOpen(false);
+    setNuevoClienteOpen(false);
   };
 
   const handleClose = () => {
@@ -501,7 +590,8 @@ export function NuevaVentaModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}>
+    <>
+      <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}>
       <DialogContent className="flex max-h-[95vh] max-w-[1120px] flex-col gap-0 overflow-hidden border-slate-200 p-0 sm:rounded-xl [&>button:last-child]:hidden">
         {/* Header */}
         <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6">
@@ -583,7 +673,7 @@ export function NuevaVentaModal({
                         onChange={(event) => handleVendedorChange(event.target.value)}
                         className="h-9 w-full appearance-none rounded-lg border border-slate-200 bg-white py-0 pl-10 pr-8 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                       >
-                        {ventaVendedores.map((v) => (
+                        {vendedoresOptions.map((v) => (
                           <option key={v.name} value={v.name}>
                             {v.name}
                           </option>
@@ -596,13 +686,52 @@ export function NuevaVentaModal({
                       </Avatar>
                       <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     </div>
-                    <button
-                      type="button"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
-                      aria-label="Agregar vendedor"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                    <Popover open={vendedorPopoverOpen} onOpenChange={setVendedorPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+                          aria-label="Agregar vendedor"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-72 border-slate-200 p-3">
+                        <p className="text-sm font-semibold text-slate-900">Nuevo vendedor</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Agrega un vendedor que no esté en la lista.
+                        </p>
+                        <Input
+                          value={nuevoVendedorNombre}
+                          onChange={(event) => setNuevoVendedorNombre(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              handleAddVendedor();
+                            }
+                          }}
+                          placeholder="Ej. María Gómez"
+                          className="mt-3 h-9"
+                          autoFocus
+                        />
+                        <div className="mt-3 flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setNuevoVendedorNombre("");
+                              setVendedorPopoverOpen(false);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button type="button" size="sm" onClick={handleAddVendedor}>
+                            Agregar
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
                 <div>
@@ -638,7 +767,7 @@ export function NuevaVentaModal({
                     options={clienteContextOptions}
                     onChange={setContextSearch}
                     onSelect={handleContextSelect}
-                    onAdd={() => toast.info("Agregar nuevo cliente")}
+                    onAdd={() => setNuevoClienteOpen(true)}
                   />
                 </div>
 
@@ -834,5 +963,13 @@ export function NuevaVentaModal({
         </div>
       </DialogContent>
     </Dialog>
+
+      <NuevoClienteModal
+        open={nuevoClienteOpen}
+        onOpenChange={setNuevoClienteOpen}
+        onSubmit={handleNuevoClienteSubmit}
+        isSubmitting={isCreatingCliente}
+      />
+    </>
   );
 }

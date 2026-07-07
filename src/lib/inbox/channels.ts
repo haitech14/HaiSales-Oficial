@@ -113,13 +113,13 @@ export const inboxPriorityMeta: Record<"alta" | "media" | "baja", string> = {
   baja: "text-emerald-600",
 };
 
-export const inboxViewTabs: { id: InboxViewFilter; label: string; count?: number }[] = [
-  { id: "all", label: "Todos", count: 128 },
-  { id: "unread", label: "No leídos", count: 16 },
+export const inboxViewTabs: { id: InboxViewFilter; label: string }[] = [
+  { id: "all", label: "Todos" },
+  { id: "unread", label: "No leídos" },
   { id: "team-chat", label: "Chat de equipo" },
-  { id: "whatsapp", label: "WhatsApp", count: 68 },
-  { id: "instagram", label: "Instagram", count: 24 },
-  { id: "facebook", label: "Facebook", count: 18 },
-  { id: "web", label: "Web Chat", count: 10 },
-  { id: "email", label: "Email", count: 8 },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "instagram", label: "Instagram" },
+  { id: "facebook", label: "Facebook" },
+  { id: "web", label: "Web Chat" },
+  { id: "email", label: "Email" },
 ];

@@ -1,10 +1,12 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ChevronDown,
   Clock,
   Copy,
   Grid3x3,
   Lock,
+  Save,
   Send,
   Shield,
   UserPlus,
@@ -18,6 +20,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { USER_ROLE_OPTIONS } from "@/lib/auth/roles";
 import {
   defaultNuevoUsuarioForm,
   type NuevoUsuarioFormData,
@@ -28,15 +32,27 @@ import {
   usuarioOpciones2fa,
   usuarioOpcionesInvitacion,
   usuarioPermisosEspeciales,
-  usuarioRoles,
-  usuarioSedes,
+  type UsuarioRecord,
 } from "@/lib/usuarios-mock-data";
+import { usuarioRecordToForm } from "@/lib/usuarios/usuarios-service";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type NuevoUsuarioModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  usuarioToEdit?: UsuarioRecord | null;
+  onSubmit: (
+    form: NuevoUsuarioFormData,
+    sedeNombre: string,
+    mode: "draft" | "create",
+  ) => Promise<void>;
+  onUpdate?: (
+    usuarioId: string,
+    form: NuevoUsuarioFormData,
+    sedeNombre: string,
+  ) => Promise<void>;
+  isSubmitting?: boolean;
 };
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -48,33 +64,50 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
+type SelectFieldOption = {
+  value: string;
+  label: string;
+};
+
 function SelectField({
   value,
   onChange,
   placeholder,
   options,
+  optionItems,
+  disabled = false,
+  emptyMessage,
   className,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  options: string[];
+  options?: string[];
+  optionItems?: SelectFieldOption[];
+  disabled?: boolean;
+  emptyMessage?: string;
   className?: string;
 }) {
+  const items =
+    optionItems ?? options?.map((option) => ({ value: option, label: option })) ?? [];
+  const effectivePlaceholder =
+    items.length === 0 && emptyMessage ? emptyMessage : placeholder;
+
   return (
     <div className={cn("relative", className)}>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        disabled={disabled || items.length === 0}
         className={cn(
-          "h-9 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20",
+          "h-9 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
           value ? "text-slate-700" : "text-slate-400",
         )}
       >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option} className="text-slate-700">
-            {option}
+        <option value="">{effectivePlaceholder}</option>
+        {items.map((option) => (
+          <option key={option.value} value={option.value} className="text-slate-700">
+            {option.label}
           </option>
         ))}
       </select>
@@ -83,8 +116,36 @@ function SelectField({
   );
 }
 
-export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps) {
+export function NuevoUsuarioModal({
+  open,
+  onOpenChange,
+  usuarioToEdit = null,
+  onSubmit,
+  onUpdate,
+  isSubmitting = false,
+}: NuevoUsuarioModalProps) {
+  const { sedes } = useWorkspace();
   const [form, setForm] = useState<NuevoUsuarioFormData>(defaultNuevoUsuarioForm);
+  const isEditMode = Boolean(usuarioToEdit);
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(usuarioToEdit ? usuarioRecordToForm(usuarioToEdit) : defaultNuevoUsuarioForm);
+  }, [open, usuarioToEdit]);
+
+  const sedeOptions = useMemo(
+    () =>
+      sedes.map((sede) => ({
+        value: sede.id,
+        label: sede.esPrincipal ? `${sede.nombre} (Principal)` : sede.nombre,
+      })),
+    [sedes],
+  );
+
+  const selectedSedeNombre = useMemo(() => {
+    const sede = sedes.find((item) => item.id === form.sede);
+    return sede?.nombre ?? "";
+  }, [form.sede, sedes]);
 
   const updateField = <K extends keyof NuevoUsuarioFormData>(
     key: K,
@@ -117,13 +178,35 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
     setForm(defaultNuevoUsuarioForm);
   };
 
-  const handleCrear = () => {
-    toast.success("Usuario creado correctamente.");
-    handleClose();
+  const handleCrear = async () => {
+    try {
+      if (isEditMode && usuarioToEdit && onUpdate) {
+        await onUpdate(usuarioToEdit.id, form, selectedSedeNombre);
+        toast.success("Usuario actualizado correctamente.");
+      } else {
+        await onSubmit(form, selectedSedeNombre, "create");
+        toast.success("Usuario creado correctamente.");
+      }
+      handleClose();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : isEditMode
+            ? "No se pudo actualizar el usuario"
+            : "No se pudo crear el usuario",
+      );
+    }
   };
 
-  const handleBorrador = () => {
-    toast.success("Borrador de usuario guardado.");
+  const handleBorrador = async () => {
+    try {
+      await onSubmit(form, selectedSedeNombre, "draft");
+      toast.success("Borrador de usuario guardado.");
+      handleClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el borrador");
+    }
   };
 
   return (
@@ -132,9 +215,13 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
         <div className="border-b border-slate-100 px-6 pb-4 pt-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <DialogTitle className="text-lg font-bold text-slate-900">Nuevo usuario</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {isEditMode ? "Editar usuario" : "Nuevo usuario"}
+              </DialogTitle>
               <DialogDescription className="mt-0.5 text-sm text-slate-500">
-                Crea un acceso seguro y asigna rol, sucursal y permisos desde el inicio.
+                {isEditMode
+                  ? "Actualiza rol, sucursal, estado y datos de acceso del usuario."
+                  : "Crea un acceso seguro y asigna rol, sucursal y permisos desde el inicio."}
               </DialogDescription>
             </div>
             <button
@@ -186,8 +273,18 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 value={form.sede}
                 onChange={(value) => updateField("sede", value)}
                 placeholder="Seleccionar sucursal"
-                options={usuarioSedes}
+                emptyMessage="Sin sucursales registradas"
+                optionItems={sedeOptions}
               />
+              {sedes.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  Configura las sucursales en{" "}
+                  <Link to="/app/parametros" className="font-medium underline hover:text-amber-700">
+                    Parámetros
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
             <div>
               <FieldLabel>Cargo</FieldLabel>
@@ -221,7 +318,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 value={form.rolPrincipal}
                 onChange={(value) => updateField("rolPrincipal", value)}
                 placeholder="Seleccionar rol"
-                options={usuarioRoles}
+                options={USER_ROLE_OPTIONS}
               />
             </div>
             <div>
@@ -252,7 +349,7 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
               />
             </div>
             <div>
-              <FieldLabel required>Estado inicial</FieldLabel>
+              <FieldLabel required>{isEditMode ? "Estado" : "Estado inicial"}</FieldLabel>
               <SelectField
                 value={form.estadoInicial}
                 onChange={(value) => updateField("estadoInicial", value)}
@@ -260,15 +357,17 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
                 options={usuarioEstadosIniciales}
               />
             </div>
-            <div>
-              <FieldLabel required>Enviar invitación</FieldLabel>
-              <SelectField
-                value={form.enviarInvitacion}
-                onChange={(value) => updateField("enviarInvitacion", value)}
-                placeholder="Seleccionar opción"
-                options={usuarioOpcionesInvitacion}
-              />
-            </div>
+            {!isEditMode && (
+              <div>
+                <FieldLabel required>Enviar invitación</FieldLabel>
+                <SelectField
+                  value={form.enviarInvitacion}
+                  onChange={(value) => updateField("enviarInvitacion", value)}
+                  placeholder="Seleccionar opción"
+                  options={usuarioOpcionesInvitacion}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -350,25 +449,40 @@ export function NuevoUsuarioModal({ open, onOpenChange }: NuevoUsuarioModalProps
             type="button"
             variant="outline"
             onClick={handleClose}
+            disabled={isSubmitting}
             className="h-9 border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
           >
             Cancelar
           </Button>
+          {!isEditMode && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleBorrador()}
+              disabled={isSubmitting}
+              className="h-9 border-blue-200 bg-white text-blue-600 hover:bg-blue-50"
+            >
+              Guardar borrador
+            </Button>
+          )}
           <Button
             type="button"
-            variant="outline"
-            onClick={handleBorrador}
-            className="h-9 border-blue-200 bg-white text-blue-600 hover:bg-blue-50"
-          >
-            Guardar borrador
-          </Button>
-          <Button
-            type="button"
-            onClick={handleCrear}
+            onClick={() => void handleCrear()}
+            disabled={isSubmitting}
             className="h-9 gap-2 bg-blue-600 px-4 font-semibold hover:bg-blue-500"
           >
-            <UserPlus className="h-4 w-4" />
-            Crear usuario
+            {isEditMode ? (
+              <Save className="h-4 w-4" />
+            ) : (
+              <UserPlus className="h-4 w-4" />
+            )}
+            {isSubmitting
+              ? isEditMode
+                ? "Guardando..."
+                : "Creando..."
+              : isEditMode
+                ? "Guardar cambios"
+                : "Crear usuario"}
           </Button>
         </div>
       </DialogContent>
