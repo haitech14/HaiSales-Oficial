@@ -130,10 +130,12 @@ export default function PipelinePage() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
   const [prospectDetailCodigo, setProspectDetailCodigo] = useState<string | null>(null);
+  const [prospectDetailPreview, setProspectDetailPreview] = useState<PipelineCard | null>(null);
   const [prospectDetailOpen, setProspectDetailOpen] = useState(false);
 
-  const openProspectDetail = (codigo: string) => {
+  const openProspectDetail = (codigo: string, preview?: PipelineCard) => {
     setProspectDetailCodigo(codigo);
+    setProspectDetailPreview(preview ?? null);
     setProspectDetailOpen(true);
   };
 
@@ -166,6 +168,7 @@ export default function PipelinePage() {
       <NuevaVentaModal open={nuevaVentaOpen} onOpenChange={setNuevaVentaOpen} />
       <PipelineProspectDetailSheet
         codigo={prospectDetailCodigo}
+        preview={prospectDetailPreview}
         open={prospectDetailOpen}
         onOpenChange={setProspectDetailOpen}
         userId={user?.id}
@@ -354,7 +357,7 @@ export default function PipelinePage() {
                               <PipelineKanbanCard
                                 key={card.id}
                                 card={card}
-                                onSelect={openProspectDetail}
+                                onSelect={(id) => openProspectDetail(id, card)}
                               />
                             ))}
                           </div>
@@ -402,7 +405,19 @@ export default function PipelinePage() {
                             <tr
                               key={item.id}
                               className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50/60"
-                              onClick={() => openProspectDetail(item.id)}
+                              onClick={() =>
+                                openProspectDetail(item.id, {
+                                  id: item.id,
+                                  title: item.stage === "Prospectos" ? item.client : item.title,
+                                  company: item.subtitle || item.client,
+                                  value: item.value,
+                                  owner: item.owner,
+                                  ownerInitials: item.ownerInitials,
+                                  dueDate: item.date,
+                                  intereses: item.intereses,
+                                  ciudad: item.ciudad,
+                                })
+                              }
                             >
                               <td className="app-table-cell">
                                 <p className="font-medium text-slate-800">{item.date}</p>
