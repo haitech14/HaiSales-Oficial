@@ -1,22 +1,36 @@
 import { Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createSedeId, type EmpresaSede } from "@/lib/parametros/empresa-config-data";
+import {
+  createSedeId,
+  formatSerieCotizacion,
+  SERIE_COTIZACION_PREFIX,
+  type EmpresaSede,
+} from "@/lib/parametros/empresa-config-data";
 import { cn } from "@/lib/utils";
 
 type SedesEditorProps = {
   sedes: EmpresaSede[];
   onChange: (sedes: EmpresaSede[]) => void;
   inputClassName?: string;
+  /** Prefijo de serie de cotización (p. ej. C001-). El sufijo 001/002 es por sucursal. */
+  serieCotizacionPrefix?: string;
 };
 
-export function SedesEditor({ sedes, onChange, inputClassName }: SedesEditorProps) {
+export function SedesEditor({
+  sedes,
+  onChange,
+  inputClassName,
+  serieCotizacionPrefix = SERIE_COTIZACION_PREFIX,
+}: SedesEditorProps) {
   const addSede = () => {
+    const index = sedes.length;
     onChange([
       ...sedes,
       {
         id: createSedeId(),
         nombre: "",
         direccion: "",
+        serieCotizacion: formatSerieCotizacion(index, serieCotizacionPrefix),
         esPrincipal: sedes.length === 0,
       },
     ]);
@@ -27,7 +41,22 @@ export function SedesEditor({ sedes, onChange, inputClassName }: SedesEditorProp
   };
 
   const removeSede = (id: string) => {
-    const next = sedes.filter((sede) => sede.id !== id);
+    const remaining = sedes
+      .map((sede, index) => ({ sede, index }))
+      .filter(({ sede }) => sede.id !== id);
+
+    const next = remaining.map(({ sede, index: oldIndex }, newIndex) => {
+      const wasAuto =
+        !sede.serieCotizacion?.trim() ||
+        sede.serieCotizacion === formatSerieCotizacion(oldIndex, serieCotizacionPrefix);
+      return {
+        ...sede,
+        serieCotizacion: wasAuto
+          ? formatSerieCotizacion(newIndex, serieCotizacionPrefix)
+          : sede.serieCotizacion,
+      };
+    });
+
     if (next.length > 0 && !next.some((sede) => sede.esPrincipal)) {
       next[0] = { ...next[0], esPrincipal: true };
     }
@@ -109,6 +138,22 @@ export function SedesEditor({ sedes, onChange, inputClassName }: SedesEditorProp
                 value={sede.direccion}
                 onChange={(event) => updateSede(sede.id, { direccion: event.target.value })}
                 placeholder="Av. Principal 123, Lima"
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-[13px] font-medium text-slate-800">
+                Serie cotización
+              </span>
+              <input
+                className={cn(
+                  "h-11 w-full rounded-[10px] border-transparent bg-white px-3 text-[13px] uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/25",
+                  inputClassName,
+                )}
+                value={sede.serieCotizacion ?? formatSerieCotizacion(index, serieCotizacionPrefix)}
+                onChange={(event) =>
+                  updateSede(sede.id, { serieCotizacion: event.target.value.toUpperCase() })
+                }
+                placeholder={formatSerieCotizacion(index, serieCotizacionPrefix)}
               />
             </label>
           </div>

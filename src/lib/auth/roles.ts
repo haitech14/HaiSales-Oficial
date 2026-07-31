@@ -83,3 +83,4 @@ export function filterNavSectionsByRole<
     }))
     .filter((section) => section.items.length > 0 || (section.groups?.length ?? 0) > 0);
 }
+

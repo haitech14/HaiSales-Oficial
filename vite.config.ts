@@ -8,13 +8,13 @@ export default defineConfig({
   envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   server: {
     host: "0.0.0.0",
-    port: 8080,
+    port: 5173,
     strictPort: true,
-    open: "http://127.0.0.1:8080/",
+    open: "http://127.0.0.1:5173/",
   },
   preview: {
     host: "0.0.0.0",
-    port: 8080,
+    port: 5173,
     strictPort: true,
   },
   build: {

@@ -1,6 +1,6 @@
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, LayoutGrid, List } from "lucide-react";
 import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { EmpresaSucursalSwitcher } from "@/components/layout/EmpresaSucursalSwitcher";
 import {
@@ -9,11 +9,79 @@ import {
   configuracionNavGroup,
   dashboardNavGroup,
   isConfiguracionRoute,
+  loadSidebarViewMode,
+  saveSidebarViewMode,
+  type AppModuleTile,
   type NavGroup,
+  type SidebarViewMode,
 } from "@/lib/app-navigation";
 import { filterNavGroupByRole, filterNavSectionsByRole } from "@/lib/auth/roles";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+
+const MODULE_TILE_COLORS = [
+  "bg-[#7cb342]",
+  "bg-[#00897b]",
+  "bg-[#43a047]",
+  "bg-[#7e57c2]",
+  "bg-[#d81b60]",
+  "bg-[#00acc1]",
+  "bg-[#e64a19]",
+  "bg-[#1e88e5]",
+  "bg-[#1976d2]",
+  "bg-[#fb8c00]",
+  "bg-[#ec407a]",
+  "bg-[#c0ca33]",
+  "bg-[#5e35b1]",
+  "bg-[#039be5]",
+  "bg-[#8e24aa]",
+  "bg-[#f4511e]",
+  "bg-[#6d4c41]",
+  "bg-[#546e7a]",
+] as const;
+
+function toModuleTiles(
+  entries: Array<{ id: string; label: string; href: string; icon: LucideIcon; wide?: boolean }>,
+  colorOffset = 0,
+): AppModuleTile[] {
+  return entries.map((entry, index) => ({
+    ...entry,
+    color: MODULE_TILE_COLORS[(colorOffset + index) % MODULE_TILE_COLORS.length],
+  }));
+}
+
+function ModuleTileLink({
+  tile,
+  pathname,
+  searchParams,
+  onNavigate,
+}: {
+  tile: AppModuleTile;
+  pathname: string;
+  searchParams: URLSearchParams;
+  onNavigate?: () => void;
+}) {
+  const isActive = isNavItemActive(tile.href, pathname, searchParams);
+  const Icon = tile.icon;
+
+  return (
+    <Link
+      to={tile.href}
+      onClick={onNavigate}
+      title={tile.label}
+      className={cn(
+        "flex min-h-[66px] flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-white shadow-sm transition hover:brightness-110",
+        tile.color,
+        tile.wide && "col-span-2 min-h-[52px] flex-row gap-2",
+        isActive && "ring-2 ring-white/70 ring-offset-1 ring-offset-[#0b1220]",
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <span className="line-clamp-2 text-[10px] font-semibold leading-tight">{tile.label}</span>
+    </Link>
+  );
+}
 
 function isNavItemActive(href: string | undefined, pathname: string, searchParams: URLSearchParams): boolean {
   if (!href) return false;
@@ -174,6 +242,8 @@ type AppSidebarContentProps = {
   collapsed?: boolean;
   showBrand?: boolean;
   showCompany?: boolean;
+  viewMode?: SidebarViewMode;
+  onViewModeChange?: (mode: SidebarViewMode) => void;
   onNavigate?: () => void;
   className?: string;
 };
@@ -182,15 +252,89 @@ export function AppSidebarContent({
   collapsed = false,
   showBrand = true,
   showCompany = true,
+  viewMode: viewModeProp,
+  onViewModeChange,
   onNavigate,
   className,
 }: AppSidebarContentProps) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { role } = useUserRole();
+  const [internalViewMode, setInternalViewMode] = useState<SidebarViewMode>(() => loadSidebarViewMode());
+  const viewMode = viewModeProp ?? internalViewMode;
+  const setViewMode = (mode: SidebarViewMode) => {
+    saveSidebarViewMode(mode);
+    onViewModeChange?.(mode);
+    if (viewModeProp === undefined) setInternalViewMode(mode);
+  };
+
   const navSections = filterNavSectionsByRole(appNavSections, role);
   const configuracionGroup = filterNavGroupByRole(configuracionNavGroup, role);
+
+  let colorOffset = 0;
+  const generalModuleTiles = toModuleTiles(
+    [
+      {
+        id: "dashboard",
+        label: dashboardNavGroup.label,
+        href: dashboardNavGroup.href ?? "/app/dashboard",
+        icon: dashboardNavGroup.icon,
+      },
+      {
+        id: "wiki",
+        label: anunciosNavItem.label,
+        href: anunciosNavItem.href ?? "/app/anuncios",
+        icon: anunciosNavItem.icon,
+      },
+    ],
+    colorOffset,
+  );
+  colorOffset += generalModuleTiles.length;
+
+  const moduleSections = navSections.map((section) => {
+    const entries = [
+      ...section.items
+        .filter((item): item is typeof item & { href: string } => Boolean(item.href))
+        .map((item) => ({
+          id: item.href,
+          label: item.label,
+          href: item.href,
+          icon: item.icon,
+        })),
+      ...(section.groups ?? []).flatMap((group) => {
+        const href = group.href ?? group.items[0]?.href;
+        if (!href) return [];
+        return [
+          {
+            id: href,
+            label: group.label,
+            href,
+            icon: group.icon,
+          },
+        ];
+      }),
+    ];
+    const tiles = toModuleTiles(entries, colorOffset);
+    colorOffset += tiles.length;
+    return { title: section.title, tiles };
+  });
+
+  const configModuleTiles = configuracionGroup
+    ? toModuleTiles(
+        [
+          {
+            id: "configuracion",
+            label: configuracionGroup.label,
+            href: configuracionGroup.href ?? configuracionGroup.items[0]?.href ?? "/app/parametros",
+            icon: configuracionGroup.icon,
+          },
+        ],
+        colorOffset,
+      )
+    : [];
+
   const isAnunciosActive = isNavItemActive(anunciosNavItem.href, location.pathname, searchParams);
+  const showModules = !collapsed && viewMode === "modulos";
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col bg-[#0b1220]", className)}>
@@ -201,7 +345,7 @@ export function AppSidebarContent({
             theme="onDark"
             iconOnly={collapsed}
             onClick={onNavigate}
-            imageClassName={collapsed ? "h-8 w-8 object-contain object-left" : "h-11 w-auto max-w-[210px]"}
+            imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-9 w-auto max-w-[170px]"}
           />
         </div>
       )}
@@ -210,119 +354,217 @@ export function AppSidebarContent({
         <EmpresaSucursalSwitcher collapsed={collapsed} className="mx-2.5 mb-2.5" />
       )}
 
-      <nav className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
-        <ul className="space-y-0.5">
-          <CollapsibleNavGroup
-            group={dashboardNavGroup}
-            collapsed={collapsed}
-            pathname={location.pathname}
-            searchParams={searchParams}
-            onNavigate={onNavigate}
-          />
-          <li>
-            <Link
-              to={anunciosNavItem.href ?? "/app/anuncios"}
-              title={collapsed ? anunciosNavItem.label : undefined}
-              onClick={onNavigate}
-              className={cn(
-                "app-sidebar-link",
-                isAnunciosActive
-                  ? "bg-blue-600 font-semibold text-white"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
-                collapsed && "justify-center px-2",
-              )}
-            >
-              <anunciosNavItem.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={isAnunciosActive ? 2 : 1.75} />
-              {!collapsed && (
-                <span className="app-sidebar-label font-semibold">{anunciosNavItem.label}</span>
-              )}
-            </Link>
-          </li>
-        </ul>
+      {!collapsed && (
+        <div className="mx-2.5 mb-2.5 flex rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("lista")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold transition",
+              viewMode === "lista"
+                ? "bg-white/10 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200",
+            )}
+            aria-pressed={viewMode === "lista"}
+          >
+            <List className="h-3.5 w-3.5" />
+            Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("modulos")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold transition",
+              viewMode === "modulos"
+                ? "bg-white/10 text-white shadow-sm"
+                : "text-slate-400 hover:text-slate-200",
+            )}
+            aria-pressed={viewMode === "modulos"}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Módulos
+          </button>
+        </div>
+      )}
 
-        {navSections.map((section) => (
-          <div key={section.title}>
-            {!collapsed && <p className="app-sidebar-section">{section.title}</p>}
-            <ul className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = isNavItemActive(item.href, location.pathname, searchParams);
-
-                return (
-                  <li key={item.label}>
-                    <Link
-                      to={item.href ?? "#"}
-                      title={collapsed ? item.label : undefined}
-                      onClick={onNavigate}
-                      className={cn(
-                        "app-sidebar-link",
-                        isActive
-                          ? "bg-blue-600 font-semibold text-white"
-                          : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
-                        collapsed && "justify-center px-2",
-                      )}
-                    >
-                      <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={isActive ? 2 : 1.75} />
-                      {!collapsed && (
-                        <>
-                          <span className="app-sidebar-label">{item.label}</span>
-                          {item.badge !== undefined && (
-                            <span
-                              className={cn(
-                                "app-sidebar-badge",
-                                isActive ? "bg-white/20 text-white" : "bg-white/[0.08] text-slate-400",
-                              )}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-              {section.groups?.map((group) => (
-                <CollapsibleNavGroup
-                  key={group.label}
-                  group={group}
-                  collapsed={collapsed}
+      {showModules ? (
+        <nav className="scrollbar-sidebar flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
+          <div>
+            <p className="app-sidebar-section mb-1.5">General</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {generalModuleTiles.map((tile) => (
+                <ModuleTileLink
+                  key={tile.id}
+                  tile={tile}
                   pathname={location.pathname}
                   searchParams={searchParams}
                   onNavigate={onNavigate}
                 />
               ))}
-            </ul>
+            </div>
           </div>
-        ))}
-      </nav>
 
-      {configuracionGroup && (
-        <div className="shrink-0 border-t border-white/10 px-2.5 py-2">
-          <ul className="space-y-0.5">
-            <li>
-              <Link
-                to={configuracionGroup.href ?? configuracionGroup.items[0]?.href ?? "#"}
-                title={collapsed ? configuracionGroup.label : undefined}
-                onClick={onNavigate}
-                className={cn(
-                  "app-sidebar-link",
-                  isConfiguracionRoute(location.pathname)
-                    ? "bg-blue-600 font-semibold text-white"
-                    : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
-                  collapsed && "justify-center px-2",
-                )}
-              >
-                <configuracionGroup.icon
-                  className="h-[18px] w-[18px] shrink-0"
-                  strokeWidth={isConfiguracionRoute(location.pathname) ? 2 : 1.75}
-                />
-                {!collapsed && (
-                  <span className="app-sidebar-label font-semibold">{configuracionGroup.label}</span>
-                )}
-              </Link>
-            </li>
-          </ul>
-        </div>
+          {moduleSections.map((section) => (
+            <div key={section.title}>
+              <p className="app-sidebar-section mb-1.5">{section.title}</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {section.tiles.map((tile) => (
+                  <ModuleTileLink
+                    key={tile.id}
+                    tile={tile}
+                    pathname={location.pathname}
+                    searchParams={searchParams}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {configModuleTiles.length > 0 && (
+            <div>
+              <p className="app-sidebar-section mb-1.5">Sistema</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {configModuleTiles.map((tile) => (
+                  <ModuleTileLink
+                    key={tile.id}
+                    tile={tile}
+                    pathname={location.pathname}
+                    searchParams={searchParams}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </nav>
+      ) : (
+        <>
+          <nav className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
+            <ul className="space-y-0.5">
+              <CollapsibleNavGroup
+                group={dashboardNavGroup}
+                collapsed={collapsed}
+                pathname={location.pathname}
+                searchParams={searchParams}
+                onNavigate={onNavigate}
+              />
+              <li>
+                <Link
+                  to={anunciosNavItem.href ?? "/app/anuncios"}
+                  title={collapsed ? anunciosNavItem.label : undefined}
+                  onClick={onNavigate}
+                  className={cn(
+                    "app-sidebar-link",
+                    isAnunciosActive
+                      ? "bg-blue-600 font-semibold text-white"
+                      : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
+                    collapsed && "justify-center px-2",
+                  )}
+                >
+                  <anunciosNavItem.icon
+                    className="h-[18px] w-[18px] shrink-0"
+                    strokeWidth={isAnunciosActive ? 2 : 1.75}
+                  />
+                  {!collapsed && (
+                    <span className="app-sidebar-label font-semibold">{anunciosNavItem.label}</span>
+                  )}
+                </Link>
+              </li>
+            </ul>
+
+            {navSections.map((section) => (
+              <div key={section.title}>
+                {!collapsed && <p className="app-sidebar-section">{section.title}</p>}
+                <ul className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const isActive = isNavItemActive(item.href, location.pathname, searchParams);
+
+                    return (
+                      <li key={item.label}>
+                        <Link
+                          to={item.href ?? "#"}
+                          title={collapsed ? item.label : undefined}
+                          onClick={onNavigate}
+                          className={cn(
+                            "app-sidebar-link",
+                            isActive
+                              ? "bg-blue-600 font-semibold text-white"
+                              : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
+                            collapsed && "justify-center px-2",
+                          )}
+                        >
+                          <item.icon
+                            className="h-[18px] w-[18px] shrink-0"
+                            strokeWidth={isActive ? 2 : 1.75}
+                          />
+                          {!collapsed && (
+                            <>
+                              <span className="app-sidebar-label">{item.label}</span>
+                              {item.badge !== undefined && (
+                                <span
+                                  className={cn(
+                                    "app-sidebar-badge",
+                                    isActive
+                                      ? "bg-white/20 text-white"
+                                      : "bg-white/[0.08] text-slate-400",
+                                  )}
+                                >
+                                  {item.badge}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  {section.groups?.map((group) => (
+                    <CollapsibleNavGroup
+                      key={group.label}
+                      group={group}
+                      collapsed={collapsed}
+                      pathname={location.pathname}
+                      searchParams={searchParams}
+                      onNavigate={onNavigate}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+
+          {configuracionGroup && (
+            <div className="shrink-0 border-t border-white/10 px-2.5 py-2">
+              <ul className="space-y-0.5">
+                <li>
+                  <Link
+                    to={configuracionGroup.href ?? configuracionGroup.items[0]?.href ?? "#"}
+                    title={collapsed ? configuracionGroup.label : undefined}
+                    onClick={onNavigate}
+                    className={cn(
+                      "app-sidebar-link",
+                      isConfiguracionRoute(location.pathname)
+                        ? "bg-blue-600 font-semibold text-white"
+                        : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
+                      collapsed && "justify-center px-2",
+                    )}
+                  >
+                    <configuracionGroup.icon
+                      className="h-[18px] w-[18px] shrink-0"
+                      strokeWidth={isConfiguracionRoute(location.pathname) ? 2 : 1.75}
+                    />
+                    {!collapsed && (
+                      <span className="app-sidebar-label font-semibold">
+                        {configuracionGroup.label}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

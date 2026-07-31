@@ -1,220 +1,175 @@
+import { useState } from "react";
 import {
-  Calendar,
+  BookOpen,
   ChevronDown,
-  Filter,
-  GanttChart,
-  LayoutGrid,
-  Loader2,
-  RefreshCw,
+  Home,
+  ListTodo,
   Search,
 } from "lucide-react";
-import { AnunciosKanbanColumn } from "@/components/app/anuncios/AnunciosKanbanColumn";
-import { AnunciosOrgChart } from "@/components/app/anuncios/AnunciosOrgChart";
-import { AnunciosProyeccionView } from "@/components/app/anuncios/AnunciosProyeccionView";
-import { AnunciosRightPanel } from "@/components/app/anuncios/AnunciosRightPanel";
-import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
-import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
+import { AnunciosWikiHomeEditor } from "@/components/app/anuncios/AnunciosWikiHomeEditor";
+import { AnunciosWikiPageView } from "@/components/app/anuncios/AnunciosWikiPageView";
+import { AnunciosWikiPendientesSidebar } from "@/components/app/anuncios/AnunciosWikiPendientesSidebar";
+import { AnunciosWikiSidebar } from "@/components/app/anuncios/AnunciosWikiSidebar";
 import { Button } from "@/components/ui/button";
-import { useAnuncios } from "@/hooks/useAnuncios";
-import { useAppRightPanel } from "@/hooks/useAppRightPanel";
-import { anunciosTabs } from "@/lib/anuncios/anuncios-service";
+import { useWikiStore } from "@/hooks/useWikiStore";
+import { WIKI_MURAL_SIDEBAR_SECTIONS } from "@/lib/anuncios/wiki-store";
 import { cn } from "@/lib/utils";
 
 export default function AnunciosPage() {
   const {
-    snapshot,
-    kanbanColumns,
-    proyeccion,
-    updateColumnCopy,
-    activeTab,
-    setActiveTab,
-    search,
-    setSearch,
-    viewMode,
-    setViewMode,
-    isLoading,
-    isFetching,
-    refresh,
-    lastUpdatedAt,
-  } = useAnuncios();
-  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
+    navSections,
+    activePageId,
+    activePage,
+    activeSectionId,
+    setActiveSectionId,
+    selectPage,
+    goHome,
+    createPage,
+    setPageTitle,
+    setPageViewType,
+    addKanbanCard,
+    addKanbanColumn,
+    setKanbanColumns,
+    setTable,
+    setTodos,
+    setLinks,
+    setMuralColumns,
+    setBlocks,
+    homeBoard,
+    setHomeBoard,
+  } = useWikiStore();
+
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [pendientesOpen, setPendientesOpen] = useState(false);
+
+  const handleNewPage = () => {
+    createPage(activeSectionId || "general");
+  };
+
+  const canShowPendientes =
+    !!activePage &&
+    (WIKI_MURAL_SIDEBAR_SECTIONS as readonly string[]).includes(activePage.sectionId);
+  const showPendientesSidebar = canShowPendientes && pendientesOpen;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppPageHeader
-        title="Anuncios"
-        subtitle="Organiza pendientes, responsables, proyectos y comunicados por área de la empresa."
-        showPanelToggle
-        panelHidden={!isPanelVisible}
-        onTogglePanel={togglePanel}
-        hideHelp
-        actionLabel="+ Nuevo pendiente"
-        showActionDropdown
-        onActionClick={() => undefined}
+    <div className="flex min-h-0 flex-1 bg-[#f7f8fa]">
+      <AnunciosWikiSidebar
+        sections={navSections}
+        activePageId={activePageId}
+        onSelectPage={(pageId) => {
+          setPendientesOpen(false);
+          selectPage(pageId);
+        }}
+        onSelectSection={(sectionId) => {
+          setActiveSectionId(sectionId);
+          setPendientesOpen(false);
+          goHome();
+        }}
+        onNewPage={handleNewPage}
+        className="sticky top-0 hidden h-full md:flex"
       />
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-4 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {(snapshot?.kpis ?? []).map((kpi) => (
-                <CrmKpiCard key={kpi.label} {...kpi} />
-              ))}
-            </div>
-
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
-                <div className="flex gap-1 overflow-x-auto pb-1">
-                  {anunciosTabs.map((tab) => {
-                    const count = snapshot?.tabCounts[tab.id];
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                          "app-tab",
-                          activeTab === tab.id
-                            ? "border-blue-600 text-blue-600"
-                            : "border-transparent text-slate-500 hover:text-slate-800",
-                        )}
-                      >
-                        {tab.label}
-                        {typeof count === "number" && tab.id !== "todos" && (
-                          <span
-                            className={cn(
-                              activeTab === tab.id ? "text-blue-600" : "text-slate-400",
-                            )}
-                          >
-                            {" "}
-                            ({count})
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("kanban")}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition",
-                      viewMode === "kanban"
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700",
-                    )}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    Kanban
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("proyeccion")}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition",
-                      viewMode === "proyeccion"
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700",
-                    )}
-                  >
-                    <GanttChart className="h-3.5 w-3.5" />
-                    Proyección
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-4 py-3">
-                <div className="flex w-full min-w-[min(100%,220px)] flex-1 flex-col items-start gap-2">
-                  <AnunciosOrgChart />
-                  <div className="relative w-full">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Buscar tareas o responsables..."
-                      className="app-search-input pl-9 pr-3"
-                    />
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Área: Todas
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Prioridad: Todas
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Estado: Todos
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Fecha límite
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => void refresh()}
-                  disabled={isFetching}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50"
-                  aria-label="Actualizar"
-                >
-                  {isFetching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                </button>
-                <Button variant="ghost" size="sm" className="ml-auto h-9 gap-1.5 text-slate-600">
-                  <Filter className="h-3.5 w-3.5" />
-                  Más filtros
-                </Button>
-              </div>
-
-              {viewMode === "kanban" ? (
-                isLoading ? (
-                  <div className="flex items-center justify-center py-20 text-sm text-slate-500">
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Cargando pendientes...
-                  </div>
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col",
+          activePage ? "overflow-y-auto" : "overflow-hidden",
+        )}
+      >
+        <header className="sticky top-0 z-10 shrink-0 border-b border-slate-200/80 bg-white px-4 py-4 sm:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                {activePage ? (
+                  <span className="text-2xl leading-none" aria-hidden>
+                    {activePage.icon}
+                  </span>
                 ) : (
-                  <div className="overflow-x-auto p-4">
-                    <div className="flex h-[min(520px,calc(100vh-20rem))] gap-3">
-                      {kanbanColumns.map((column) => (
-                        <AnunciosKanbanColumn
-                          key={column.area.id}
-                          column={column}
-                          onCopyChange={updateColumnCopy}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )
-              ) : (
-                <AnunciosProyeccionView
-                  porHacer={proyeccion.porHacer}
-                  pendientes={proyeccion.pendientes}
+                  <BookOpen className="h-6 w-6 shrink-0 text-slate-700" strokeWidth={1.75} />
+                )}
+                <h1 className="truncate text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.75rem]">
+                  {activePage ? activePage.title : "Wiki"}
+                </h1>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendientesOpen(false);
+                  goHome();
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-slate-500 transition hover:bg-white hover:text-slate-800"
+              >
+                <Home className="h-3.5 w-3.5" />
+                {activePage ? "Wiki" : "Inicio"}
+                <ChevronDown className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {canShowPendientes && (
+                <Button
+                  type="button"
+                  variant={pendientesOpen ? "default" : "outline"}
+                  size="sm"
+                  className="h-9 gap-1.5"
+                  onClick={() => setPendientesOpen((open) => !open)}
+                >
+                  <ListTodo className="h-3.5 w-3.5" />
+                  Pendientes
+                </Button>
+              )}
+              <div id="wiki-zoom-slot" className="flex items-center" />
+              <div className="relative w-full max-w-[220px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={headerSearch}
+                  onChange={(event) => setHeaderSearch(event.target.value)}
+                  placeholder="Buscar"
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/15"
+                />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div
+          className={cn(
+            "w-full min-h-0 flex-1",
+            !activePage && "flex flex-col px-4 py-5 sm:px-6",
+            activePage && "flex min-h-0 gap-0 px-0 py-0 sm:px-0",
+          )}
+        >
+          {!activePage ? (
+            <AnunciosWikiHomeEditor columns={homeBoard} onChange={setHomeBoard} />
+          ) : (
+            <div className="flex min-h-0 min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4">
+                <AnunciosWikiPageView
+                  page={activePage}
+                  onTitleChange={(title) => setPageTitle(activePage.id, title)}
+                  onViewTypeChange={(viewType) => setPageViewType(activePage.id, viewType)}
+                  onAddKanbanColumn={() => addKanbanColumn(activePage.id, "Nueva columna")}
+                  onAddKanbanCard={(columnId) =>
+                    addKanbanCard(activePage.id, columnId, "Nueva tarjeta")
+                  }
+                  onKanbanChange={(columns) => setKanbanColumns(activePage.id, columns)}
+                  onTableChange={(table) => setTable(activePage.id, table)}
+                  onTodosChange={(todos) => setTodos(activePage.id, todos)}
+                  onLinksChange={(links) => setLinks(activePage.id, links)}
+                  onMuralChange={(columns) => setMuralColumns(activePage.id, columns)}
+                  onBlocksChange={(blocks) => setBlocks(activePage.id, blocks)}
+                />
+              </div>
+              {showPendientesSidebar && (
+                <AnunciosWikiPendientesSidebar
+                  pageTitle={activePage.title}
+                  todos={activePage.todos}
+                  onChange={(todos) => setTodos(activePage.id, todos)}
+                  className="sticky top-0 hidden h-full lg:flex"
                 />
               )}
-            </section>
-          </div>
+            </div>
+          )}
         </div>
-
-        <AppRightPanelSlot
-          panelHidden={panelHidden}
-          mobileOpen={mobileOpen}
-          onMobileOpenChange={setMobileOpen}
-        >
-          <AnunciosRightPanel
-            snapshot={snapshot}
-            lastUpdatedAt={lastUpdatedAt}
-            onRefresh={() => void refresh()}
-            isRefreshing={isFetching}
-          />
-        </AppRightPanelSlot>
       </div>
     </div>
   );

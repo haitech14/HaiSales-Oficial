@@ -2,8 +2,24 @@ export type EmpresaSede = {
   id: string;
   nombre: string;
   direccion: string;
+  /** Serie de cotización de la sucursal, p. ej. C001-001 */
+  serieCotizacion?: string;
   esPrincipal?: boolean;
 };
+
+/** Prefijo por defecto de serie de cotización (el sufijo 001/002 es por sucursal). */
+export const SERIE_COTIZACION_PREFIX = "C001-";
+
+export function formatSerieCotizacion(
+  sucursalIndex: number,
+  prefix: string = SERIE_COTIZACION_PREFIX,
+): string {
+  const normalizedPrefix = prefix.trim() || SERIE_COTIZACION_PREFIX;
+  const base = normalizedPrefix.endsWith("-")
+    ? normalizedPrefix
+    : `${normalizedPrefix.replace(/-+$/, "")}-`;
+  return `${base}${String(sucursalIndex + 1).padStart(3, "0")}`;
+}
 
 export type PhonePrefixOption = {
   code: string;
@@ -54,18 +70,26 @@ export function getPrimaryMoneda(monedas: string[]): string {
 
 export const IMPUESTO_RENTA_OPTIONS = [
   { value: 1.5, label: "1.5%" },
-  { value: 1, label: "1%" },
+  { value: 1, label: "1.0%" },
 ] as const;
 
 export const TIPO_CONTRIBUYENTE_OPTIONS = [
   { value: "regimen_general", label: "Régimen General" },
   { value: "rer", label: "RER - Régimen Especial de Renta" },
+  { value: "remype", label: "REMYPE - Régimen Microempresa" },
   { value: "rus", label: "RUS - Régimen Único Simplificado" },
   { value: "nrus", label: "NRUS - Nuevo RUS" },
   { value: "persona_natural_negocio", label: "Persona Natural con Negocio" },
   { value: "persona_natural", label: "Persona Natural" },
   { value: "no_domiciliado", label: "No Domiciliado" },
 ];
+
+/** Impuesto a la Renta sugerido según tipo de contribuyente. */
+export function getImpuestoRentaForTipoContribuyente(tipo: string): number | null {
+  if (tipo === "remype") return 1.5;
+  if (tipo === "rer") return 1;
+  return null;
+}
 
 export const PAIS_OPTIONS = [
   { value: "Perú", label: "Perú" },
@@ -98,6 +122,7 @@ export function getTipoContribuyenteLabel(value: string): string {
 export const REGIMEN_TRIBUTARIO_OPTIONS = [
   { value: "regimen_general", label: "Régimen General" },
   { value: "rer", label: "RER - Régimen Especial de Renta" },
+  { value: "remype", label: "REMYPE - Régimen Microempresa" },
   { value: "rus", label: "RUS - Régimen Único Simplificado" },
   { value: "nrus", label: "NRUS - Nuevo RUS" },
   { value: "mype_tributario", label: "Régimen MYPE Tributario" },

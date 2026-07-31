@@ -9,7 +9,7 @@ import { getIntegracionEstadoStyles, type IntegracionItem } from "@/lib/integrac
 import { cn } from "@/lib/utils";
 
 export default function IntegracionesPage() {
-  const { snapshot, isLoading } = useIntegraciones();
+  const { snapshot, isLoading, invalidate } = useIntegraciones();
   const [search, setSearch] = useState("");
   const [selectedIntegracion, setSelectedIntegracion] = useState<IntegracionItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function IntegracionesPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <AppPageHeader
         title="Integraciones"
         subtitle="Conecta HaiSales con SUNAT, mensajería, bancos, e-commerce y tu ERP."
@@ -151,6 +151,7 @@ export default function IntegracionesPage() {
         integracion={selectedIntegracion}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        onConnected={() => invalidate()}
       />
     </div>
   );

@@ -8,9 +8,13 @@ const SUPABASE_PUBLISHABLE_KEY = getSupabasePublishableKey();
 
 export const supabaseConfigError = getSupabaseConfigError();
 
+// Evita pantalla en blanco si falta .env: createClient exige URL/key no vacías.
+const clientUrl = SUPABASE_URL || "https://placeholder.supabase.co";
+const clientKey = SUPABASE_PUBLISHABLE_KEY || "public-anon-key";
+
 export const supabase: SupabaseClient<Database> = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY,
+  clientUrl,
+  clientKey,
   {
     auth: {
       storage: localStorage,

@@ -17,10 +17,10 @@ export function AppShell() {
 
   return (
     <WorkspaceProvider>
-      <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#f4f6f9] md:flex-row">
+      <div className="relative flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f4f6f9] md:flex-row">
         <div
           className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row",
+            "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row",
             setupOpen && "pointer-events-none select-none",
           )}
         >
@@ -32,7 +32,7 @@ export function AppShell() {
             <ErrorBoundary fallbackTitle="Error en el módulo">
               <AppPeriodProvider>
                 <GlobalSearchProvider>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
                     <Outlet />
                   </div>
                 </GlobalSearchProvider>

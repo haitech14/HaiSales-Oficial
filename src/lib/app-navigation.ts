@@ -60,7 +60,7 @@ export const dashboardNavGroup: NavGroup = {
 };
 
 export const anunciosNavItem: NavItem = {
-  label: "Anuncios",
+  label: "Wiki",
   href: "/app/anuncios",
   icon: Megaphone,
 };
@@ -144,5 +144,31 @@ export const appNavSections: NavSection[] = [
     ],
   },
 ];
+
+export type SidebarViewMode = "lista" | "modulos";
+
+export type AppModuleTile = {
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Clase Tailwind de fondo del tile */
+  color: string;
+  /** Ocupa todo el ancho (fila completa) */
+  wide?: boolean;
+};
+
+export const SIDEBAR_VIEW_STORAGE_KEY = "haisales-sidebar-view";
+
+export function loadSidebarViewMode(): SidebarViewMode {
+  if (typeof window === "undefined") return "lista";
+  const stored = window.localStorage.getItem(SIDEBAR_VIEW_STORAGE_KEY);
+  return stored === "modulos" ? "modulos" : "lista";
+}
+
+export function saveSidebarViewMode(mode: SidebarViewMode) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SIDEBAR_VIEW_STORAGE_KEY, mode);
+}
 
 export { ChevronRight, HelpCircle, Target };

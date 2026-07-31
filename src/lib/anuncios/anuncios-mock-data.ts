@@ -127,12 +127,31 @@ export const anunciosKpis = [
 ];
 
 export const anunciosTabs = [
-  { id: "todos", label: "Todos" },
+  { id: "todos", label: "Todo" },
   { id: "por-ejecutar", label: "Por ejecutar" },
   { id: "en-proceso", label: "En proceso" },
   { id: "en-revision", label: "En revisión" },
   { id: "completados", label: "Completados" },
 ];
+
+export type WikiPageTag = {
+  label: string;
+  className: string;
+};
+
+export type WikiPageCard = {
+  id: string;
+  title: string;
+  icon: string;
+  updatedAt: string;
+  coverGradient: string;
+  coverLabel?: string;
+  tags: WikiPageTag[];
+  section: string;
+};
+
+export type { WikiNavSection } from "@/lib/anuncios/wiki-store";
+export { wikiNavSections, createSeedWikiPages, pagesToGalleryCards } from "@/lib/anuncios/wiki-store";
 
 export const orgChart = {
   root: {

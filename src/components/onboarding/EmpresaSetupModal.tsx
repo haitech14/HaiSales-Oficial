@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   Building2,
-  Calculator,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +37,8 @@ import {
 import { trabajadorAreas } from "@/lib/planillas-form-data";
 import { prefetchAppRoutes } from "@/lib/prefetch-app-routes";
 import {
+  getImpuestoRentaForTipoContribuyente,
+  IMPUESTO_RENTA_OPTIONS,
   PAIS_OPTIONS,
   TIPO_CONTRIBUYENTE_OPTIONS,
   ZONA_HORARIA_OPTIONS,
@@ -48,7 +49,6 @@ const STEPS = [
   { id: "fiscal", label: "Datos fiscales", icon: Building2 },
   { id: "impuestos", label: "Impuestos", icon: Receipt },
   { id: "trabajadores", label: "Trabajadores", icon: Users },
-  { id: "contador", label: "Contador", icon: Calculator },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -116,6 +116,8 @@ function createDefaultEmpresa(email = ""): EmpresaSetupFormState {
     serieOrdenCompra: defaultEmpresaConfig.serieOrdenCompra,
     serieOrdenPedido: defaultEmpresaConfig.serieOrdenPedido,
     serieOrdenServicio: defaultEmpresaConfig.serieOrdenServicio,
+    serieOrdenAlquiler: defaultEmpresaConfig.serieOrdenAlquiler,
+    serieOrdenPlanMantenimiento: defaultEmpresaConfig.serieOrdenPlanMantenimiento,
     sedes: [],
   };
 }
@@ -129,10 +131,6 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [empresa, setEmpresa] = useState<EmpresaSetupFormState>(() => createDefaultEmpresa());
   const [trabajadores, setTrabajadores] = useState<OnboardingTrabajadorDraft[]>([]);
-  const [contador, setContador] = useState({
-    nombre: "",
-    email: "",
-  });
 
   useEffect(() => {
     if (!user?.id || isConfigLoading || isHydrated) return;
@@ -149,19 +147,64 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
         ...draft.empresa,
         email: draft.empresa.email || user.email || "",
       });
-      setTrabajadores(draft.trabajadores);
-      setContador(draft.contador);
-      setStepIndex(Math.min(Math.max(draft.stepIndex, 0), STEPS.length - 1));
+      const fromDraft = draft.trabajadores;
+      const contadorDraft = draft.contador;
+      const hasContador = fromDraft.some((item) => item.esContador);
+      const withLegacyContador =
+        !hasContador && (contadorDraft.nombre.trim() || contadorDraft.email.trim())
+          ? [
+              ...fromDraft,
+              {
+                id: `trab-contador-${Date.now()}`,
+                dni: "",
+                nombresApellidos: contadorDraft.nombre,
+                area: "finanzas",
+                sueldoBasico: "",
+                horaEntrada: "08:00",
+                horaSalida: "17:00",
+                horaRefrigerio: "",
+                enPlanilla: false,
+                sistemaPensiones: "" as const,
+                seguroSalud: "" as const,
+                email: contadorDraft.email,
+                usuarioInterno: "",
+                esContador: true,
+                emailManual: Boolean(contadorDraft.email),
+              },
+            ]
+          : fromDraft;
+      setTrabajadores(withLegacyContador);
+      const maxStep = STEPS.length - 1;
+      const draftStep = Math.min(Math.max(draft.stepIndex, 0), maxStep);
+      // Migrar drafts que apuntaban al paso "contador" (índice 3) al de trabajadores.
+      setStepIndex(draft.stepIndex >= STEPS.length ? maxStep : draftStep);
     } else if (fromDb) {
       setEmpresa({
         ...createDefaultEmpresa(user.email ?? ""),
         ...fromDb,
         email: fromDb.email || user.email || "",
       });
-      setContador({
-        nombre: savedConfig?.contadorNombre ?? "",
-        email: savedConfig?.contadorEmail ?? "",
-      });
+      if (savedConfig?.contadorNombre || savedConfig?.contadorEmail) {
+        setTrabajadores([
+          {
+            id: `trab-contador-${Date.now()}`,
+            dni: "",
+            nombresApellidos: savedConfig.contadorNombre ?? "",
+            area: "finanzas",
+            sueldoBasico: "",
+            horaEntrada: "08:00",
+            horaSalida: "17:00",
+            horaRefrigerio: "",
+            enPlanilla: false,
+            sistemaPensiones: "",
+            seguroSalud: "",
+            email: savedConfig.contadorEmail ?? "",
+            usuarioInterno: "",
+            esContador: true,
+            emailManual: Boolean(savedConfig.contadorEmail),
+          },
+        ]);
+      }
     } else {
       setEmpresa(createDefaultEmpresa(user.email ?? ""));
     }
@@ -172,17 +215,22 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
   useEffect(() => {
     if (!user?.id || !isHydrated) return;
 
+    const contadorItem = trabajadores.find((item) => item.esContador);
+
     const timer = window.setTimeout(() => {
       saveEmpresaSetupDraft(user.id, {
         stepIndex,
         empresa,
         trabajadores,
-        contador,
+        contador: {
+          nombre: contadorItem?.nombresApellidos ?? "",
+          email: contadorItem?.email ?? "",
+        },
       });
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [user?.id, isHydrated, stepIndex, empresa, trabajadores, contador]);
+  }, [user?.id, isHydrated, stepIndex, empresa, trabajadores]);
 
   const currentStep = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
@@ -242,7 +290,9 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
         !empresa.serieProforma.trim() ||
         !empresa.serieOrdenCompra.trim() ||
         !empresa.serieOrdenPedido.trim() ||
-        !empresa.serieOrdenServicio.trim()
+        !empresa.serieOrdenServicio.trim() ||
+        !empresa.serieOrdenAlquiler.trim() ||
+        !empresa.serieOrdenPlanMantenimiento.trim()
       ) {
         toast.error("Completa todas las series de comprobantes");
         return false;
@@ -255,12 +305,21 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
       if (filled.length === 0) return true;
 
       for (const [index, item] of filled.entries()) {
-        if (!/^\d{8}$/.test(item.dni.trim())) {
-          toast.error(`El DNI del trabajador ${index + 1} debe tener 8 dígitos`);
+        const label = item.esContador ? "contador" : `trabajador ${index + 1}`;
+
+        if (!item.nombresApellidos.trim()) {
+          toast.error(`Ingresa el nombre del ${label}`);
           return false;
         }
-        if (!item.nombresApellidos.trim()) {
-          toast.error(`Ingresa el nombre del trabajador ${index + 1}`);
+        if (!item.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email.trim())) {
+          toast.error(`Ingresa un correo válido para el ${label}`);
+          return false;
+        }
+
+        if (item.esContador) continue;
+
+        if (!/^\d{8}$/.test(item.dni.trim())) {
+          toast.error(`El DNI del trabajador ${index + 1} debe tener 8 dígitos`);
           return false;
         }
         if (!item.area) {
@@ -289,14 +348,6 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
       return true;
     }
 
-    if (stepId === "contador") {
-      if (contador.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contador.email)) {
-        toast.error("Ingresa un correo válido para el contador");
-        return false;
-      }
-      return true;
-    }
-
     return true;
   };
 
@@ -315,15 +366,26 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
       .map((item) => ({
         dni: item.dni.trim(),
         nombresApellidos: item.nombresApellidos.trim(),
-        cargo: "Sin especificar",
-        area: resolveSelectLabel(trabajadorAreas, item.area),
-        sueldoBasico: Number(item.sueldoBasico),
+        cargo: item.esContador ? "Contador" : "Sin especificar",
+        area: item.esContador
+          ? "Finanzas"
+          : resolveSelectLabel(trabajadorAreas, item.area),
+        sueldoBasico: Number(item.sueldoBasico) || 0,
         horaEntrada: item.horaEntrada,
         horaSalida: item.horaSalida,
         horaRefrigerio: item.horaRefrigerio || undefined,
-        enPlanilla: item.enPlanilla,
-        sistemaPensiones: item.enPlanilla && item.sistemaPensiones ? item.sistemaPensiones : undefined,
-        seguroSalud: item.enPlanilla && item.seguroSalud ? item.seguroSalud : undefined,
+        enPlanilla: item.esContador ? false : item.enPlanilla,
+        sistemaPensiones:
+          !item.esContador && item.enPlanilla && item.sistemaPensiones
+            ? item.sistemaPensiones
+            : undefined,
+        seguroSalud:
+          !item.esContador && item.enPlanilla && item.seguroSalud
+            ? item.seguroSalud
+            : undefined,
+        email: item.email.trim().toLowerCase(),
+        usuarioInterno: item.usuarioInterno.trim(),
+        esContador: item.esContador,
       }));
   };
 
@@ -342,16 +404,18 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
 
     setIsSubmitting(true);
     try {
+      const payload = buildTrabajadoresPayload();
+      const contadorItem = payload.find((item) => item.esContador);
       await completeEmpresaOnboarding(user.id, {
         empresa,
-        contadorNombre: contador.nombre,
-        contadorEmail: contador.email,
-        trabajadores: buildTrabajadoresPayload(),
+        contadorNombre: contadorItem?.nombresApellidos ?? "",
+        contadorEmail: contadorItem?.email ?? "",
+        trabajadores: payload,
       });
       clearEmpresaSetupDraft(user.id);
       invalidateEmpresaConfig();
       prefetchAppRoutes();
-      toast.success("Empresa configurada correctamente");
+      toast.success("Empresa configurada. Usuarios creados con su correo.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo completar la configuración");
     } finally {
@@ -371,12 +435,8 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
   const skipToFinish = () => {
     if (currentStep.id === "trabajadores") {
       setTrabajadores([]);
-    }
-    if (currentStep.id === "contador") {
       void finishOnboarding();
-      return;
     }
-    setStepIndex((current) => Math.min(current + 1, STEPS.length - 1));
   };
 
   return (
@@ -525,6 +585,7 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                     sedes={empresa.sedes}
                     onChange={(sedes) => updateEmpresa("sedes", sedes)}
                     inputClassName={inputClass}
+                    serieCotizacionPrefix={empresa.serieProforma || "C001-"}
                   />
                 </Field>
               </div>
@@ -538,10 +599,31 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
               <select
                 className={inputClass}
                 value={empresa.tipoContribuyente}
-                onChange={(e) => updateEmpresa("tipoContribuyente", e.target.value)}
+                onChange={(e) => {
+                  const tipo = e.target.value;
+                  const impuestoSugerido = getImpuestoRentaForTipoContribuyente(tipo);
+                  setEmpresa((current) => ({
+                    ...current,
+                    tipoContribuyente: tipo,
+                    ...(impuestoSugerido != null ? { impuestoRenta: impuestoSugerido } : {}),
+                  }));
+                }}
               >
                 <option value="">Seleccionar tipo</option>
                 {TIPO_CONTRIBUYENTE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Impuesto a la Renta" required>
+              <select
+                className={inputClass}
+                value={empresa.impuestoRenta}
+                onChange={(e) => updateEmpresa("impuestoRenta", Number(e.target.value))}
+              >
+                {IMPUESTO_RENTA_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -626,14 +708,18 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                 placeholder="T001"
               />
             </Field>
-            <Field label="Serie proforma" required>
+            <Field label="Serie cotización" required>
               <input
                 className={inputClass}
                 value={empresa.serieProforma}
                 onChange={(e) => updateEmpresa("serieProforma", e.target.value.toUpperCase())}
-                placeholder="PR001"
+                placeholder="C001-"
               />
             </Field>
+            <p className="sm:col-span-2 -mt-2 text-xs text-slate-500">
+              Prefijo por defecto <span className="font-medium text-slate-700">C001-</span>. El
+              sufijo (001, 002…) se asigna por sucursal.
+            </p>
             <Field label="Serie de orden de compra" required>
               <input
                 className={inputClass}
@@ -658,6 +744,24 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                 placeholder="OS001"
               />
             </Field>
+            <Field label="Serie de orden de alquiler" required>
+              <input
+                className={inputClass}
+                value={empresa.serieOrdenAlquiler}
+                onChange={(e) => updateEmpresa("serieOrdenAlquiler", e.target.value.toUpperCase())}
+                placeholder="OA001"
+              />
+            </Field>
+            <Field label="Serie de orden de plan de mantenimiento" required>
+              <input
+                className={inputClass}
+                value={empresa.serieOrdenPlanMantenimiento}
+                onChange={(e) =>
+                  updateEmpresa("serieOrdenPlanMantenimiento", e.target.value.toUpperCase())
+                }
+                placeholder="OM001"
+              />
+            </Field>
             <p className="sm:col-span-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
               Estos parámetros se usarán en comprobantes, ventas y reportes contables.
             </p>
@@ -669,34 +773,10 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
             trabajadores={trabajadores}
             onChange={setTrabajadores}
             inputClassName="bg-[#eef2f8] border-transparent"
+            empresaEmail={empresa.email}
+            nombreComercial={empresa.nombreComercial}
+            razonSocial={empresa.razonSocial}
           />
-        )}
-
-        {currentStep.id === "contador" && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-500">
-              Opcional: registra al contador o asesor contable de tu empresa para futuras invitaciones.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nombre del contador">
-                <input
-                  className={inputClass}
-                  value={contador.nombre}
-                  onChange={(e) => setContador((current) => ({ ...current, nombre: e.target.value }))}
-                  placeholder="María López"
-                />
-              </Field>
-              <Field label="Correo del contador">
-                <input
-                  type="email"
-                  className={inputClass}
-                  value={contador.email}
-                  onChange={(e) => setContador((current) => ({ ...current, email: e.target.value }))}
-                  placeholder="contador@miempresa.pe"
-                />
-              </Field>
-            </div>
-          </div>
         )}
 
         <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
@@ -713,7 +793,7 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                 Atrás
               </Button>
             )}
-            {(currentStep.id === "trabajadores" || currentStep.id === "contador") && (
+            {currentStep.id === "trabajadores" && (
               <Button
                 type="button"
                 variant="ghost"
@@ -721,7 +801,7 @@ export function EmpresaSetupModal({ className }: EmpresaSetupModalProps) {
                 className="rounded-[10px] text-slate-500"
                 disabled={isSubmitting}
               >
-                {currentStep.id === "contador" ? "Omitir y finalizar" : "Omitir paso"}
+                Omitir y finalizar
               </Button>
             )}
           </div>

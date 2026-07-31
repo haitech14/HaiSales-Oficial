@@ -3,16 +3,27 @@ import { ChevronsLeft, ChevronsRight, Menu } from "lucide-react";
 import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AppSidebarContent } from "@/components/layout/AppSidebarContent";
+import {
+  loadSidebarViewMode,
+  saveSidebarViewMode,
+  type SidebarViewMode,
+} from "@/lib/app-navigation";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState<SidebarViewMode>(() => loadSidebarViewMode());
+
+  const handleViewModeChange = (mode: SidebarViewMode) => {
+    saveSidebarViewMode(mode);
+    setViewMode(mode);
+  };
 
   return (
     <aside
       className={cn(
-        "hidden h-screen shrink-0 flex-col bg-[#0b1220] transition-[width] duration-200 md:flex",
-        collapsed ? "w-[68px]" : "w-[248px]",
+        "sticky top-0 hidden h-dvh shrink-0 flex-col self-start bg-[#0b1220] transition-[width] duration-200 md:flex",
+        collapsed ? "w-[68px]" : viewMode === "modulos" ? "w-[268px]" : "w-[248px]",
       )}
     >
       <div className="flex items-center justify-between gap-2 px-3 py-3">
@@ -20,7 +31,7 @@ export function AppSidebar() {
           to="/app/dashboard"
           theme="onDark"
           iconOnly={collapsed}
-          imageClassName={collapsed ? "h-8 w-8 object-contain object-left" : "h-11 w-auto max-w-[210px]"}
+          imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-9 w-auto max-w-[170px]"}
         />
         <button
           type="button"
@@ -32,7 +43,13 @@ export function AppSidebar() {
         </button>
       </div>
 
-      <AppSidebarContent collapsed={collapsed} showBrand={false} className="min-h-0 flex-1" />
+      <AppSidebarContent
+        collapsed={collapsed}
+        showBrand={false}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        className="min-h-0 flex-1"
+      />
     </aside>
   );
 }
@@ -69,10 +86,25 @@ type AppMobileNavProps = {
 };
 
 export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
+  const [viewMode, setViewMode] = useState<SidebarViewMode>(() => loadSidebarViewMode());
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-[min(100vw,248px)] border-none p-0 md:hidden">
-        <AppSidebarContent onNavigate={() => onOpenChange(false)} />
+      <SheetContent
+        side="left"
+        className={cn(
+          "border-none p-0 md:hidden",
+          viewMode === "modulos" ? "w-[min(100vw,268px)]" : "w-[min(100vw,248px)]",
+        )}
+      >
+        <AppSidebarContent
+          viewMode={viewMode}
+          onViewModeChange={(mode) => {
+            saveSidebarViewMode(mode);
+            setViewMode(mode);
+          }}
+          onNavigate={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );

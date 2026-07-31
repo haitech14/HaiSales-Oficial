@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -70,7 +70,7 @@ export default function UsuariosPage() {
   const totalRecords = snapshot?.totalRecords ?? filteredUsers.length;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <AppPageHeader
         title="Usuarios/Planillas"
         subtitle="Administra accesos, roles, permisos, sucursales, seguridad e historial de actividad."

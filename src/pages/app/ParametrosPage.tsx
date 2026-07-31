@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useInvalidateEmpresaConfig } from "@/hooks/useEmpresaConfig";
 import {
+  getImpuestoRentaForTipoContribuyente,
+  IMPUESTO_RENTA_OPTIONS,
   PAIS_OPTIONS,
   TIPO_CONTRIBUYENTE_OPTIONS,
   ZONA_HORARIA_OPTIONS,
@@ -87,7 +89,7 @@ export default function ParametrosPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <AppPageHeader
         title="Configuración"
         subtitle="Datos de empresa, series de comprobantes, impuestos y moneda."
@@ -95,7 +97,7 @@ export default function ParametrosPage() {
         onActionClick={handleSave}
       />
 
-      <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 p-4 sm:p-6">
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900">Datos fiscales</h2>
           <div className="mt-4 space-y-4">
@@ -179,6 +181,7 @@ export default function ParametrosPage() {
                     sedes={form.sedes}
                     onChange={(sedes) => updateField("sedes", sedes)}
                     inputClassName="h-10 rounded-lg border border-slate-200 bg-white"
+                    serieCotizacionPrefix={form.serieProforma || "C001-"}
                   />
                 </Field>
               </div>
@@ -193,10 +196,31 @@ export default function ParametrosPage() {
               <select
                 className={inputClass}
                 value={form.tipoContribuyente}
-                onChange={(e) => updateField("tipoContribuyente", e.target.value)}
+                onChange={(e) => {
+                  const tipo = e.target.value;
+                  const impuestoSugerido = getImpuestoRentaForTipoContribuyente(tipo);
+                  setForm((current) => ({
+                    ...current,
+                    tipoContribuyente: tipo,
+                    ...(impuestoSugerido != null ? { impuestoRenta: impuestoSugerido } : {}),
+                  }));
+                }}
               >
                 <option value="">Seleccionar tipo</option>
                 {TIPO_CONTRIBUYENTE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Impuesto a la Renta">
+              <select
+                className={inputClass}
+                value={form.impuestoRenta}
+                onChange={(e) => updateField("impuestoRenta", Number(e.target.value))}
+              >
+                {IMPUESTO_RENTA_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -278,11 +302,12 @@ export default function ParametrosPage() {
                 onChange={(e) => updateField("serieGuiaRemision", e.target.value)}
               />
             </Field>
-            <Field label="Serie proforma">
+            <Field label="Serie cotización">
               <input
                 className={inputClass}
                 value={form.serieProforma}
-                onChange={(e) => updateField("serieProforma", e.target.value)}
+                onChange={(e) => updateField("serieProforma", e.target.value.toUpperCase())}
+                placeholder="C001-"
               />
             </Field>
             <Field label="Serie de orden de compra">
@@ -304,6 +329,24 @@ export default function ParametrosPage() {
                 className={inputClass}
                 value={form.serieOrdenServicio}
                 onChange={(e) => updateField("serieOrdenServicio", e.target.value)}
+              />
+            </Field>
+            <Field label="Serie de orden de alquiler">
+              <input
+                className={inputClass}
+                value={form.serieOrdenAlquiler}
+                onChange={(e) => updateField("serieOrdenAlquiler", e.target.value.toUpperCase())}
+                placeholder="OA001"
+              />
+            </Field>
+            <Field label="Serie de orden de plan de mantenimiento">
+              <input
+                className={inputClass}
+                value={form.serieOrdenPlanMantenimiento}
+                onChange={(e) =>
+                  updateField("serieOrdenPlanMantenimiento", e.target.value.toUpperCase())
+                }
+                placeholder="OM001"
               />
             </Field>
           </div>

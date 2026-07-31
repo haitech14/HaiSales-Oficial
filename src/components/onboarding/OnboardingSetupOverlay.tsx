@@ -7,28 +7,41 @@ export function OnboardingSetupOverlay() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSetupComplete, isLoading } = useEmpresaSetupStatus();
+  const setupOpen = !isLoading && !isSetupComplete;
 
   useEffect(() => {
-    if (isLoading || isSetupComplete) return;
+    if (!setupOpen) return;
 
     if (location.pathname !== "/app/dashboard") {
       navigate("/app/dashboard", { replace: true });
     }
-  }, [isLoading, isSetupComplete, location.pathname, navigate]);
+  }, [setupOpen, location.pathname, navigate]);
 
-  if (isLoading || isSetupComplete) {
+  useEffect(() => {
+    if (!setupOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [setupOpen]);
+
+  if (!setupOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto px-4 py-8 sm:py-10">
+    <div className="fixed inset-0 z-[100]">
       <div
-        className="absolute inset-0 bg-[#04101f]/60 backdrop-blur-[4px]"
+        className="fixed inset-0 bg-[#04101f]/60 backdrop-blur-[4px]"
         aria-hidden="true"
       />
 
-      <div className="relative z-10 w-full max-w-2xl pb-8">
-        <EmpresaSetupModal />
+      <div className="relative z-10 flex h-full justify-center overflow-y-auto px-4 py-8 sm:py-10">
+        <div className="w-full max-w-2xl pb-8">
+          <EmpresaSetupModal />
+        </div>
       </div>
     </div>
   );

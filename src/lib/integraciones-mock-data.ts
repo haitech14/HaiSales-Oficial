@@ -47,6 +47,15 @@ export const integraciones: IntegracionItem[] = [
     iconColor: "text-emerald-600",
   }),
   catalogItem({
+    id: "zavu",
+    nombre: "Zavu — Mensajería multicanal",
+    descripcion: "SMS, WhatsApp, Telegram, email y voz desde una sola API (Zavu).",
+    categoria: "Mensajería",
+    icon: MessageCircle,
+    iconBg: "bg-teal-50",
+    iconColor: "text-teal-600",
+  }),
+  catalogItem({
     id: "woocommerce",
     nombre: "WooCommerce",
     descripcion: "Importa pedidos, clientes y actualiza stock desde tu tienda online.",

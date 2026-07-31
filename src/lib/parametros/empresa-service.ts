@@ -1,11 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { clearEmpresaSetupDraft } from "@/lib/parametros/empresa-setup-draft";
 import {
+  formatSerieCotizacion,
   getPrimaryMoneda,
   normalizeMonedas,
   type EmpresaSede,
 } from "@/lib/parametros/empresa-config-data";
 import { toDbTime } from "@/lib/parametros/onboarding-trabajador-data";
+import {
+  buildEmpresaEmailDomain,
+  generateUniqueEmail,
+  generateUniqueUsuarioInterno,
+} from "@/lib/parametros/onboarding-user-email";
+import { createUsuario } from "@/lib/usuarios/usuarios-service";
 
 export type { EmpresaSede };
 
@@ -38,6 +45,8 @@ export type EmpresaConfig = {
   serieOrdenCompra: string;
   serieOrdenPedido: string;
   serieOrdenServicio: string;
+  serieOrdenAlquiler: string;
+  serieOrdenPlanMantenimiento: string;
   sedes: EmpresaSede[];
   contadorNombre: string;
   contadorEmail: string;
@@ -65,6 +74,9 @@ export type OnboardingTrabajadorInput = {
   enPlanilla: boolean;
   sistemaPensiones?: "afp" | "onp";
   seguroSalud?: "essalud" | "sis";
+  email?: string;
+  usuarioInterno?: string;
+  esContador?: boolean;
 };
 
 export type CompleteOnboardingInput = {
@@ -99,10 +111,12 @@ export const defaultEmpresaConfig: EmpresaConfig = {
   serieNotaDebito: "FD01",
   serieNotaVenta: "NV01",
   serieGuiaRemision: "T001",
-  serieProforma: "PR001",
+  serieProforma: "C001-",
   serieOrdenCompra: "OC001",
   serieOrdenPedido: "OP001",
   serieOrdenServicio: "OS001",
+  serieOrdenAlquiler: "OA001",
+  serieOrdenPlanMantenimiento: "OM001",
   sedes: [],
   contadorNombre: "",
   contadorEmail: "",
@@ -140,6 +154,8 @@ type EmpresaRow = {
   serie_orden_compra: string | null;
   serie_orden_pedido: string | null;
   serie_orden_servicio: string | null;
+  serie_orden_alquiler: string | null;
+  serie_orden_plan_mantenimiento: string | null;
   sedes: unknown;
   contador_nombre: string | null;
   contador_email: string | null;
@@ -151,12 +167,16 @@ function parseSedes(value: unknown): EmpresaSede[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-    .map((item) => ({
-      id: String(item.id ?? `sede-${Math.random().toString(36).slice(2, 9)}`),
-      nombre: String(item.nombre ?? ""),
-      direccion: String(item.direccion ?? ""),
-      esPrincipal: Boolean(item.esPrincipal),
-    }));
+    .map((item, index) => {
+      const serieRaw = typeof item.serieCotizacion === "string" ? item.serieCotizacion.trim() : "";
+      return {
+        id: String(item.id ?? `sede-${Math.random().toString(36).slice(2, 9)}`),
+        nombre: String(item.nombre ?? ""),
+        direccion: String(item.direccion ?? ""),
+        serieCotizacion: serieRaw || formatSerieCotizacion(index),
+        esPrincipal: Boolean(item.esPrincipal),
+      };
+    });
 }
 
 function withSyncedMoneda(config: Omit<EmpresaConfig, "moneda"> & { moneda?: string }): EmpresaConfig {
@@ -222,10 +242,12 @@ function mapRowToConfig(row: EmpresaRow): EmpresaConfig {
     serieNotaDebito: row.serie_nota_debito ?? "FD01",
     serieNotaVenta: row.serie_nota_venta ?? "NV01",
     serieGuiaRemision: row.serie_guia_remision ?? "T001",
-    serieProforma: row.serie_proforma ?? "PR001",
+    serieProforma: row.serie_proforma ?? "C001-",
     serieOrdenCompra: row.serie_orden_compra ?? "OC001",
     serieOrdenPedido: row.serie_orden_pedido ?? "OP001",
     serieOrdenServicio: row.serie_orden_servicio ?? "OS001",
+    serieOrdenAlquiler: row.serie_orden_alquiler ?? "OA001",
+    serieOrdenPlanMantenimiento: row.serie_orden_plan_mantenimiento ?? "OM001",
     sedes: parseSedes(row.sedes),
     contadorNombre: row.contador_nombre ?? "",
     contadorEmail: row.contador_email ?? "",
@@ -356,6 +378,8 @@ function buildEmpresaPayload(userId: string, config: EmpresaConfig, setupComplet
     serie_orden_compra: synced.serieOrdenCompra.trim() || null,
     serie_orden_pedido: synced.serieOrdenPedido.trim() || null,
     serie_orden_servicio: synced.serieOrdenServicio.trim() || null,
+    serie_orden_alquiler: synced.serieOrdenAlquiler.trim() || null,
+    serie_orden_plan_mantenimiento: synced.serieOrdenPlanMantenimiento.trim() || null,
     sedes: synced.sedes,
     contador_nombre: synced.contadorNombre.trim() || null,
     contador_email: synced.contadorEmail.trim() || null,
@@ -419,20 +443,103 @@ async function createOnboardingTrabajador(userId: string, trabajador: Onboarding
   }
 }
 
+async function createOnboardingUsuario(
+  userId: string,
+  trabajador: OnboardingTrabajadorInput,
+  sedePrincipal: EmpresaSede | undefined,
+  emailDomain: string,
+  usedEmails: Set<string>,
+  usedUsuarios: Set<string>,
+) {
+  const nombre = trabajador.nombresApellidos.trim();
+  if (!nombre) return;
+
+  let correo = trabajador.email?.trim().toLowerCase() || "";
+  if (!correo || usedEmails.has(correo)) {
+    correo = generateUniqueEmail(nombre, emailDomain, usedEmails);
+  }
+
+  let usuarioInterno = trabajador.usuarioInterno?.trim() || "";
+  if (!usuarioInterno || usedUsuarios.has(usuarioInterno.toLowerCase())) {
+    usuarioInterno = generateUniqueUsuarioInterno(nombre, usedUsuarios);
+  }
+
+  usedEmails.add(correo);
+  usedUsuarios.add(usuarioInterno.toLowerCase());
+
+  await createUsuario(userId, {
+    nombreCompleto: nombre,
+    correo,
+    telefono: "",
+    sedeId: sedePrincipal?.id ?? "",
+    sedeNombre: sedePrincipal?.nombre ?? "",
+    cargo: trabajador.esContador ? "Contador" : trabajador.cargo.trim() || "Trabajador",
+    usuarioInterno,
+    rolPrincipal: trabajador.esContador ? "Tecnico" : "Ventas",
+    autenticacion2fa: "Opcional",
+    estadoInicial: "Invitado",
+    enviarInvitacion: "Sí, enviar por correo",
+    esBorrador: false,
+  });
+}
+
 export async function completeEmpresaOnboarding(userId: string, input: CompleteOnboardingInput) {
+  const contadorFromList = input.trabajadores?.find((item) => item.esContador);
+  const contadorNombre =
+    input.contadorNombre?.trim() || contadorFromList?.nombresApellidos.trim() || "";
+  const contadorEmail =
+    input.contadorEmail?.trim() || contadorFromList?.email?.trim() || "";
+
   const config = withSyncedMoneda({
     ...input.empresa,
-    contadorNombre: input.contadorNombre?.trim() ?? "",
-    contadorEmail: input.contadorEmail?.trim() ?? "",
+    contadorNombre,
+    contadorEmail,
     setupCompleted: true,
   });
 
   const saved = await updateEmpresaConfig(userId, config);
+  const sedePrincipal =
+    saved.sedes.find((sede) => sede.esPrincipal) ?? saved.sedes[0];
+  const emailDomain = buildEmpresaEmailDomain(
+    saved.email,
+    saved.nombreComercial,
+    saved.razonSocial,
+  );
+
+  const usedEmails = new Set<string>();
+  const usedUsuarios = new Set<string>();
 
   if (input.trabajadores?.length) {
     for (const trabajador of input.trabajadores) {
-      if (trabajador.dni && trabajador.nombresApellidos) {
-        await createOnboardingTrabajador(userId, trabajador);
+      if (!trabajador.nombresApellidos.trim()) continue;
+
+      if (!trabajador.esContador && trabajador.dni) {
+        try {
+          await createOnboardingTrabajador(userId, trabajador);
+        } catch (error) {
+          console.warn(
+            "[empresa] No se pudo crear trabajador en planilla:",
+            trabajador.nombresApellidos,
+            error,
+          );
+        }
+      }
+
+      try {
+        await createOnboardingUsuario(
+          userId,
+          trabajador,
+          sedePrincipal,
+          emailDomain,
+          usedEmails,
+          usedUsuarios,
+        );
+      } catch (error) {
+        console.warn(
+          "[empresa] No se pudo crear usuario para",
+          trabajador.nombresApellidos,
+          error,
+        );
       }
     }
   }

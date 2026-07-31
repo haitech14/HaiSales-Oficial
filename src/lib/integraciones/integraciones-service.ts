@@ -17,6 +17,7 @@ export type IntegracionesSnapshot = {
 
 const CHANNEL_TO_INTEGRATION: Record<string, string> = {
   whatsapp: "whatsapp",
+  zavu: "zavu",
   email: "sunat",
   web: "woocommerce",
 };

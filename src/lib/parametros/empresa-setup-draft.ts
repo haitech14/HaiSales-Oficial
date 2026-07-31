@@ -111,6 +111,8 @@ export function empresaConfigToSetupForm(
     serieOrdenCompra: config.serieOrdenCompra,
     serieOrdenPedido: config.serieOrdenPedido,
     serieOrdenServicio: config.serieOrdenServicio,
+    serieOrdenAlquiler: config.serieOrdenAlquiler,
+    serieOrdenPlanMantenimiento: config.serieOrdenPlanMantenimiento,
     sedes: config.sedes,
   };
 }

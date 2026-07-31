@@ -19,13 +19,13 @@ export function ConfiguracionLayout() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-      <aside className="hidden w-52 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
-        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+      <aside className="sticky top-0 z-10 hidden h-full w-52 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-4 py-3">
           <Settings className="h-4 w-4 text-slate-500" strokeWidth={1.75} />
           <span className="text-sm font-semibold text-slate-800">Configuración</span>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2" aria-label="Configuración">
+        <nav className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Configuración">
           <ul className="space-y-0.5">
             {configGroup.items.map((item) => {
               const isActive = isConfigItemActive(item.href, location.pathname);
@@ -49,7 +49,7 @@ export function ConfiguracionLayout() {
         </nav>
       </aside>
 
-      <div className="border-b border-slate-200 bg-white md:hidden">
+      <div className="sticky top-0 z-10 shrink-0 border-b border-slate-200 bg-white md:hidden">
         <nav className="flex gap-1 overflow-x-auto px-4" aria-label="Configuración">
           {configGroup.items.map((item) => {
             const isActive = isConfigItemActive(item.href, location.pathname);
@@ -71,7 +71,7 @@ export function ConfiguracionLayout() {
         </nav>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
         <Outlet />
       </div>
     </div>

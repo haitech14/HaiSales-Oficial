@@ -307,6 +307,8 @@ export type Database = {
           serie_orden_compra: string | null;
           serie_orden_pedido: string | null;
           serie_orden_servicio: string | null;
+          serie_orden_alquiler: string | null;
+          serie_orden_plan_mantenimiento: string | null;
           sedes: unknown;
           contador_nombre: string | null;
           contador_email: string | null;
@@ -344,6 +346,8 @@ export type Database = {
           serie_orden_compra?: string | null;
           serie_orden_pedido?: string | null;
           serie_orden_servicio?: string | null;
+          serie_orden_alquiler?: string | null;
+          serie_orden_plan_mantenimiento?: string | null;
           sedes?: unknown;
           contador_nombre?: string | null;
           contador_email?: string | null;
@@ -381,6 +385,8 @@ export type Database = {
           serie_orden_compra?: string | null;
           serie_orden_pedido?: string | null;
           serie_orden_servicio?: string | null;
+          serie_orden_alquiler?: string | null;
+          serie_orden_plan_mantenimiento?: string | null;
           sedes?: unknown;
           contador_nombre?: string | null;
           contador_email?: string | null;
