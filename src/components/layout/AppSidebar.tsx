@@ -22,16 +22,16 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-dvh shrink-0 flex-col self-start bg-[#0b1220] transition-[width] duration-200 md:flex",
-        collapsed ? "w-[68px]" : viewMode === "modulos" ? "w-[268px]" : "w-[248px]",
+        "sticky top-0 hidden h-dvh shrink-0 flex-col self-start bg-[#15233b] transition-[width] duration-200 md:flex",
+        collapsed ? "w-[64px]" : viewMode === "modulos" ? "w-[244px]" : "w-[228px]",
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-3">
+      <div className="flex items-center justify-between gap-2 px-2.5 py-2.5">
         <HaiSalesLogo
           to="/app/dashboard"
           theme="onDark"
           iconOnly={collapsed}
-          imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-9 w-auto max-w-[170px]"}
+          imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-8 w-auto max-w-[150px]"}
         />
         <button
           type="button"
@@ -60,7 +60,7 @@ type AppMobileHeaderProps = {
 
 export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#0b1220] px-4 md:hidden">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#15233b] px-4 md:hidden">
       <button
         type="button"
         onClick={onOpenMenu}
@@ -94,7 +94,7 @@ export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
         side="left"
         className={cn(
           "border-none p-0 md:hidden",
-          viewMode === "modulos" ? "w-[min(100vw,268px)]" : "w-[min(100vw,248px)]",
+          viewMode === "modulos" ? "w-[min(100vw,244px)]" : "w-[min(100vw,228px)]",
         )}
       >
         <AppSidebarContent

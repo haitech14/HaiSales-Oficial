@@ -38,20 +38,68 @@ export type WikiGalleryItem = {
   tagClassName: string;
 };
 
+export type WikiCardKind = "note" | "shape" | "text";
+
+export type WikiShapeType = "square" | "circle" | "triangle" | "polygon";
+
 export type WikiKanbanCard = {
   id: string;
   /** Título flotante (tooltip al hover) */
   title: string;
   /** Contenido único de la tarjeta */
   note?: string;
+  /** Tipo de bloque en el lienzo (nota por defecto) */
+  kind?: WikiCardKind;
+  /** Forma geométrica cuando kind === "shape" */
+  shape?: WikiShapeType;
+  /** Color de relleno (formas) */
+  fill?: string;
+  /** Color de borde (formas) */
+  stroke?: string;
+  /** Grosor del borde en px (formas) */
+  strokeWidth?: number;
   /** Ancho de la tarjeta en px (el texto no se escala) */
   width?: number;
   /** Alto mínimo de la tarjeta en px */
   height?: number;
+  /** Posición libre en el lienzo (px) */
+  x?: number;
+  y?: number;
+  /** Orden de apilado (mayor = al frente) */
+  z?: number;
   /** Bloquea arrastre de la tarjeta */
   locked?: boolean;
+  /**
+   * Si es true, la tarjeta es independiente del bloque/columna:
+   * no se mueve ni se elimina junto con la columna.
+   */
+  independent?: boolean;
   /** @deprecated migrado a width */
   scale?: number;
+};
+
+/** Ancla de conexión en una forma (esquinas / lados) */
+export type WikiConnectorAnchor =
+  | "tl"
+  | "tr"
+  | "bl"
+  | "br"
+  | "tm"
+  | "bm"
+  | "ml"
+  | "mr";
+
+/** Conector / flecha entre dos tarjetas o formas del lienzo */
+export type WikiConnector = {
+  id: string;
+  fromCardId: string;
+  toCardId: string;
+  /** Ancla de origen (esquina o lado) */
+  fromAnchor?: WikiConnectorAnchor;
+  /** Ancla de destino (esquina o lado) */
+  toAnchor?: WikiConnectorAnchor;
+  /** Flecha con punta (default) o línea simple */
+  kind?: "arrow" | "line";
 };
 
 export type WikiKanbanColumn = {
@@ -60,6 +108,18 @@ export type WikiKanbanColumn = {
   color: string;
   /** Etiqueta editable junto al conteo (ej. "tarjetas") */
   countLabel?: string;
+  /** Posición libre del bloque general en el lienzo (px) */
+  x?: number;
+  y?: number;
+  /** Orden de apilado del bloque general */
+  z?: number;
+  /**
+   * Contenedor invisible: solo guarda tarjetas libres del lienzo.
+   * No se pinta el bloque blanco (evita que “Lienzo” reaparezca al borrar).
+   */
+  hideShell?: boolean;
+  /** Conectores del tablero (suelen vivir en la columna host) */
+  connectors?: WikiConnector[];
   cards: WikiKanbanCard[];
 };
 
@@ -584,9 +644,10 @@ export function loadHomeBoard(): WikiKanbanColumn[] {
   if (typeof window === "undefined") return createMockupKanbanBoard();
   try {
     const raw = localStorage.getItem(WIKI_HOME_BOARD_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw) as WikiKanbanColumn[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // [] es válido: el usuario vació el lienzo (no restaurar el mockup)
+      if (Array.isArray(parsed)) {
         return parsed.map((column) => ({
           ...column,
           id: column.id || createWikiId("col"),

@@ -71,13 +71,13 @@ function ModuleTileLink({
       onClick={onNavigate}
       title={tile.label}
       className={cn(
-        "flex min-h-[66px] flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-white shadow-sm transition hover:brightness-110",
+        "flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-center text-white shadow-sm transition hover:brightness-110",
         tile.color,
-        tile.wide && "col-span-2 min-h-[52px] flex-row gap-2",
-        isActive && "ring-2 ring-white/70 ring-offset-1 ring-offset-[#0b1220]",
+        tile.wide && "col-span-2 min-h-[48px] flex-row gap-2",
+        isActive && "ring-2 ring-white/70 ring-offset-1 ring-offset-[#15233b]",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
       <span className="line-clamp-2 text-[10px] font-semibold leading-tight">{tile.label}</span>
     </Link>
   );
@@ -337,7 +337,7 @@ export function AppSidebarContent({
   const showModules = !collapsed && viewMode === "modulos";
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col bg-[#0b1220]", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col bg-[#15233b]", className)}>
       {showBrand && (
         <div className="flex items-center gap-2 px-3 py-3">
           <HaiSalesLogo
@@ -351,16 +351,16 @@ export function AppSidebarContent({
       )}
 
       {showCompany && (
-        <EmpresaSucursalSwitcher collapsed={collapsed} className="mx-2.5 mb-2.5" />
+        <EmpresaSucursalSwitcher collapsed={collapsed} className="mx-2 mb-2" />
       )}
 
       {!collapsed && (
-        <div className="mx-2.5 mb-2.5 flex rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
+        <div className="mx-2 mb-2 flex rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
           <button
             type="button"
             onClick={() => setViewMode("lista")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold transition",
+              "flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[10px] font-semibold transition",
               viewMode === "lista"
                 ? "bg-white/10 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200",
@@ -374,7 +374,7 @@ export function AppSidebarContent({
             type="button"
             onClick={() => setViewMode("modulos")}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold transition",
+              "flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[10px] font-semibold transition",
               viewMode === "modulos"
                 ? "bg-white/10 text-white shadow-sm"
                 : "text-slate-400 hover:text-slate-200",
@@ -388,7 +388,7 @@ export function AppSidebarContent({
       )}
 
       {showModules ? (
-        <nav className="scrollbar-sidebar flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
+        <nav className="scrollbar-sidebar flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden px-2 pb-3">
           <div>
             <p className="app-sidebar-section mb-1.5">General</p>
             <div className="grid grid-cols-2 gap-1.5">
@@ -440,7 +440,7 @@ export function AppSidebarContent({
         </nav>
       ) : (
         <>
-          <nav className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
+          <nav className="flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden px-2 pb-3">
             <ul className="space-y-0.5">
               <CollapsibleNavGroup
                 group={dashboardNavGroup}
@@ -535,7 +535,7 @@ export function AppSidebarContent({
           </nav>
 
           {configuracionGroup && (
-            <div className="shrink-0 border-t border-white/10 px-2.5 py-2">
+            <div className="shrink-0 border-t border-white/10 px-2 py-2">
               <ul className="space-y-0.5">
                 <li>
                   <Link

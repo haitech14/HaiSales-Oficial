@@ -106,8 +106,9 @@ export const appNavSections: NavSection[] = [
   {
     title: "Comercial",
     items: [
-      { label: "Bandeja / Leads", href: "/app/inbox", icon: Inbox },
-      { label: "CRM", href: "/app/pipeline", icon: LayoutGrid },
+      { label: "Inbox", href: "/app/inbox", icon: Inbox },
+      { label: "Ventas", href: "/app/ventas", icon: Receipt },
+      { label: "Pipeline", href: "/app/pipeline", icon: LayoutGrid },
       { label: "Clientes / Empresas", href: "/app/clientes", icon: Building2 },
     ],
   },
@@ -126,7 +127,6 @@ export const appNavSections: NavSection[] = [
   {
     title: "Administración y Facturación",
     items: [
-      { label: "Comprobantes", href: "/app/ventas", icon: Receipt },
       { label: "Cobranzas", href: "/app/cuentas-cobrar", icon: CreditCard },
       { label: "Caja Chica y Bancos", href: "/app/tesoreria", icon: Landmark },
       { label: "Contabilidad", href: "/app/contabilidad", icon: Calculator },

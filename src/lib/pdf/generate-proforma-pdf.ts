@@ -16,7 +16,7 @@ import {
 function buildProformaNumber(): string {
   const now = new Date();
   const seq = String(now.getTime()).slice(-6);
-  return `PRO-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${seq}`;
+  return `COT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${seq}`;
 }
 
 export async function generateProformaPdf(
@@ -27,7 +27,7 @@ export async function generateProformaPdf(
   const number = buildProformaNumber();
   const { subtotal, igv, total } = calculateVentaTotals(data.cantidad, data.precioUnitario);
 
-  let y = drawPdfHeader(doc, "PROFORMA", number, data.fechaEmision);
+  let y = drawPdfHeader(doc, "COTIZACIÓN", number, data.fechaEmision);
   y = drawCompanyBlock(doc, y, emisor);
   y = drawClientBlock(doc, y, data.cliente, data.clienteRuc, data.contacto);
 
@@ -53,7 +53,7 @@ export async function generateProformaPdf(
   doc.setFont("helvetica", "normal");
   doc.setTextColor(71, 85, 105);
   doc.text(
-    "Esta proforma no constituye comprobante de pago. Los precios incluyen IGV. Sujeto a disponibilidad de stock.",
+    "Esta cotización no constituye comprobante de pago. Los precios incluyen IGV. Sujeto a disponibilidad de stock.",
     14,
     y + 4,
     { maxWidth: 182 },

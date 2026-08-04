@@ -8,7 +8,7 @@ export const VENTA_TIPOS_COMPROBANTE_FORM = [
   "Nota de Crédito (07)",
   "Nota de Venta (NV)",
   "Guía de Remisión",
-  "Proforma",
+  "Cotización",
 ] as const;
 
 export const TIPO_FORM_TO_DB: Record<string, VentaComprobanteDb> = {
@@ -17,10 +17,10 @@ export const TIPO_FORM_TO_DB: Record<string, VentaComprobanteDb> = {
   "Nota de Crédito (07)": "nota_credito",
   "Nota de Venta (NV)": "nota_venta",
   "Guía de Remisión": "nota_venta",
-  Proforma: "nota_venta",
+  Cotización: "nota_venta",
 };
 
-export const TIPOS_COMPROBANTE_DOCUMENTO_INTERNO = ["Guía de Remisión", "Proforma"] as const;
+export const TIPOS_COMPROBANTE_DOCUMENTO_INTERNO = ["Guía de Remisión", "Cotización"] as const;
 
 export function isDocumentoInternoForm(tipoForm: string): boolean {
   return (TIPOS_COMPROBANTE_DOCUMENTO_INTERNO as readonly string[]).includes(tipoForm);
@@ -68,7 +68,7 @@ export function mapFormTipoToDb(tipoForm: string): VentaComprobanteDb {
 
 export function resolveSerieForTipoForm(tipoForm: string, series: SeriesConfig): string {
   if (tipoForm === "Guía de Remisión") return "T001";
-  if (tipoForm === "Proforma") return "PRO01";
+  if (tipoForm === "Cotización") return "COT01";
   const db = mapFormTipoToDb(tipoForm);
   if (db === "boleta") return series.serieBoleta;
   if (db === "nota_credito") return series.serieNotaCredito;
@@ -78,7 +78,7 @@ export function resolveSerieForTipoForm(tipoForm: string, series: SeriesConfig):
 
 export function seriesOptionsForTipoForm(tipoForm: string, series: SeriesConfig): string[] {
   if (tipoForm === "Guía de Remisión") return ["T001", "T002"];
-  if (tipoForm === "Proforma") return ["PRO01", "PRO02"];
+  if (tipoForm === "Cotización") return ["COT01", "COT02"];
   const primary = resolveSerieForTipoForm(tipoForm, series);
   const extras: string[] = [];
 

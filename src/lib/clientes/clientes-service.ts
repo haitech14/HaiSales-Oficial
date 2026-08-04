@@ -756,4 +756,155 @@ export async function createCliente(
   return mapRowToClient(data);
 }
 
+export type ClientePickerOption = {
+  id: string;
+  razonSocial: string;
+  ruc: string;
+  contacto: string;
+  ciudad: string;
+  telefono: string;
+  correo: string;
+  hint: string;
+  searchText: string;
+};
+
+function mapRowToPickerOption(row: ClienteRow): ClientePickerOption {
+  const ruc = row.ruc?.trim() || "";
+  const contacto = row.contacto_nombre?.trim() || "";
+  const ciudad = row.ciudad?.trim() || "";
+  const telefono = row.telefono?.trim() || "";
+  const correo = (row.correo ?? row.email)?.trim() || "";
+  const hintParts = [
+    ruc ? `RUC ${ruc}` : null,
+    contacto || null,
+    ciudad || null,
+  ].filter(Boolean);
+
+  return {
+    id: row.id,
+    razonSocial: row.razon_social,
+    ruc,
+    contacto,
+    ciudad,
+    telefono,
+    correo,
+    hint: hintParts.join(" · "),
+    searchText: `${row.razon_social} ${ruc} ${contacto} ${correo} ${telefono} ${ciudad}`,
+  };
+}
+
+async function loadFrequentClienteIds(userId: string, limit: number): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("ventas")
+    .select("cliente_id")
+    .eq("user_id", userId)
+    .not("cliente_id", "is", null)
+    .order("fecha", { ascending: false })
+    .limit(200);
+
+  if (error || !data?.length) return [];
+
+  const counts = new Map<string, number>();
+  for (const row of data) {
+    const id = row.cliente_id;
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+}
+
+/**
+ * Clientes reales para el picker de Nueva venta:
+ * vacíos → recientes consultados + más frecuentes + últimos actualizados.
+ * con texto → búsqueda por razón social / RUC / contacto.
+ */
+export async function searchClientesForPicker(
+  userId: string | null,
+  query: string,
+  recentIds: string[] = [],
+  limit = 12,
+): Promise<ClientePickerOption[]> {
+  if (!userId) return [];
+
+  const trimmed = query.trim();
+
+  if (trimmed) {
+    const safe = trimmed.replace(/[%_,]/g, " ").trim();
+    if (!safe) return [];
+    const pattern = `%${safe}%`;
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("user_id", userId)
+      .or(
+        [
+          `razon_social.ilike.${pattern}`,
+          `ruc.ilike.${pattern}`,
+          `contacto_nombre.ilike.${pattern}`,
+          `email.ilike.${pattern}`,
+          `telefono.ilike.${pattern}`,
+          `ciudad.ilike.${pattern}`,
+        ].join(","),
+      )
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn("[clientes] search picker:", error.message);
+      return [];
+    }
+
+    return (data ?? []).map(mapRowToPickerOption);
+  }
+
+  const frequentIds = await loadFrequentClienteIds(userId, limit);
+  const priorityIds = [...recentIds, ...frequentIds.filter((id) => !recentIds.includes(id))].slice(
+    0,
+    limit,
+  );
+
+  const byId = new Map<string, ClientePickerOption>();
+
+  if (priorityIds.length > 0) {
+    const { data: prioritized } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("user_id", userId)
+      .in("id", priorityIds);
+
+    for (const row of prioritized ?? []) {
+      byId.set(row.id, mapRowToPickerOption(row));
+    }
+  }
+
+  const ordered: ClientePickerOption[] = [];
+  for (const id of priorityIds) {
+    const option = byId.get(id);
+    if (option) ordered.push(option);
+  }
+
+  if (ordered.length < limit) {
+    const { data: recentRows } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(limit * 2);
+
+    for (const row of recentRows ?? []) {
+      if (byId.has(row.id)) continue;
+      const option = mapRowToPickerOption(row);
+      byId.set(row.id, option);
+      ordered.push(option);
+      if (ordered.length >= limit) break;
+    }
+  }
+
+  return ordered.slice(0, limit);
+}
+
 export { clientesTabs, getClientStatusStyles, getSegmentStyles, getTipoClienteStyles, normalizeTipoClienteKey } from "@/lib/clientes-mock-data";

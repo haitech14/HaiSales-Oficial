@@ -1,5 +1,5 @@
 import { AnunciosWikiBlocksView } from "@/components/app/anuncios/AnunciosWikiBlocksView";
-import { AnunciosWikiKanbanView } from "@/components/app/anuncios/AnunciosWikiKanbanView";
+import { AnunciosWikiHomeEditor } from "@/components/app/anuncios/AnunciosWikiHomeEditor";
 import { AnunciosWikiMuralView } from "@/components/app/anuncios/AnunciosWikiMuralView";
 import { AnunciosWikiTableView } from "@/components/app/anuncios/AnunciosWikiTableView";
 import { AnunciosWikiTodosView } from "@/components/app/anuncios/AnunciosWikiTodosView";
@@ -105,12 +105,14 @@ export function AnunciosWikiPageView({
     );
   }
 
+  void onAddKanbanColumn;
+  void onAddKanbanCard;
+
   return (
-    <AnunciosWikiKanbanView
+    <AnunciosWikiHomeEditor
       columns={page.kanbanColumns}
       onChange={onKanbanChange}
-      onAddColumn={onAddKanbanColumn}
-      onAddCard={onAddKanbanCard}
+      className="min-h-[520px]"
     />
   );
 }

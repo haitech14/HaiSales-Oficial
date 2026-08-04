@@ -142,7 +142,7 @@ export default function AnunciosPage() {
             <AnunciosWikiHomeEditor columns={homeBoard} onChange={setHomeBoard} />
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1">
-              <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4">
+              <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                 <AnunciosWikiPageView
                   page={activePage}
                   onTitleChange={(title) => setPageTitle(activePage.id, title)}

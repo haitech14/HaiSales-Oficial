@@ -68,7 +68,7 @@ export default function VentasPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <AppPageHeader
-        title="Comprobantes"
+        title="Ventas"
         subtitle="Emite, valida y controla comprobantes electrónicos conectados a ventas y contabilidad."
         showDateRange
         showPanelToggle
