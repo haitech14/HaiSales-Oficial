@@ -91,7 +91,43 @@ async function resolveConnection(
     .limit(1)
     .maybeSingle();
 
-  return (data as ResolvedConnection | null) ?? null;
+  if (data) return data as ResolvedConnection;
+
+  // Auto-provision: sin conexión previa, usa empresa_config / env
+  const envUserId = Deno.env.get("DEFAULT_WHATSAPP_USER_ID")?.trim() || null;
+  const { data: empresa } = await supabase
+    .from("empresa_config")
+    .select("user_id")
+    .limit(1)
+    .maybeSingle();
+  const userId = envUserId || (empresa as { user_id?: string } | null)?.user_id || null;
+  if (!userId) return null;
+
+  const externalAccountId = phoneNumberId || Deno.env.get("DEFAULT_WHATSAPP_PHONE_NUMBER_ID") || "whatsapp-default";
+  const { data: created, error } = await supabase
+    .from("inbox_channel_connections")
+    .upsert(
+      {
+        user_id: userId,
+        channel: "whatsapp",
+        external_account_id: externalAccountId,
+        display_name: phoneNumberId || "WhatsApp",
+        status: "connected",
+        last_sync_at: new Date().toISOString(),
+        error_message: null,
+        config: { provider: "kapso", auto_provisioned: true },
+      },
+      { onConflict: "user_id,channel,external_account_id" },
+    )
+    .select("id, user_id, display_name")
+    .single();
+
+  if (error || !created) {
+    console.error("[whatsapp-webhook] auto-provision connection:", error?.message);
+    return null;
+  }
+
+  return created as ResolvedConnection;
 }
 
 async function persistInboundMessage(
@@ -175,6 +211,59 @@ async function persistInboundMessage(
       error_message: null,
     })
     .eq("id", connectionId);
+
+  // Puente Inbox → Pipeline (Prospección): crea o actualiza solo si sigue en Prospectos
+  const digits = normalizeWaId(contactIdentifier || externalId);
+  if (digits) {
+    const codigo = `WA-${digits.slice(0, 20)}`;
+    const responsable = connectionLabel?.trim() || "WhatsApp";
+    const initials =
+      responsable.replace(/[^A-Za-zÁÉÍÓÚáéíóú]/g, "").slice(0, 2).toUpperCase() || "WA";
+    const clienteNombre = contactName?.trim() || "Contacto WhatsApp";
+    const telefono = formatIdentifier(digits);
+    const subtitulo = body.slice(0, 160);
+
+    const { data: existingOpp } = await supabase
+      .from("oportunidades")
+      .select("id, etapa")
+      .eq("user_id", userId)
+      .eq("codigo", codigo)
+      .maybeSingle();
+
+    if (!existingOpp) {
+      const { error: oppError } = await supabase.from("oportunidades").insert({
+        user_id: userId,
+        codigo,
+        cliente_nombre: clienteNombre,
+        cliente_ruc: telefono,
+        titulo: "Lead WhatsApp",
+        subtitulo,
+        valor: 0,
+        etapa: "Prospectos",
+        probabilidad: 10,
+        responsable_nombre: responsable,
+        responsable_iniciales: initials,
+        fecha_oportunidad: sentAt,
+      });
+      if (oppError) {
+        console.error("[whatsapp-webhook] oportunidad insert:", oppError.message);
+      }
+    } else if (existingOpp.etapa === "Prospectos") {
+      const { error: oppError } = await supabase
+        .from("oportunidades")
+        .update({
+          cliente_nombre: clienteNombre,
+          cliente_ruc: telefono,
+          subtitulo,
+          fecha_oportunidad: sentAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingOpp.id);
+      if (oppError) {
+        console.error("[whatsapp-webhook] oportunidad update:", oppError.message);
+      }
+    }
+  }
 }
 
 async function handleKapsoPayload(

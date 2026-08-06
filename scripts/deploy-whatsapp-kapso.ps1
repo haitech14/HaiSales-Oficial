@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 $ProjectRef = $env:SUPABASE_PROJECT_REF
 if (-not $ProjectRef) {
-  $ProjectRef = "zjpsmffghtybljazmrgh"
+  $ProjectRef = "yxklqaedegfqcbrwodqb"
 }
 
 Write-Host "Proyecto: $ProjectRef" -ForegroundColor Cyan

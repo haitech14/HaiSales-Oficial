@@ -228,12 +228,28 @@ async function syncProspeccionSinCompraIfNeeded(userId: string): Promise<boolean
   return typeof data === "number" && data >= 0;
 }
 
+async function syncProspeccionWhatsAppIfNeeded(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("sync_prospeccion_whatsapp_for_user", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.warn("[crm] Sync prospección WhatsApp:", error.message);
+    return false;
+  }
+
+  return typeof data === "number" && data >= 0;
+}
+
 export async function fetchCrmSnapshot(userId: string | null): Promise<CrmSnapshot> {
   if (!userId) {
     return buildSnapshot([], "supabase");
   }
 
-  await syncProspeccionSinCompraIfNeeded(userId);
+  await Promise.all([
+    syncProspeccionSinCompraIfNeeded(userId),
+    syncProspeccionWhatsAppIfNeeded(userId),
+  ]);
 
   const { data, error } = await supabase
     .from("oportunidades")

@@ -26,17 +26,22 @@ export function AppSidebar() {
         collapsed ? "w-[64px]" : viewMode === "modulos" ? "w-[244px]" : "w-[228px]",
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-2.5 py-2.5">
+      <div className="relative flex items-center justify-center px-2.5 py-2.5">
         <HaiSalesLogo
           to="/app/dashboard"
           theme="onDark"
           iconOnly={collapsed}
-          imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-8 w-auto max-w-[150px]"}
+          className="mx-auto"
+          imageClassName={
+            collapsed
+              ? "h-7 w-7 object-contain object-center"
+              : "h-8 w-auto max-w-[150px] object-contain object-center"
+          }
         />
         <button
           type="button"
           onClick={() => setCollapsed((current) => !current)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/5 hover:text-slate-300"
+          className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/5 hover:text-slate-300"
           aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
         >
           {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
@@ -73,7 +78,7 @@ export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
         to="/app/dashboard"
         theme="onDark"
         iconOnly
-        imageClassName="h-8 w-8 object-contain object-left"
+        imageClassName="h-8 w-8 object-contain object-center"
       />
       <div className="h-10 w-10" aria-hidden="true" />
     </header>

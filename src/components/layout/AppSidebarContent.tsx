@@ -339,13 +339,18 @@ export function AppSidebarContent({
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col bg-[#15233b]", className)}>
       {showBrand && (
-        <div className="flex items-center gap-2 px-3 py-3">
+        <div className="flex items-center justify-center px-3 py-3">
           <HaiSalesLogo
             to="/app/dashboard"
             theme="onDark"
             iconOnly={collapsed}
             onClick={onNavigate}
-            imageClassName={collapsed ? "h-7 w-7 object-contain object-left" : "h-9 w-auto max-w-[170px]"}
+            className="mx-auto"
+            imageClassName={
+              collapsed
+                ? "h-7 w-7 object-contain object-center"
+                : "h-9 w-auto max-w-[170px] object-contain object-center"
+            }
           />
         </div>
       )}
