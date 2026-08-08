@@ -3,11 +3,11 @@ import { calculateVentaTotals } from "@/lib/nueva-venta-types";
 import { filterNavSectionsByRole, isHrefAllowedForRole, normalizeRole } from "@/lib/auth/roles";
 
 describe("calculateVentaTotals", () => {
-  it("calcula subtotal, igv y total con IGV 18%", () => {
+  it("trata precios con IGV incluido (extrae base e IGV del total)", () => {
     const result = calculateVentaTotals(2, 100);
-    expect(result.subtotal).toBe(200);
-    expect(result.igv).toBeCloseTo(36);
-    expect(result.total).toBeCloseTo(236);
+    expect(result.total).toBe(200);
+    expect(result.subtotal).toBeCloseTo(169.49);
+    expect(result.igv).toBeCloseTo(30.51);
   });
 });
 

@@ -2,15 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { empresaEmisor } from "@/lib/nueva-venta-mock-data";
 import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
 import {
-  createPdfDocument,
-  downloadPdf,
-  drawClientBlock,
-  drawCompanyBlock,
-  drawItemsTable,
-  drawPdfFooter,
-  drawPdfHeader,
-  drawTotalsBlock,
-} from "@/lib/pdf/pdf-utils";
+  renderComprobantePdf,
+  toComprobantePdfEmisor,
+  type ComprobantePdfEmisor,
+} from "@/lib/pdf/generate-comprobante-pdf";
+import { downloadPdf } from "@/lib/pdf/pdf-utils";
+import { currencySymbol } from "@/lib/pdf/numero-a-letras";
+import { mapDbTipoToDisplay } from "@/lib/ventas/comprobantes";
 
 export type VentaPdfItem = {
   codigo: string;
@@ -27,6 +25,11 @@ export type VentaPdfData = {
   fecha: string;
   cliente: string;
   clienteRuc: string;
+  direccion: string;
+  formaPago: string;
+  vendedor: string;
+  moneda: string;
+  observacion: string;
   subtotal: number;
   igv: number;
   total: number;
@@ -34,9 +37,10 @@ export type VentaPdfData = {
 };
 
 function getComprobanteTitle(tipo: string): string {
-  if (tipo.includes("boleta")) return "BOLETA DE VENTA ELECTRÓNICA";
-  if (tipo.includes("nota_venta") || tipo.includes("nota de venta")) return "NOTA DE VENTA";
-  if (tipo.includes("nota")) return "NOTA DE CRÉDITO ELECTRÓNICA";
+  const display = mapDbTipoToDisplay(tipo).toLowerCase();
+  if (display.includes("boleta")) return "BOLETA DE VENTA ELECTRÓNICA";
+  if (display.includes("nota de venta")) return "NOTA DE VENTA";
+  if (display.includes("crédito") || display.includes("credito")) return "NOTA DE CRÉDITO ELECTRÓNICA";
   return "FACTURA ELECTRÓNICA";
 }
 
@@ -49,10 +53,19 @@ function formatDisplayDate(iso: string) {
   });
 }
 
+function extractMeta(notas?: string | null) {
+  const formaPago = notas?.match(/Forma de pago:\s*([^·]+)/i)?.[1]?.trim();
+  const direccion = notas?.match(/Dirección:\s*([^·]+)/i)?.[1]?.trim();
+  const obs = notas?.match(/Obs:\s*([^·]+)/i)?.[1]?.trim();
+  return { formaPago, direccion, obs };
+}
+
 export async function fetchVentaPdfData(ventaId: string): Promise<VentaPdfData | null> {
   const { data: venta, error } = await supabase
     .from("ventas")
-    .select("id, codigo_comprobante, tipo_comprobante, fecha, cliente_nombre, cliente_ruc, subtotal, igv, total")
+    .select(
+      "id, codigo_comprobante, tipo_comprobante, fecha, cliente_nombre, cliente_ruc, subtotal, igv, total, notas, vendedor_nombre",
+    )
     .eq("id", ventaId)
     .single();
 
@@ -76,12 +89,19 @@ export async function fetchVentaPdfData(ventaId: string): Promise<VentaPdfData |
     };
   });
 
+  const meta = extractMeta(venta.notas);
+
   return {
     codigoComprobante: venta.codigo_comprobante ?? venta.id.slice(0, 8),
     tipoComprobante: venta.tipo_comprobante,
     fecha: formatDisplayDate(venta.fecha),
     cliente: venta.cliente_nombre ?? "Cliente",
     clienteRuc: venta.cliente_ruc ?? "—",
+    direccion: meta.direccion || "—",
+    formaPago: meta.formaPago || "Contado",
+    vendedor: venta.vendedor_nombre ?? "—",
+    moneda: "PEN",
+    observacion: meta.obs || "",
     subtotal: Number(venta.subtotal),
     igv: Number(venta.igv),
     total: Number(venta.total),
@@ -91,33 +111,41 @@ export async function fetchVentaPdfData(ventaId: string): Promise<VentaPdfData |
 
 export async function generateComprobantePdfFromVenta(
   ventaId: string,
-  emisor: EmpresaEmisor = empresaEmisor,
+  emisor: EmpresaEmisor | ComprobantePdfEmisor = empresaEmisor,
 ): Promise<boolean> {
   const data = await fetchVentaPdfData(ventaId);
   if (!data || data.items.length === 0) return false;
 
-  const doc = await createPdfDocument();
-  const title = getComprobanteTitle(data.tipoComprobante);
+  const symbol = currencySymbol(data.moneda);
+  const titulo = getComprobanteTitle(data.tipoComprobante);
+  const doc = await renderComprobantePdf({
+    titulo,
+    numero: data.codigoComprobante,
+    fecha: data.fecha,
+    cliente: data.cliente,
+    clienteRuc: data.clienteRuc,
+    direccion: data.direccion,
+    formaPago: data.formaPago,
+    vendedor: data.vendedor,
+    medioPago: `${data.formaPago} ${symbol} ${data.total.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    moneda: data.moneda,
+    items: data.items.map((item) => ({
+      cantidad: item.cantidad,
+      unidad: item.unidad,
+      descripcion: item.descripcion,
+      precio: item.precio,
+      importe: item.subtotal,
+    })),
+    subtotal: data.subtotal,
+    igv: data.igv,
+    total: data.total,
+    observaciones: data.observacion,
+    emisor: toComprobantePdfEmisor(emisor),
+  });
 
-  let y = drawPdfHeader(doc, title, data.codigoComprobante, data.fecha);
-  y = drawCompanyBlock(doc, y, emisor);
-  y = drawClientBlock(doc, y, data.cliente, data.clienteRuc, "—");
-  y += 4;
-  y = drawItemsTable(doc, y, data.items);
-  y = drawTotalsBlock(doc, y, data.subtotal, data.igv, data.total);
-
-  doc.setDrawColor(34, 197, 94);
-  doc.setFillColor(240, 253, 244);
-  doc.roundedRect(14, y, 182, 14, 2, 2, "FD");
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(22, 163, 74);
-  doc.text("Representación impresa del comprobante electrónico", 18, y + 6);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Autorizado por SUNAT — Resolución N° 034-005-0005315", 18, y + 11);
-
-  drawPdfFooter(doc, "Comprobante histórico importado — HaiSales");
   downloadPdf(doc, `${data.codigoComprobante}.pdf`);
   return true;
 }

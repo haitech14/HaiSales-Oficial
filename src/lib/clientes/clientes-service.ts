@@ -669,6 +669,79 @@ function buildClienteUpdatePayload(field: ClienteEditableField, value: string) {
   }
 }
 
+/** Persiste contacto, celular, dirección y tipo desde el modal de venta. */
+export async function updateClienteFromVentaForm(
+  userId: string,
+  clientId: string,
+  data: {
+    contacto: string;
+    celular: string;
+    direccion: string;
+    tipoCliente: string;
+  },
+): Promise<void> {
+  const { data: updated, error } = await supabase
+    .from("clientes")
+    .update({
+      contacto_nombre: emptyToNull(data.contacto),
+      telefono: emptyToNull(data.celular),
+      direccion: emptyToNull(data.direccion),
+      tipo_cliente: formatTipoClienteLabel(data.tipoCliente.trim() || "Público"),
+    })
+    .eq("id", clientId)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!updated?.id) {
+    throw new Error("No se encontró el cliente para actualizar");
+  }
+}
+
+/** Resuelve el UUID local del cliente por id, RUC o razón social. */
+export async function resolveClienteIdForVenta(
+  userId: string,
+  opts: { clienteId?: string; ruc?: string; razonSocial?: string },
+): Promise<string | null> {
+  const byId = opts.clienteId?.trim();
+  if (byId) {
+    const { data } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("id", byId)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+
+  const ruc = opts.ruc?.trim();
+  if (ruc) {
+    const { data } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("ruc", ruc)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+
+  const razon = opts.razonSocial?.trim();
+  if (razon) {
+    const { data } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("user_id", userId)
+      .ilike("razon_social", razon)
+      .limit(1);
+    if (data?.[0]?.id) return data[0].id;
+  }
+
+  return null;
+}
+
 export async function updateClienteField(
   userId: string,
   clientId: string,
@@ -764,21 +837,25 @@ export type ClientePickerOption = {
   ciudad: string;
   telefono: string;
   correo: string;
+  direccion: string;
+  tipoCliente: string;
   hint: string;
   searchText: string;
 };
 
-function mapRowToPickerOption(row: ClienteRow): ClientePickerOption {
+function mapRowToPickerOption(row: ClienteRow, matchHint?: string): ClientePickerOption {
   const ruc = row.ruc?.trim() || "";
   const contacto = row.contacto_nombre?.trim() || "";
   const ciudad = row.ciudad?.trim() || "";
   const telefono = row.telefono?.trim() || "";
   const correo = (row.correo ?? row.email)?.trim() || "";
-  const hintParts = [
-    ruc ? `RUC ${ruc}` : null,
-    contacto || null,
-    ciudad || null,
-  ].filter(Boolean);
+  const direccion = row.direccion?.trim() || "";
+  const tipoCliente = formatTipoClienteLabel(row.tipo_cliente ?? "Público");
+  const hintParts = matchHint
+    ? [matchHint]
+    : [ruc ? `RUC ${ruc}` : null, contacto || null, telefono || null, ciudad || null].filter(
+        Boolean,
+      );
 
   return {
     id: row.id,
@@ -788,9 +865,111 @@ function mapRowToPickerOption(row: ClienteRow): ClientePickerOption {
     ciudad,
     telefono,
     correo,
+    direccion,
+    tipoCliente,
     hint: hintParts.join(" · "),
-    searchText: `${row.razon_social} ${ruc} ${contacto} ${correo} ${telefono} ${ciudad}`,
+    searchText: `${row.razon_social} ${ruc} ${contacto} ${correo} ${telefono} ${ciudad} ${direccion}`,
   };
+}
+
+function sanitizePickerQuery(query: string): string {
+  return query.replace(/[%_,]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function shortenMatchLabel(value: string, max = 42): string {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1)}…`;
+}
+
+/**
+ * Clientes que compraron un producto/servicio cuya descripción coincide con la búsqueda.
+ */
+async function findClienteIdsByProductoComprado(
+  userId: string,
+  pattern: string,
+  limit: number,
+): Promise<Map<string, string>> {
+  const matched = new Map<string, string>();
+
+  try {
+    const { data: items, error: itemsError } = await supabase
+      .from("venta_items")
+      .select("descripcion, venta_id")
+      .ilike("descripcion", pattern)
+      .limit(120);
+
+    if (itemsError) {
+      // Tabla ausente o sin sincronizar en schema cache: no bloquear el picker
+      if (!/schema cache|does not exist|Could not find the table/i.test(itemsError.message)) {
+        console.warn("[clientes] search by producto:", itemsError.message);
+      }
+      return matched;
+    }
+    if (!items?.length) return matched;
+
+    const ventaIds = [...new Set(items.map((item) => item.venta_id).filter(Boolean))];
+    if (ventaIds.length === 0) return matched;
+
+    const { data: ventas, error: ventasError } = await supabase
+      .from("ventas")
+      .select("id, cliente_id")
+      .eq("user_id", userId)
+      .in("id", ventaIds)
+      .not("cliente_id", "is", null)
+      .limit(80);
+
+    if (ventasError) {
+      if (!/schema cache|does not exist|Could not find the table/i.test(ventasError.message)) {
+        console.warn("[clientes] search ventas by producto:", ventasError.message);
+      }
+      return matched;
+    }
+
+    const ventaToCliente = new Map<string, string>();
+    for (const venta of ventas ?? []) {
+      if (venta.cliente_id) ventaToCliente.set(venta.id, venta.cliente_id);
+    }
+
+    for (const item of items) {
+      const clienteId = ventaToCliente.get(item.venta_id);
+      if (!clienteId || matched.has(clienteId)) continue;
+      matched.set(clienteId, item.descripcion);
+      if (matched.size >= limit) break;
+    }
+  } catch (error) {
+    console.warn("[clientes] search by producto failed:", error);
+  }
+
+  return matched;
+}
+
+async function loadClientesByIds(
+  userId: string,
+  ids: string[],
+): Promise<Map<string, ClienteRow>> {
+  const byId = new Map<string, ClienteRow>();
+  if (ids.length === 0) return byId;
+
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("*")
+    .eq("user_id", userId)
+    .in("id", ids);
+
+  if (error) {
+    console.warn("[clientes] load by ids:", error.message);
+    return byId;
+  }
+
+  for (const row of data ?? []) {
+    byId.set(row.id, row);
+  }
+  return byId;
 }
 
 async function loadFrequentClienteIds(userId: string, limit: number): Promise<string[]> {
@@ -802,7 +981,13 @@ async function loadFrequentClienteIds(userId: string, limit: number): Promise<st
     .order("fecha", { ascending: false })
     .limit(200);
 
-  if (error || !data?.length) return [];
+  if (error) {
+    if (!/schema cache|does not exist|Could not find the table/i.test(error.message)) {
+      console.warn("[clientes] frequent ids:", error.message);
+    }
+    return [];
+  }
+  if (!data?.length) return [];
 
   const counts = new Map<string, number>();
   for (const row of data) {
@@ -819,8 +1004,9 @@ async function loadFrequentClienteIds(userId: string, limit: number): Promise<st
 
 /**
  * Clientes reales para el picker de Nueva venta:
- * vacíos → recientes consultados + más frecuentes + últimos actualizados.
- * con texto → búsqueda por razón social / RUC / contacto.
+ * vacío → recientes / frecuentes / últimos actualizados.
+ * con texto → razón social, RUC, contacto, celular, correo, modelos de interés
+ *             y clientes que compraron un producto coincidente.
  */
 export async function searchClientesForPicker(
   userId: string | null,
@@ -833,32 +1019,87 @@ export async function searchClientesForPicker(
   const trimmed = query.trim();
 
   if (trimmed) {
-    const safe = trimmed.replace(/[%_,]/g, " ").trim();
+    const safe = sanitizePickerQuery(trimmed);
     if (!safe) return [];
     const pattern = `%${safe}%`;
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("user_id", userId)
-      .or(
-        [
-          `razon_social.ilike.${pattern}`,
-          `ruc.ilike.${pattern}`,
-          `contacto_nombre.ilike.${pattern}`,
-          `email.ilike.${pattern}`,
-          `telefono.ilike.${pattern}`,
-          `ciudad.ilike.${pattern}`,
-        ].join(","),
-      )
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+    const phoneDigits = digitsOnly(safe);
+    const phonePattern = phoneDigits.length >= 4 ? `%${phoneDigits}%` : null;
 
-    if (error) {
-      console.warn("[clientes] search picker:", error.message);
-      return [];
+    const fieldFilters = [
+      `razon_social.ilike.${pattern}`,
+      `ruc.ilike.${pattern}`,
+      `contacto_nombre.ilike.${pattern}`,
+      `contacto_cargo.ilike.${pattern}`,
+      `email.ilike.${pattern}`,
+      `correo.ilike.${pattern}`,
+      `telefono.ilike.${pattern}`,
+      `ciudad.ilike.${pattern}`,
+      `modelos_interes.ilike.${pattern}`,
+      `direccion.ilike.${pattern}`,
+    ];
+    if (phonePattern) {
+      fieldFilters.push(`telefono.ilike.${phonePattern}`);
     }
 
-    return (data ?? []).map(mapRowToPickerOption);
+    const [directResult, productMatches] = await Promise.all([
+      supabase
+        .from("clientes")
+        .select("*")
+        .eq("user_id", userId)
+        .or(fieldFilters.join(","))
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      findClienteIdsByProductoComprado(userId, pattern, limit),
+    ]);
+
+    if (directResult.error) {
+      console.warn("[clientes] search picker:", directResult.error.message);
+    }
+
+    const byId = new Map<string, ClientePickerOption>();
+
+    for (const row of directResult.data ?? []) {
+      byId.set(row.id, mapRowToPickerOption(row));
+    }
+
+    const missingProductIds = [...productMatches.keys()].filter((id) => !byId.has(id));
+    if (missingProductIds.length > 0) {
+      const productClients = await loadClientesByIds(userId, missingProductIds);
+      for (const [id, row] of productClients) {
+        const productLabel = productMatches.get(id);
+        byId.set(
+          id,
+          mapRowToPickerOption(
+            row,
+            productLabel ? `Compró: ${shortenMatchLabel(productLabel)}` : undefined,
+          ),
+        );
+      }
+    } else {
+      // Ya estaban por coincidencia directa: reforzar hint si también compraron el producto
+      for (const [id, productLabel] of productMatches) {
+        const existing = byId.get(id);
+        if (!existing) continue;
+        byId.set(id, {
+          ...existing,
+          hint: `Compró: ${shortenMatchLabel(productLabel)} · ${existing.hint}`,
+        });
+      }
+    }
+
+    const ordered: ClientePickerOption[] = [];
+    for (const row of directResult.data ?? []) {
+      const option = byId.get(row.id);
+      if (option) ordered.push(option);
+    }
+    for (const id of productMatches.keys()) {
+      if (ordered.some((item) => item.id === id)) continue;
+      const option = byId.get(id);
+      if (option) ordered.push(option);
+      if (ordered.length >= limit) break;
+    }
+
+    return ordered.slice(0, limit);
   }
 
   const frequentIds = await loadFrequentClienteIds(userId, limit);

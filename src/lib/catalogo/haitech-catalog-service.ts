@@ -149,6 +149,66 @@ async function supabaseRest<T>(
   return (await response.json()) as T;
 }
 
+function readPriceMap(prices?: Record<string, number> | null): Record<string, number> {
+  if (!prices || typeof prices !== "object") return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(prices)) {
+    const amount = toNumber(value);
+    if (amount > 0) out[key.toLowerCase()] = amount;
+  }
+  return out;
+}
+
+function pickFromPriceMap(map: Record<string, number>, keys: string[]): number {
+  for (const key of keys) {
+    const amount = map[key.toLowerCase()];
+    if (typeof amount === "number" && amount > 0) return amount;
+  }
+  return 0;
+}
+
+function buildPriceTiers(
+  basePen: number,
+  baseUsd: number,
+  currency: string | null | undefined,
+  prices?: Record<string, number> | null,
+  snapshotPrices?: Record<string, number> | null,
+): {
+  preciosPen: Record<string, number>;
+  preciosUsd: Record<string, number>;
+} {
+  const map = { ...readPriceMap(snapshotPrices), ...readPriceMap(prices) };
+  const cur = (currency ?? "USD").toUpperCase();
+
+  const tierKeys = {
+    publico: ["publico", "público", "public", "retail", "lista", "base", "pen", "soles"],
+    mayorista: ["mayorista", "wholesale", "wholesaler"],
+    tecnico: ["tecnico", "técnico", "technical", "tech"],
+    distribuidor: ["distribuidor", "distributor", "dealer"],
+    gobierno: ["gobierno", "government", "estatal"],
+    proveedor: ["proveedor", "provider", "supplier"],
+  } as const;
+
+  const preciosPen: Record<string, number> = {};
+  const preciosUsd: Record<string, number> = {};
+
+  for (const [tier, keys] of Object.entries(tierKeys)) {
+    const raw = pickFromPriceMap(map, [...keys]);
+    if (raw <= 0) continue;
+    const pair = pricePair(raw, cur === "PEN" || keys.includes("pen") || keys.includes("soles") ? "PEN" : cur);
+    // If map key was explicitly PEN/soles, prefer PEN pair
+    const preferPen = keys.some((k) => map[k] != null && ["pen", "soles"].includes(k));
+    const resolved = preferPen ? pricePair(raw, "PEN") : pair;
+    if (resolved.precioPen > 0) preciosPen[tier] = resolved.precioPen;
+    if (resolved.precioUsd > 0) preciosUsd[tier] = resolved.precioUsd;
+  }
+
+  if (!preciosPen.publico && basePen > 0) preciosPen.publico = basePen;
+  if (!preciosUsd.publico && baseUsd > 0) preciosUsd.publico = baseUsd;
+
+  return { preciosPen, preciosUsd };
+}
+
 function mapStoreProduct(product: StoreProductRow): AutocompleteOption {
   const code = product.inventory_snapshot?.code?.trim() || product.id;
   const { precioPen, precioUsd } = pricePair(toNumber(product.price), product.currency);
@@ -156,6 +216,13 @@ function mapStoreProduct(product: StoreProductRow): AutocompleteOption {
   const category = product.category?.trim() || "";
   const stock = product.stock ?? product.inventory_snapshot?.stock ?? null;
   const imageUrl = firstImageUrl(product.image_url, product.gallery, product.inventory_snapshot);
+  const { preciosPen, preciosUsd } = buildPriceTiers(
+    precioPen,
+    precioUsd,
+    product.currency ?? product.inventory_snapshot?.currency,
+    product.prices,
+    product.inventory_snapshot?.prices,
+  );
 
   return {
     value: `store:${product.id}`,
@@ -167,6 +234,14 @@ function mapStoreProduct(product: StoreProductRow): AutocompleteOption {
       precio: precioPen,
       precioPen,
       precioUsd,
+      precioMayoristaPen: preciosPen.mayorista ?? "",
+      precioTecnicoPen: preciosPen.tecnico ?? "",
+      precioDistribuidorPen: preciosPen.distribuidor ?? "",
+      precioPublicoPen: preciosPen.publico ?? precioPen,
+      precioMayoristaUsd: preciosUsd.mayorista ?? "",
+      precioTecnicoUsd: preciosUsd.tecnico ?? "",
+      precioDistribuidorUsd: preciosUsd.distribuidor ?? "",
+      precioPublicoUsd: preciosUsd.publico ?? precioUsd,
       unidad: "UND",
       productoId: product.id,
       imageUrl: imageUrl ?? "",
@@ -261,32 +336,64 @@ function mapSoporteService(service: SoporteServicePriceRow): AutocompleteOption 
 
 async function searchStoreProducts(query: string, limit: number): Promise<AutocompleteOption[]> {
   const trimmed = query.trim();
+  // Campos livianos: sin gallery (pesa mucho en red/JSON)
+  const select =
+    "id,name,description,price,currency,brand,category,stock,image_url,inventory_snapshot,prices";
   let path: string;
 
   if (trimmed) {
     const pattern = `*${trimmed.replace(/[,()]/g, " ").replace(/\*/g, "")}*`;
     const orFilter = [
       `name.ilike.${pattern}`,
-      `description.ilike.${pattern}`,
       `brand.ilike.${pattern}`,
       `category.ilike.${pattern}`,
       `inventory_snapshot->>code.ilike.${pattern}`,
     ].join(",");
-    path = `/rest/v1/products?select=id,name,description,price,currency,brand,category,stock,is_featured,image_url,gallery,inventory_snapshot,prices&or=(${encodeURIComponent(orFilter)})&limit=${limit}`;
+    path = `/rest/v1/products?select=${select}&or=(${encodeURIComponent(orFilter)})&limit=${limit}`;
   } else {
-    path = `/rest/v1/products?select=id,name,description,price,currency,brand,category,stock,is_featured,image_url,gallery,inventory_snapshot,prices&order=sort_order.asc&limit=${limit}`;
+    path = `/rest/v1/products?select=${select}&order=sort_order.asc&limit=${limit}`;
   }
 
   const rows = await supabaseRest<StoreProductRow[]>(STORE_SUPABASE_URL, STORE_SUPABASE_KEY, path);
   return rows.map(mapStoreProduct);
 }
 
+const SOPORTE_INVENTORY_SELECT =
+  "id,codigo,modelo,marca,descripcion,tipo_producto,precio_corporativo_soles,precio_corporativo_dolares,stock,activo,imagen_url";
+
 async function searchSoporteInventory(query: string, limit: number): Promise<AutocompleteOption[]> {
-  // La RLS de inventory_products es inestable con filtros; pedimos un lote y filtramos en cliente.
+  const trimmed = query.trim();
+  const q = normalize(trimmed);
+
+  // Intentar filtro server-side; si falla por RLS, caer a lote pequeño.
+  if (q) {
+    const pattern = `*${trimmed.replace(/[,()*]/g, " ")}*`;
+    const orFilter = [
+      `descripcion.ilike.${pattern}`,
+      `codigo.ilike.${pattern}`,
+      `modelo.ilike.${pattern}`,
+      `marca.ilike.${pattern}`,
+    ].join(",");
+    try {
+      const rows = await supabaseRest<SoporteInventoryRow[]>(
+        SOPORTE_SUPABASE_URL,
+        SOPORTE_SUPABASE_KEY,
+        `/rest/v1/inventory_products?select=${SOPORTE_INVENTORY_SELECT}&or=(${encodeURIComponent(orFilter)})&limit=${limit}`,
+      );
+      return rows
+        .filter((row) => row.activo !== false)
+        .map(mapSoporteInventory)
+        .filter((option): option is AutocompleteOption => Boolean(option))
+        .slice(0, limit);
+    } catch {
+      // fallback abajo
+    }
+  }
+
   const rows = await supabaseRest<SoporteInventoryRow[]>(
     SOPORTE_SUPABASE_URL,
     SOPORTE_SUPABASE_KEY,
-    `/rest/v1/inventory_products?select=*&limit=20`,
+    `/rest/v1/inventory_products?select=${SOPORTE_INVENTORY_SELECT}&limit=${Math.max(limit, 40)}`,
   );
 
   const options = rows
@@ -294,7 +401,6 @@ async function searchSoporteInventory(query: string, limit: number): Promise<Aut
     .map(mapSoporteInventory)
     .filter((option): option is AutocompleteOption => Boolean(option));
 
-  const q = normalize(query);
   if (!q) return options.slice(0, limit);
 
   return options
@@ -304,14 +410,20 @@ async function searchSoporteInventory(query: string, limit: number): Promise<Aut
     .slice(0, limit);
 }
 
-async function searchSoporteServices(query: string, limit: number): Promise<AutocompleteOption[]> {
-  const rows = await supabaseRest<SoporteServicePriceRow[]>(
-    SOPORTE_SUPABASE_URL,
-    SOPORTE_SUPABASE_KEY,
-    `/rest/v1/service_prices?select=id,equipment_type,service_type,price,description,client_type&limit=100`,
-  );
+let soporteServicesCache: { at: number; options: AutocompleteOption[] } | null = null;
 
-  const options = rows.map(mapSoporteService);
+async function searchSoporteServices(query: string, limit: number): Promise<AutocompleteOption[]> {
+  const now = Date.now();
+  if (!soporteServicesCache || now - soporteServicesCache.at > 5 * 60_000) {
+    const rows = await supabaseRest<SoporteServicePriceRow[]>(
+      SOPORTE_SUPABASE_URL,
+      SOPORTE_SUPABASE_KEY,
+      `/rest/v1/service_prices?select=id,equipment_type,service_type,price,description,client_type&limit=80`,
+    );
+    soporteServicesCache = { at: now, options: rows.map(mapSoporteService) };
+  }
+
+  const options = soporteServicesCache.options;
   const q = normalize(query);
   if (!q) return options.slice(0, limit);
 
@@ -334,27 +446,78 @@ function dedupeOptions(options: AutocompleteOption[]): AutocompleteOption[] {
   return result;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(fallback), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        window.clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
+const catalogSearchCache = new Map<string, { at: number; data: AutocompleteOption[] }>();
+const CATALOG_CACHE_TTL_MS = 45_000;
+
 /**
  * Busca en los Supabase de haitech.pe (tienda) y soporte.haitech.pe (inventario + servicios).
+ * Prioriza tienda (rápida) y no espera demasiado a soporte.
  */
 export async function searchHaitechCatalog(query: string, limit = 24): Promise<AutocompleteOption[]> {
   const trimmed = query.trim();
-  const storeLimit = Math.max(8, Math.ceil(limit * 0.7));
 
-  const [storeResult, soporteInventory, soporteServices] = await Promise.all([
-    searchStoreProducts(trimmed, storeLimit).catch((error) => {
-      console.warn("[catalogo] supabase haitech.pe:", error);
-      return [] as AutocompleteOption[];
-    }),
-    searchSoporteInventory(trimmed, limit).catch((error) => {
+  // Evita disparar 3 APIs por cada tecla suelta
+  if (trimmed.length === 1) {
+    return [];
+  }
+
+  const cacheKey = `${trimmed.toLowerCase()}|${limit}`;
+  const cached = catalogSearchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CATALOG_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const storeLimit = Math.min(limit, trimmed ? limit : 12);
+
+  // Tienda primero: es la fuente principal del picker
+  const storePromise = searchStoreProducts(trimmed, storeLimit).catch((error) => {
+    console.warn("[catalogo] supabase haitech.pe:", error);
+    return [] as AutocompleteOption[];
+  });
+
+  // Vacío (focus): solo tienda destacada, sin soporte
+  if (!trimmed) {
+    const store = await storePromise;
+    const data = dedupeOptions(store).slice(0, limit);
+    catalogSearchCache.set(cacheKey, { at: Date.now(), data });
+    return data;
+  }
+
+  const soporteInventoryPromise = searchSoporteInventory(trimmed, Math.min(8, limit)).catch(
+    (error) => {
       console.warn("[catalogo] supabase soporte inventory:", error);
       return [] as AutocompleteOption[];
-    }),
-    searchSoporteServices(trimmed, limit).catch((error) => {
+    },
+  );
+  const soporteServicesPromise = searchSoporteServices(trimmed, Math.min(6, limit)).catch(
+    (error) => {
       console.warn("[catalogo] supabase soporte services:", error);
       return [] as AutocompleteOption[];
-    }),
+    },
+  );
+
+  const [store, soporteInventory, soporteServices] = await Promise.all([
+    storePromise,
+    withTimeout(soporteInventoryPromise, 700, []),
+    withTimeout(soporteServicesPromise, 500, []),
   ]);
 
-  return dedupeOptions([...storeResult, ...soporteInventory, ...soporteServices]).slice(0, limit);
+  const data = dedupeOptions([...store, ...soporteInventory, ...soporteServices]).slice(0, limit);
+  catalogSearchCache.set(cacheKey, { at: Date.now(), data });
+  return data;
 }

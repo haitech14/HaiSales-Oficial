@@ -31,6 +31,7 @@ export type VentasSnapshot = {
 
 import {
   mapDbTipoToDisplay,
+  mapDbTipoToForm,
   mapFormTipoToDb,
 } from "@/lib/ventas/comprobantes";
 
@@ -283,9 +284,19 @@ export async function createVentaFromForm(userId: string, form: import("@/lib/nu
       estado_sunat: "pendiente",
       vendedor_nombre: form.vendedor,
       vendedor_iniciales: form.vendedorInitials,
+      cliente_id: form.clienteId?.trim() || null,
       cliente_nombre: form.cliente,
       cliente_ruc: form.clienteRuc || null,
-      notas: form.oportunidad ? `Oportunidad: ${form.oportunidad}` : null,
+      notas: [
+        form.observacionGeneral?.trim() ? `Obs: ${form.observacionGeneral.trim()}` : null,
+        form.oportunidad?.trim() ? `Oportunidad: ${form.oportunidad.trim()}` : null,
+        form.tipoCliente?.trim() ? `Tipo cliente: ${form.tipoCliente.trim()}` : null,
+        form.contacto?.trim() ? `Contacto: ${form.contacto.trim()}` : null,
+        form.celular?.trim() ? `Celular: ${form.celular.trim()}` : null,
+        form.direccion?.trim() ? `Dirección: ${form.direccion.trim()}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
     })
     .select("*")
     .single();
@@ -324,10 +335,14 @@ async function insertVentaLineItem({
   fechaMovimiento: string;
 }) {
   const lineSubtotal = line.cantidad * line.precioUnitario;
-  const descripcion = line.producto || "Producto o servicio";
-  const productoId =
-    line.productoId ??
-    (await resolveProductoIdForVenta(userId, descripcion, line.productoCodigo || null));
+  const baseDescripcion = line.producto || "Producto o servicio";
+  const descripcion = line.observaciones?.trim()
+    ? `${baseDescripcion} — ${line.observaciones.trim()}`
+    : baseDescripcion;
+
+  // IDs del catálogo Haitech/soporte no existen en public.productos.
+  // Solo usar productoId si es UUID local válido; si no, resolver por SKU/nombre.
+  const productoId = await resolveLocalProductoIdForLine(userId, line, baseDescripcion);
 
   const { error: itemError } = await supabase.from("venta_items").insert({
     venta_id: ventaId,
@@ -352,6 +367,222 @@ async function insertVentaLineItem({
       fechaMovimiento,
     });
   }
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+async function resolveLocalProductoIdForLine(
+  userId: string,
+  line: VentaCartLine,
+  descripcion: string,
+): Promise<string | null> {
+  const candidate = line.productoId?.trim() || "";
+  if (candidate && isUuid(candidate)) {
+    const { data } = await supabase
+      .from("productos")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("id", candidate)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+
+  return resolveProductoIdForVenta(userId, descripcion, line.productoCodigo || null);
+}
+
+export type VentaRecoveryListItem = {
+  id: string;
+  codigo: string;
+  fecha: string;
+  cliente: string;
+  clienteRuc: string;
+  total: number;
+  moneda: string;
+  tipoComprobante: string;
+  vendedor: string;
+};
+
+export type VentaRecoveryDetail = {
+  venta: VentaRecoveryListItem;
+  clienteNombre: string;
+  clienteRuc: string;
+  tipoComprobanteForm: string;
+  serie: string;
+  moneda: "PEN" | "USD";
+  fechaEmision: string;
+  vendedor: string;
+  vendedorInitials: string;
+  formaPago: string;
+  observacionGeneral: string;
+  tipoCliente: string;
+  items: Array<{
+    producto: string;
+    productoCodigo: string;
+    productoId: string | null;
+    cantidad: number;
+    unidad: string;
+    precioUnitario: number;
+    observaciones: string;
+  }>;
+};
+
+function formatFechaEmisionFromIso(iso: string): string {
+  const date = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
+  return date.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function splitSerieFromCodigo(codigo: string | null | undefined): string {
+  if (!codigo) return "";
+  const match = codigo.match(/^([A-Za-z0-9]+)-/);
+  return match?.[1] ?? "";
+}
+
+function parseNotasMeta(notas: string | null | undefined) {
+  const text = notas ?? "";
+  const formaPago = text.match(/Forma de pago:\s*([^·]+)/i)?.[1]?.trim() ?? "";
+  const observacionGeneral = text.match(/Obs:\s*([^·]+)/i)?.[1]?.trim() ?? "";
+  const tipoCliente = text.match(/Tipo cliente:\s*([^·]+)/i)?.[1]?.trim() ?? "";
+  return { formaPago, observacionGeneral, tipoCliente };
+}
+
+function splitProductoObservacion(descripcion: string): { producto: string; observaciones: string } {
+  const parts = descripcion.split(" — ");
+  if (parts.length < 2) return { producto: descripcion, observaciones: "" };
+  return {
+    producto: parts[0]?.trim() || descripcion,
+    observaciones: parts.slice(1).join(" — ").trim(),
+  };
+}
+
+function buildVendedorInitialsFallback(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "??";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
+export async function searchVentasForRecovery(
+  userId: string | null,
+  query: string,
+  limit = 12,
+): Promise<VentaRecoveryListItem[]> {
+  if (!userId) return [];
+
+  const trimmed = query.trim().replace(/[%_,]/g, " ");
+  let request = supabase
+    .from("ventas")
+    .select(
+      "id, codigo_comprobante, numero, fecha, cliente_nombre, cliente_ruc, total, moneda, tipo_comprobante, vendedor_nombre",
+    )
+    .eq("user_id", userId)
+    .order("fecha", { ascending: false })
+    .limit(limit);
+
+  if (trimmed) {
+    const pattern = `%${trimmed}%`;
+    request = request.or(
+      [
+        `codigo_comprobante.ilike.${pattern}`,
+        `numero.ilike.${pattern}`,
+        `cliente_nombre.ilike.${pattern}`,
+        `cliente_ruc.ilike.${pattern}`,
+      ].join(","),
+    );
+  }
+
+  const { data, error } = await request;
+  if (error) {
+    console.warn("[ventas] search recovery:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    codigo: row.codigo_comprobante || row.numero,
+    fecha: formatFechaEmisionFromIso(row.fecha),
+    cliente: row.cliente_nombre ?? "Cliente",
+    clienteRuc: row.cliente_ruc ?? "",
+    total: Number(row.total) || 0,
+    moneda: row.moneda || "PEN",
+    tipoComprobante: row.tipo_comprobante,
+    vendedor: row.vendedor_nombre ?? "",
+  }));
+}
+
+export async function fetchVentaForRecovery(
+  userId: string,
+  ventaId: string,
+): Promise<VentaRecoveryDetail | null> {
+  const { data: venta, error } = await supabase
+    .from("ventas")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", ventaId)
+    .maybeSingle();
+
+  if (error || !venta) {
+    console.warn("[ventas] fetch recovery:", error?.message);
+    return null;
+  }
+
+  const { data: items, error: itemsError } = await supabase
+    .from("venta_items")
+    .select("descripcion, cantidad, precio_unitario, producto_id, productos(sku, unidad)")
+    .eq("venta_id", ventaId)
+    .order("created_at", { ascending: true });
+
+  if (itemsError) {
+    console.warn("[ventas] fetch recovery items:", itemsError.message);
+  }
+
+  const notasMeta = parseNotasMeta(venta.notas);
+  const listItem: VentaRecoveryListItem = {
+    id: venta.id,
+    codigo: venta.codigo_comprobante || venta.numero,
+    fecha: formatFechaEmisionFromIso(venta.fecha),
+    cliente: venta.cliente_nombre ?? "Cliente",
+    clienteRuc: venta.cliente_ruc ?? "",
+    total: Number(venta.total) || 0,
+    moneda: venta.moneda || "PEN",
+    tipoComprobante: venta.tipo_comprobante,
+    vendedor: venta.vendedor_nombre ?? "",
+  };
+
+  return {
+    venta: listItem,
+    clienteNombre: venta.cliente_nombre ?? "",
+    clienteRuc: venta.cliente_ruc ?? "",
+    tipoComprobanteForm: mapDbTipoToForm(venta.tipo_comprobante),
+    serie: splitSerieFromCodigo(venta.codigo_comprobante) || splitSerieFromCodigo(venta.numero),
+    moneda: venta.moneda === "USD" ? "USD" : "PEN",
+    fechaEmision: formatFechaEmisionFromIso(venta.fecha),
+    vendedor: venta.vendedor_nombre ?? "",
+    vendedorInitials: venta.vendedor_iniciales ?? buildVendedorInitialsFallback(venta.vendedor_nombre),
+    formaPago: notasMeta.formaPago || "Contado",
+    observacionGeneral: notasMeta.observacionGeneral,
+    tipoCliente: notasMeta.tipoCliente || "Público",
+    items: (items ?? []).map((item) => {
+      const productoRel = item.productos as { sku: string | null; unidad: string | null } | null;
+      const split = splitProductoObservacion(item.descripcion);
+      return {
+        producto: split.producto,
+        productoCodigo: productoRel?.sku ?? "",
+        productoId: item.producto_id,
+        cantidad: Number(item.cantidad) || 1,
+        unidad: productoRel?.unidad ?? "UND",
+        precioUnitario: Number(item.precio_unitario) || 0,
+        observaciones: split.observaciones,
+      };
+    }),
+  };
 }
 
 export {

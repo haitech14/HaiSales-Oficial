@@ -66,6 +66,20 @@ export function mapFormTipoToDb(tipoForm: string): VentaComprobanteDb {
   return TIPO_FORM_TO_DB[tipoForm] ?? "factura";
 }
 
+export function mapDbTipoToForm(tipoDb: string | null | undefined): string {
+  switch (tipoDb) {
+    case "boleta":
+      return "Boleta de Venta (03)";
+    case "nota_credito":
+      return "Nota de Crédito (07)";
+    case "nota_venta":
+      return "Nota de Venta (NV)";
+    case "factura":
+    default:
+      return "Factura Electrónica (01)";
+  }
+}
+
 export function resolveSerieForTipoForm(tipoForm: string, series: SeriesConfig): string {
   if (tipoForm === "Guía de Remisión") return "T001";
   if (tipoForm === "Cotización") return "COT01";

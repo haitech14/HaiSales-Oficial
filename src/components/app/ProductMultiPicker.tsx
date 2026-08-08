@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Box, Check, Cog, Package, Plus, Search, Wrench } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Box, Check, Cog, Package, Plus, Search, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AutocompleteOption } from "@/components/app/SearchableAutocomplete";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,10 @@ type ProductMultiPickerProps = {
   loadOptions?: (query: string) => Promise<AutocompleteOption[]>;
   onAddSelected: (options: AutocompleteOption[]) => void;
   onAdd?: () => void;
+  /** Texto del botón + a la derecha del buscador (ej. "Agregar producto"). */
+  addButtonLabel?: string;
+  /** Oculta el botón inferior "Agregar seleccionados al carrito". */
+  hideFooterAddButton?: boolean;
   maxResults?: number;
   debounceMs?: number;
 };
@@ -94,8 +97,10 @@ export function ProductMultiPicker({
   loadOptions,
   onAddSelected,
   onAdd,
+  addButtonLabel,
+  hideFooterAddButton = false,
   maxResults = 16,
-  debounceMs = 280,
+  debounceMs = 160,
 }: ProductMultiPickerProps) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +112,6 @@ export function ProductMultiPicker({
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedValues, setSelectedValues] = useState<Set<string>>(new Set());
   const [selectedMap, setSelectedMap] = useState<Map<string, AutocompleteOption>>(new Map());
-  const [dropdownStyle, setDropdownStyle] = useState({ top: 0, left: 0, width: 0 });
   const [remoteOptions, setRemoteOptions] = useState<AutocompleteOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -119,6 +123,8 @@ export function ProductMultiPicker({
   }, [maxResults, options, search]);
 
   const filteredOptions = loadOptions ? remoteOptions.slice(0, maxResults) : localFiltered;
+  const selectedList = useMemo(() => Array.from(selectedMap.values()), [selectedMap]);
+  const selectedCount = selectedValues.size;
 
   useEffect(() => {
     if (!loadOptions) {
@@ -129,6 +135,13 @@ export function ProductMultiPicker({
     }
 
     const requestId = ++requestIdRef.current;
+    const trimmed = search.trim();
+    // No consultar en cada letra suelta (1 char) — evita spam de red
+    if (trimmed.length === 1) {
+      setIsLoading(false);
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       setIsLoading(true);
       setLoadError(null);
@@ -151,29 +164,6 @@ export function ProductMultiPicker({
     return () => window.clearTimeout(timer);
   }, [debounceMs, loadOptions, search]);
 
-  const updateDropdownPosition = useCallback(() => {
-    const input = inputRef.current;
-    if (!input) return;
-    const rect = input.getBoundingClientRect();
-    setDropdownStyle({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    updateDropdownPosition();
-    const handleReposition = () => updateDropdownPosition();
-    window.addEventListener("resize", handleReposition);
-    window.addEventListener("scroll", handleReposition, true);
-    return () => {
-      window.removeEventListener("resize", handleReposition);
-      window.removeEventListener("scroll", handleReposition, true);
-    };
-  }, [open, updateDropdownPosition, search, selectedValues.size, filteredOptions.length, isLoading]);
-
   useEffect(() => {
     if (!open) return;
     const handlePointerDown = (event: PointerEvent) => {
@@ -185,28 +175,6 @@ export function ProductMultiPicker({
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onWheel = (event: WheelEvent) => {
-      const list = listRef.current;
-      if (!list) return;
-      const target = event.target as Node | null;
-      if (!target || !list.contains(target)) return;
-
-      event.stopPropagation();
-      const maxScroll = list.scrollHeight - list.clientHeight;
-      if (maxScroll <= 0) return;
-      const next = Math.min(maxScroll, Math.max(0, list.scrollTop + event.deltaY));
-      if (next === list.scrollTop) return;
-      list.scrollTop = next;
-      event.preventDefault();
-    };
-
-    document.addEventListener("wheel", onWheel, { capture: true, passive: false });
-    return () => document.removeEventListener("wheel", onWheel, { capture: true });
-  }, [open, filteredOptions.length]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -224,6 +192,20 @@ export function ProductMultiPicker({
       const next = new Map(current);
       if (next.has(key)) next.delete(key);
       else next.set(key, option);
+      return next;
+    });
+    setOpen(true);
+  };
+
+  const removeSelected = (key: string) => {
+    setSelectedValues((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+    setSelectedMap((current) => {
+      const next = new Map(current);
+      next.delete(key);
       return next;
     });
   };
@@ -267,13 +249,12 @@ export function ProductMultiPicker({
     }
   };
 
-  const showDropdown = open && (filteredOptions.length > 0 || isLoading || Boolean(loadError));
-  const selectedCount = selectedValues.size;
+  const showDropdown = open && (filteredOptions.length > 0 || isLoading || Boolean(loadError) || selectedCount > 0);
 
   return (
     <div ref={containerRef} className="space-y-2">
       <div className="flex gap-1.5">
-        <div className="relative min-w-0 flex-1">
+        <div className="relative z-30 min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
             ref={inputRef}
@@ -290,164 +271,194 @@ export function ProductMultiPicker({
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 transition focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 transition focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-600/10"
           />
-          {showDropdown &&
-            createPortal(
-              <div
-                ref={dropdownRef}
-                style={{
-                  position: "fixed",
-                  top: dropdownStyle.top,
-                  left: dropdownStyle.left,
-                  width: dropdownStyle.width,
-                  zIndex: 9999,
-                }}
-                className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+          {showDropdown && (
+            <div
+              ref={dropdownRef}
+              data-haisales-portal="autocomplete"
+              className="absolute left-0 right-0 top-[calc(100%+4px)] z-[100] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl"
+            >
+              {isLoading && (
+                <p className="px-3 py-2.5 text-xs text-slate-400">Buscando en Haitech…</p>
+              )}
+              {!isLoading && loadError && (
+                <p className="px-3 py-2.5 text-xs text-red-500">{loadError}</p>
+              )}
+              {!isLoading && !loadError && filteredOptions.length === 0 && (
+                <p className="px-3 py-2.5 text-xs text-slate-400">Sin resultados</p>
+              )}
+              <ul
+                ref={listRef}
+                id={listId}
+                role="listbox"
+                aria-multiselectable="true"
+                className="max-h-64 overflow-y-auto overscroll-contain py-1 [scrollbar-gutter:stable]"
               >
-                {isLoading && (
-                  <p className="px-3 py-2.5 text-xs text-slate-400">Buscando en Haitech…</p>
-                )}
-                {!isLoading && loadError && (
-                  <p className="px-3 py-2.5 text-xs text-red-500">{loadError}</p>
-                )}
-                {!isLoading && !loadError && filteredOptions.length === 0 && (
-                  <p className="px-3 py-2.5 text-xs text-slate-400">Sin resultados</p>
-                )}
-                <ul
-                  ref={listRef}
-                  id={listId}
-                  role="listbox"
-                  className="max-h-64 overflow-y-auto overscroll-contain py-1 [scrollbar-gutter:stable]"
-                >
-                  {filteredOptions.map((option, index) => {
-                    const isSelected = selectedValues.has(option.value);
-                    const iconKind =
-                      typeof option.meta?.iconKind === "string" ? option.meta.iconKind : "product";
-                    const iconBg =
-                      typeof option.meta?.iconBg === "string" ? option.meta.iconBg : "bg-blue-50";
-                    const iconColor =
-                      typeof option.meta?.iconColor === "string"
-                        ? option.meta.iconColor
-                        : "text-blue-600";
-                    const imageUrl =
-                      typeof option.meta?.imageUrl === "string" && option.meta.imageUrl
-                        ? option.meta.imageUrl
-                        : null;
-                    const codigo =
-                      typeof option.meta?.codigo === "string" ? option.meta.codigo : null;
-                    const brand =
-                      typeof option.meta?.brand === "string" && option.meta.brand
-                        ? option.meta.brand
-                        : null;
-                    const stock = metaNumber(option.meta, "stock");
-                    const precioPen =
-                      metaNumber(option.meta, "precioPen") ?? metaNumber(option.meta, "precio");
-                    const precioUsd = metaNumber(option.meta, "precioUsd");
+                {filteredOptions.map((option, index) => {
+                  const isSelected = selectedValues.has(option.value);
+                  const iconKind =
+                    typeof option.meta?.iconKind === "string" ? option.meta.iconKind : "product";
+                  const iconBg =
+                    typeof option.meta?.iconBg === "string" ? option.meta.iconBg : "bg-blue-50";
+                  const iconColor =
+                    typeof option.meta?.iconColor === "string"
+                      ? option.meta.iconColor
+                      : "text-blue-600";
+                  const imageUrl =
+                    typeof option.meta?.imageUrl === "string" && option.meta.imageUrl
+                      ? option.meta.imageUrl
+                      : null;
+                  const codigo =
+                    typeof option.meta?.codigo === "string" ? option.meta.codigo : null;
+                  const brand =
+                    typeof option.meta?.brand === "string" && option.meta.brand
+                      ? option.meta.brand
+                      : null;
+                  const stock = metaNumber(option.meta, "stock");
+                  const precioPen =
+                    metaNumber(option.meta, "precioPen") ?? metaNumber(option.meta, "precio");
+                  const precioUsd = metaNumber(option.meta, "precioUsd");
 
-                    return (
-                      <li key={option.value} role="presentation">
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          onPointerDown={(event) => {
-                            // Evita que el Dialog/input robe el gesto y cierra el dropdown.
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleOption(option);
-                          }}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                          }}
-                          onMouseEnter={() => setActiveIndex(index)}
+                  return (
+                    <li key={option.value} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggleOption(option);
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition",
+                          index === activeIndex ? "bg-blue-50" : "hover:bg-slate-50",
+                          isSelected && "bg-blue-50/70",
+                        )}
+                      >
+                        <span
                           className={cn(
-                            "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition",
-                            index === activeIndex ? "bg-blue-50" : "hover:bg-slate-50",
-                            isSelected && "bg-blue-50/70",
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                            isSelected
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-slate-300 bg-white text-transparent",
                           )}
                         >
-                          <span
-                            className={cn(
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                              isSelected
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-slate-300 bg-white text-transparent",
-                            )}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                          </span>
-                          <ProductOptionThumb
-                            iconKind={iconKind}
-                            iconBg={iconBg}
-                            iconColor={iconColor}
-                            imageUrl={imageUrl}
-                            label={option.label}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium text-slate-800">{option.label}</span>
-                            <span className="mt-0.5 flex items-start justify-between gap-3 text-xs text-slate-500">
-                              <span className="min-w-0 truncate">
-                                {[
-                                  codigo,
-                                  brand,
-                                  stock != null ? `Stock ${stock}` : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </span>
-                              {(precioPen != null || precioUsd != null) && (
-                                <span className="shrink-0 text-right font-medium tabular-nums text-slate-700">
-                                  {precioPen != null && (
-                                    <span className="block">S/ {precioPen.toFixed(2)}</span>
-                                  )}
-                                  {precioUsd != null && precioUsd > 0 && (
-                                    <span className="block text-[11px] font-normal text-slate-500">
-                                      $ {precioUsd.toFixed(2)}
-                                    </span>
-                                  )}
-                                </span>
-                              )}
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </span>
+                        <ProductOptionThumb
+                          iconKind={iconKind}
+                          iconBg={iconBg}
+                          iconColor={iconColor}
+                          imageUrl={imageUrl}
+                          label={option.label}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium text-slate-800">{option.label}</span>
+                          <span className="mt-0.5 flex items-start justify-between gap-3 text-xs text-slate-500">
+                            <span className="min-w-0 truncate">
+                              {[codigo, brand, stock != null ? `Stock ${stock}` : null]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </span>
+                            {(precioPen != null || precioUsd != null) && (
+                              <span className="shrink-0 text-right font-medium tabular-nums text-slate-700">
+                                {precioPen != null && (
+                                  <span className="block">S/ {precioPen.toFixed(2)}</span>
+                                )}
+                                {precioUsd != null && precioUsd > 0 && (
+                                  <span className="block text-[11px] font-normal text-slate-500">
+                                    $ {precioUsd.toFixed(2)}
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {selectedCount > 0 && (
-                  <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {selectedCount > 0 && (
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2">
+                  <p className="text-xs text-slate-500">
                     {selectedCount}{" "}
                     {selectedCount === 1 ? "producto seleccionado" : "productos seleccionados"}
-                  </div>
-                )}
-              </div>,
-              document.body,
-            )}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleAddSelected();
+                    }}
+                    className="h-7 gap-1 bg-slate-900 px-2.5 text-[11px] text-white hover:bg-slate-800"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Agregar ({selectedCount})
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-            aria-label="Agregar producto"
+            className={cn(
+              "flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white text-blue-700 transition hover:bg-blue-50",
+              addButtonLabel ? "px-3 text-xs font-medium" : "w-9 text-blue-600",
+            )}
+            aria-label={addButtonLabel || "Agregar producto"}
           >
             <Plus className="h-3.5 w-3.5" />
+            {addButtonLabel ? <span>{addButtonLabel}</span> : null}
           </button>
         )}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleAddSelected}
-        disabled={selectedCount === 0}
-        className="h-8 w-full gap-1.5 border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Agregar {selectedCount > 0 ? `(${selectedCount})` : "seleccionados"}
-      </Button>
+      {selectedCount > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedList.map((option) => (
+            <span
+              key={option.value}
+              className="inline-flex max-w-full items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700"
+            >
+              <span className="truncate">{option.label}</span>
+              <button
+                type="button"
+                onClick={() => removeSelected(option.value)}
+                className="shrink-0 rounded text-slate-400 transition hover:text-slate-700"
+                aria-label={`Quitar ${option.label}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {!hideFooterAddButton && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAddSelected}
+          disabled={selectedCount === 0}
+          className="h-8 w-full gap-1.5 border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Agregar {selectedCount > 0 ? `(${selectedCount})` : "seleccionados"} al carrito
+        </Button>
+      )}
     </div>
   );
 }
