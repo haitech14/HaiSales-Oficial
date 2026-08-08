@@ -69,6 +69,7 @@ import { configToEmisor, defaultEmpresaConfig } from "@/lib/parametros/empresa-s
 import {
   DEFAULT_COMPROBANTE_GIRO,
   DEFAULT_CUENTAS_BANCARIAS,
+  DEFAULT_HAITECH_EMISOR,
 } from "@/lib/pdf/comprobante-emisor";
 import type { ComprobantePdfEmisor } from "@/lib/pdf/comprobante-emisor";
 import { VentaRegistradaSuccessDialog } from "@/components/app/VentaRegistradaSuccessDialog";
@@ -330,15 +331,23 @@ export function NuevaVentaModal({
   const emisor = useMemo((): ComprobantePdfEmisor => {
     const config = empresaConfig ?? defaultEmpresaConfig;
     const base = configToEmisor(config);
+    const hasEmpresa = Boolean(config.ruc?.trim() || config.razonSocial?.trim());
+    if (!hasEmpresa) return { ...DEFAULT_HAITECH_EMISOR };
+
     return {
+      ...DEFAULT_HAITECH_EMISOR,
       ...base,
-      nombreComercial: config.nombreComercial?.trim() || "HAITECH",
+      nombreComercial: config.nombreComercial?.trim() || DEFAULT_HAITECH_EMISOR.nombreComercial,
       logoUrl: config.logoUrl || undefined,
-      web: "https://haitech.pe/",
       giro: DEFAULT_COMPROBANTE_GIRO,
+      web: DEFAULT_HAITECH_EMISOR.web,
       cuentasBancarias: DEFAULT_CUENTAS_BANCARIAS,
-      resolucionSunat: "094-005-0001933/SUNAT",
-      proveedorFacturacion: "RAPIFAC",
+      resolucionSunat: DEFAULT_HAITECH_EMISOR.resolucionSunat,
+      proveedorFacturacion: DEFAULT_HAITECH_EMISOR.proveedorFacturacion,
+      telefono:
+        base.telefono && base.telefono !== "—"
+          ? `Ventas: ${base.telefono.replace(/^\+51\s*/, "")} / Soporte: 965805873 / Ventas 2: 926224243`
+          : DEFAULT_HAITECH_EMISOR.telefono,
     };
   }, [empresaConfig]);
   const seriesConfig = useMemo(

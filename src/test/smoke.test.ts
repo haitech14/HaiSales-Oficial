@@ -11,6 +11,15 @@ describe("calculateVentaTotals", () => {
   });
 });
 
+describe("numeroALetras", () => {
+  it("formatea el total en letras como el comprobante HAITECH", async () => {
+    const { numeroALetras } = await import("@/lib/pdf/numero-a-letras");
+    expect(numeroALetras(798, "USD")).toBe(
+      "SETECIENTOS NOVENTA Y OCHO CON 00/100 DOLARES AMERICANOS",
+    );
+  });
+});
+
 describe("roles", () => {
   it("normaliza roles desconocidos a admin", () => {
     expect(normalizeRole("otro")).toBe("admin");

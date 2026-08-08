@@ -20,7 +20,7 @@ export type ComprobantePdfEmisor = {
   cuentasBancarias?: CuentaBancariaPdf[];
 };
 
-/** Cuentas del comprobante de referencia HAITECH (fallback). */
+/** Cuentas exactas del comprobante de referencia HAITECH. */
 export const DEFAULT_CUENTAS_BANCARIAS: CuentaBancariaPdf[] = [
   {
     banco: "BCP",
@@ -65,3 +65,17 @@ export const DEFAULT_COMPROBANTE_GIRO =
 
 export const DEFAULT_RESOLUCION_SUNAT = "094-005-0001933/SUNAT";
 export const DEFAULT_PROVEEDOR_FACTURACION = "RAPIFAC";
+
+export const DEFAULT_HAITECH_EMISOR: ComprobantePdfEmisor = {
+  razonSocial: "NBN TECNOLOGIA TOTAL S.A.C.",
+  nombreComercial: "HAITECH",
+  ruc: "20612146561",
+  direccion: "Av. Petit Thouars Nro - LINCE - LIMA - LIMA",
+  telefono: "Ventas: 915149290 / Soporte: 965805873 / Ventas 2: 926224243",
+  email: "ventas@haitech.pe",
+  web: "https://haitech.pe/",
+  giro: DEFAULT_COMPROBANTE_GIRO,
+  resolucionSunat: DEFAULT_RESOLUCION_SUNAT,
+  proveedorFacturacion: DEFAULT_PROVEEDOR_FACTURACION,
+  cuentasBancarias: DEFAULT_CUENTAS_BANCARIAS,
+};

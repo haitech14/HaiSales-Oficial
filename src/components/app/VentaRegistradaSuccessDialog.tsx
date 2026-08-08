@@ -14,7 +14,7 @@ import {
   resolveVentaLineItems,
   type NuevaVentaFormData,
 } from "@/lib/nueva-venta-types";
-import type { EmpresaEmisor } from "@/lib/parametros/empresa-service";
+import type { ComprobantePdfEmisor } from "@/lib/pdf/comprobante-emisor";
 import {
   buildVentaClienteShareText,
   buildWhatsAppMeLink,
@@ -25,7 +25,7 @@ type VentaRegistradaSuccessDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   form: NuevaVentaFormData | null;
-  emisor: EmpresaEmisor;
+  emisor: ComprobantePdfEmisor;
 };
 
 export function VentaRegistradaSuccessDialog({

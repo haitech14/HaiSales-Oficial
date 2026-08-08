@@ -12,23 +12,21 @@ import {
   type ComprobantePdfEmisor,
   type CuentaBancariaPdf,
 } from "@/lib/pdf/comprobante-emisor";
-
-export type { ComprobantePdfEmisor, CuentaBancariaPdf } from "@/lib/pdf/comprobante-emisor";
-import {
-  createPdfDocument,
-  downloadPdf,
-} from "@/lib/pdf/pdf-utils";
+import { createPdfDocument, downloadPdf } from "@/lib/pdf/pdf-utils";
 import {
   currencySymbol,
   monedaLabelDisplay,
   numeroALetras,
 } from "@/lib/pdf/numero-a-letras";
 
+export type { ComprobantePdfEmisor, CuentaBancariaPdf } from "@/lib/pdf/comprobante-emisor";
+
+/** Layout calibrado al comprobante HAITECH / RAPIFAC (A4). */
 const PAGE_W = 210;
-const MARGIN = 10;
+const MARGIN = 12;
 const CONTENT_W = PAGE_W - MARGIN * 2;
-const BLACK = { r: 20, g: 20, b: 20 };
-const GRAY = { r: 55, g: 55, b: 55 };
+const INK = { r: 0, g: 0, b: 0 };
+const HEADER_BG = { r: 52, g: 52, b: 52 };
 
 export type ComprobantePdfItem = {
   cantidad: number;
@@ -74,10 +72,10 @@ function normalizeUnidad(unidad: string): string {
 
 function getComprobanteTitle(tipo: string): string {
   const value = tipo.toLowerCase();
-  if (value.includes("boleta")) return "BOLETA DE VENTA ELECTRÓNICA";
+  if (value.includes("boleta")) return "BOLETA DE VENTA\nELECTRÓNICA";
   if (value.includes("nota de venta") || value.includes("nota_venta")) return "NOTA DE VENTA";
   if (value.includes("nota de crédito") || value.includes("nota_credito") || value.includes("crédito")) {
-    return "NOTA DE CRÉDITO ELECTRÓNICA";
+    return "NOTA DE CRÉDITO\nELECTRÓNICA";
   }
   if (value.includes("guía") || value.includes("guia")) return "GUÍA DE REMISIÓN";
   if (value.includes("cotiz") || value.includes("proforma")) return "COTIZACIÓN";
@@ -91,12 +89,24 @@ function buildComprobanteNumber(serie: string): string {
   return `${cleaned}-${seq}`;
 }
 
+function resolveMedioPago(formaPago: string, moneda: string, total: number): string {
+  const forma = formaPago.trim().toLowerCase();
+  const symbol = currencySymbol(moneda);
+  const amount = money(total, moneda);
+  if (!forma || forma.includes("contado") || forma.includes("efectivo")) {
+    return `EFECTIVO ${symbol} ${amount}`;
+  }
+  if (forma.includes("transfer")) return `TRANSFERENCIA ${symbol} ${amount}`;
+  if (forma.includes("yape") || forma.includes("plin")) return `${formaPago.toUpperCase()} ${symbol} ${amount}`;
+  return `${formaPago.toUpperCase()} ${symbol} ${amount}`;
+}
+
 async function generateQrDataUrl(text: string): Promise<string> {
   return QRCode.toDataURL(text, {
-    margin: 0,
-    width: 280,
+    margin: 1,
+    width: 320,
     errorCorrectionLevel: "M",
-    color: { dark: "#111111", light: "#ffffff" },
+    color: { dark: "#000000", light: "#ffffff" },
   });
 }
 
@@ -116,33 +126,47 @@ async function tryLoadImageDataUrl(url: string): Promise<string | null> {
   }
 }
 
-function setBlack(doc: jsPDF) {
-  doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
-  doc.setDrawColor(BLACK.r, BLACK.g, BLACK.b);
+function ink(doc: jsPDF) {
+  doc.setTextColor(INK.r, INK.g, INK.b);
+  doc.setDrawColor(INK.r, INK.g, INK.b);
 }
 
-function drawLogoFallback(doc: jsPDF, x: number, y: number, size: number, brand: string) {
+/** Logo cuadrado negro estilo HAITECH. */
+function drawBrandLogo(doc: jsPDF, x: number, y: number, size: number, brand: string) {
   doc.setFillColor(0, 0, 0);
   doc.rect(x, y, size, size, "F");
+
+  // Marco interior sutil
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.35);
+  doc.rect(x + 1.2, y + 1.2, size - 2.4, size - 2.4);
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(brand.length > 8 ? 6.5 : 7.5);
-  doc.text(brand.slice(0, 12).toUpperCase(), x + size / 2, y + size / 2 - 1.5, { align: "center" });
+  const label = brand.slice(0, 10).toUpperCase() || "HAITECH";
+  doc.setFontSize(label.length > 8 ? 7 : 8.5);
+  doc.text(label, x + size / 2, y + size / 2 - 1.2, { align: "center" });
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(3.6);
-  const lines = doc.splitTextToSize("Distribuidor Autorizado RICOH", size - 3) as string[];
-  doc.text(lines, x + size / 2, y + size / 2 + 3.2, { align: "center" });
-  setBlack(doc);
+  doc.setFontSize(3.4);
+  const sub = doc.splitTextToSize("Distribuidor Autorizado RICOH", size - 4) as string[];
+  doc.text(sub, x + size / 2, y + size / 2 + 3.8, { align: "center" });
+  ink(doc);
 }
 
 async function drawHeader(doc: jsPDF, input: ComprobantePdfInput): Promise<number> {
-  const logoSize = 28;
+  const logoSize = 32;
   const logoX = MARGIN;
   const logoY = 8;
-  const boxW = 48;
+  const boxW = 52;
+  const boxH = 32;
   const boxX = PAGE_W - MARGIN - boxW;
-  const centerX = logoX + logoSize + 4;
-  const centerW = boxX - centerX - 4;
+  const centerX = logoX + logoSize + 3;
+  const centerW = boxX - centerX - 3;
+  const brand =
+    input.emisor.nombreComercial?.trim() ||
+    input.emisor.razonSocial.split(/\s+/)[0] ||
+    "HAITECH";
 
   const logoUrl = input.emisor.logoUrl?.trim();
   let drewLogo = false;
@@ -158,196 +182,210 @@ async function drawHeader(doc: jsPDF, input: ComprobantePdfInput): Promise<numbe
       }
     }
   }
-  if (!drewLogo) {
-    const brand =
-      input.emisor.nombreComercial?.trim() ||
-      input.emisor.razonSocial.split(/\s+/)[0] ||
-      "HAITECH";
-    drawLogoFallback(doc, logoX, logoY, logoSize, brand);
-  }
+  if (!drewLogo) drawBrandLogo(doc, logoX, logoY, logoSize, brand);
 
-  const comercial =
-    input.emisor.nombreComercial?.trim() ||
-    input.emisor.razonSocial.split(/\s+/)[0]?.toUpperCase() ||
-    "EMPRESA";
   const giro = input.emisor.giro?.trim() || DEFAULT_COMPROBANTE_GIRO;
   const web = input.emisor.web?.trim() || "https://haitech.pe/";
-  const phones = input.emisor.telefono?.trim() || "—";
+  const phonesRaw = input.emisor.telefono?.trim() || "Ventas: 915149290 / Soporte: 965805873 / Ventas 2: 926224243";
+  const phones = /ventas\s*:/i.test(phonesRaw) ? phonesRaw : `Ventas: ${phonesRaw}`;
 
-  let cy = logoY + 3;
+  let cy = logoY + 2.5;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  setBlack(doc);
-  doc.text(comercial.toUpperCase(), centerX + centerW / 2, cy, { align: "center" });
-  cy += 5;
+  doc.setFontSize(16);
+  ink(doc);
+  doc.text(brand.toUpperCase(), centerX + centerW / 2, cy, { align: "center" });
+  cy += 5.2;
 
-  doc.setFontSize(8);
-  doc.text(input.emisor.razonSocial.toUpperCase(), centerX + centerW / 2, cy, { align: "center" });
-  cy += 4;
+  doc.setFontSize(8.5);
+  doc.text((input.emisor.razonSocial || "NBN TECNOLOGIA TOTAL S.A.C.").toUpperCase(), centerX + centerW / 2, cy, {
+    align: "center",
+  });
+  cy += 3.8;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.2);
-  doc.setTextColor(GRAY.r, GRAY.g, GRAY.b);
-  const giroLines = doc.splitTextToSize(giro, centerW) as string[];
+  doc.setFontSize(6.1);
+  const giroLines = doc.splitTextToSize(giro, centerW - 2) as string[];
   doc.text(giroLines.slice(0, 2), centerX + centerW / 2, cy, { align: "center" });
-  cy += giroLines.slice(0, 2).length * 3 + 0.5;
+  cy += Math.min(2, giroLines.length) * 2.9 + 0.6;
 
-  doc.setFontSize(6.5);
-  doc.text(`Ventas: ${phones}`, centerX + centerW / 2, cy, { align: "center" });
-  cy += 3.2;
-  doc.setTextColor(0, 70, 160);
+  doc.setFontSize(6.4);
+  doc.text(phones, centerX + centerW / 2, cy, { align: "center" });
+  cy += 3.1;
+
+  // URL en negro (como la imagen impresa; sin azul)
+  doc.setFontSize(6.4);
   doc.text(web, centerX + centerW / 2, cy, { align: "center" });
-  cy += 3.2;
-  setBlack(doc);
+  cy += 3.1;
+
   doc.setFontSize(6.2);
-  doc.text(input.emisor.direccion || "—", centerX + centerW / 2, cy, { align: "center" });
+  doc.text(input.emisor.direccion || "Av. Petit Thouars Nro - LINCE - LIMA - LIMA", centerX + centerW / 2, cy, {
+    align: "center",
+  });
 
-  const boxH = 28;
-  doc.setLineWidth(0.6);
+  // Caja RUC / tipo / serie (borde grueso)
+  doc.setLineWidth(0.9);
+  ink(doc);
   doc.rect(boxX, logoY, boxW, boxH);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text(`RUC: ${input.emisor.ruc || "—"}`, boxX + boxW / 2, logoY + 7, { align: "center" });
-  doc.setFontSize(8.5);
-  const titleLines = doc.splitTextToSize(input.titulo, boxW - 4) as string[];
-  doc.text(titleLines, boxX + boxW / 2, logoY + 14, { align: "center" });
-  doc.setFontSize(11);
-  doc.text(input.numero, boxX + boxW / 2, logoY + boxH - 5, { align: "center" });
+  doc.setLineWidth(0.25);
+  doc.rect(boxX + 1.1, logoY + 1.1, boxW - 2.2, boxH - 2.2);
 
-  return Math.max(logoY + logoSize, logoY + boxH) + 6;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text(`RUC: ${input.emisor.ruc || "20612146561"}`, boxX + boxW / 2, logoY + 8, {
+    align: "center",
+  });
+
+  const titleLines = input.titulo.split("\n");
+  doc.setFontSize(titleLines.length > 1 ? 8.2 : 9.2);
+  const titleY = logoY + (titleLines.length > 1 ? 15.2 : 17);
+  titleLines.forEach((line, i) => {
+    doc.text(line, boxX + boxW / 2, titleY + i * 3.8, { align: "center" });
+  });
+
+  doc.setFontSize(12);
+  doc.text(input.numero, boxX + boxW / 2, logoY + boxH - 5.5, { align: "center" });
+
+  return Math.max(logoY + logoSize, logoY + boxH) + 7;
 }
 
-function drawKeyValue(
+function drawLabeledRow(
   doc: jsPDF,
   label: string,
   value: string,
   x: number,
   y: number,
   labelW: number,
-  valueW: number,
+  valueMaxW: number,
+  lineH = 3.7,
 ): number {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  setBlack(doc);
+  doc.setFontSize(7.4);
+  ink(doc);
   doc.text(`${label}:`, x, y);
   doc.setFont("helvetica", "normal");
-  const lines = doc.splitTextToSize(value || "—", valueW) as string[];
+  const lines = doc.splitTextToSize(value || "—", valueMaxW) as string[];
   doc.text(lines, x + labelW, y);
-  return y + Math.max(1, lines.length) * 3.6;
+  return y + Math.max(1, lines.length) * lineH;
 }
 
 function drawClientBlock(doc: jsPDF, y: number, input: ComprobantePdfInput): number {
   const leftX = MARGIN;
-  const rightX = 128;
-  const labelW = 24;
+  const rightX = 132;
   let leftY = y;
   let rightY = y;
 
-  leftY = drawKeyValue(doc, "CLIENTE", input.cliente, leftX, leftY, labelW, 88);
-  leftY = drawKeyValue(doc, "DIRECCIÓN", input.direccion, leftX, leftY, labelW, 88);
-  leftY = drawKeyValue(doc, "FORMA PAGO", input.formaPago.toUpperCase(), leftX, leftY, labelW, 88);
-  leftY = drawKeyValue(doc, "VENDEDOR", input.vendedor.toUpperCase(), leftX, leftY, labelW, 88);
-  leftY = drawKeyValue(doc, "MEDIO DE PAGO", input.medioPago.toUpperCase(), leftX, leftY, 28, 84);
+  leftY = drawLabeledRow(doc, "CLIENTE", input.cliente.toUpperCase(), leftX, leftY, 22, 92);
+  leftY = drawLabeledRow(doc, "DIRECCIÓN", input.direccion.toUpperCase(), leftX, leftY, 24, 90);
+  leftY = drawLabeledRow(doc, "FORMA PAGO", input.formaPago.toUpperCase(), leftX, leftY, 26, 88);
+  leftY = drawLabeledRow(doc, "VENDEDOR", input.vendedor.toUpperCase(), leftX, leftY, 24, 90);
+  leftY = drawLabeledRow(doc, "MEDIO DE PAGO", input.medioPago.toUpperCase(), leftX, leftY, 30, 84);
 
-  rightY = drawKeyValue(doc, "RUC", input.clienteRuc, rightX, rightY, 16, 52);
-  rightY = drawKeyValue(doc, "FECHA", input.fecha, rightX, rightY, 16, 52);
-  rightY = drawKeyValue(doc, "MONEDA", monedaLabelDisplay(input.moneda), rightX, rightY, 18, 50);
+  rightY = drawLabeledRow(doc, "RUC", input.clienteRuc, rightX, rightY, 12, 50);
+  rightY = drawLabeledRow(doc, "FECHA", input.fecha, rightX, rightY, 16, 46);
+  rightY = drawLabeledRow(doc, "MONEDA", monedaLabelDisplay(input.moneda), rightX, rightY, 18, 44);
 
-  return Math.max(leftY, rightY) + 4;
+  return Math.max(leftY, rightY) + 3.5;
 }
 
-function drawItemsTable(doc: jsPDF, startY: number, items: ComprobantePdfItem[]): number {
-  const cols = {
-    cant: MARGIN,
-    um: MARGIN + 14,
-    desc: MARGIN + 30,
-    pu: MARGIN + 148,
-    importe: MARGIN + CONTENT_W,
-  };
-  const headerH = 6.5;
-  const descWidth = 110;
+function drawItemsTable(
+  doc: jsPDF,
+  startY: number,
+  items: ComprobantePdfItem[],
+  moneda: string,
+): number {
+  // Anchos columna (mm) calibrados a la imagen
+  const x0 = MARGIN;
+  const wCant = 14;
+  const wUm = 20;
+  const wPu = 24;
+  const wImp = 28;
+  const wDesc = CONTENT_W - wCant - wUm - wPu - wImp;
+  const xUm = x0 + wCant;
+  const xDesc = xUm + wUm;
+  const xPu = xDesc + wDesc;
+  const xImp = xPu + wPu;
+  const headerH = 6.2;
+  const minBodyH = 48;
 
-  doc.setFillColor(45, 45, 45);
-  doc.rect(MARGIN, startY, CONTENT_W, headerH, "F");
+  doc.setFillColor(HEADER_BG.r, HEADER_BG.g, HEADER_BG.b);
+  doc.rect(x0, startY, CONTENT_W, headerH, "F");
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("CANT.", cols.cant + 1, startY + 4.4);
-  doc.text("U.M.", cols.um + 1, startY + 4.4);
-  doc.text("DESCRIPCIÓN", cols.desc + 1, startY + 4.4);
-  doc.text("P.U.", cols.pu, startY + 4.4, { align: "right" });
-  doc.text("IMPORTE", cols.importe - 1, startY + 4.4, { align: "right" });
+  doc.setFontSize(7.2);
+  doc.text("CANT.", x0 + wCant / 2, startY + 4.2, { align: "center" });
+  doc.text("U.M.", xUm + 1.5, startY + 4.2);
+  doc.text("DESCRIPCIÓN", xDesc + 1.5, startY + 4.2);
+  doc.text("P.U.", xPu + wPu - 1.5, startY + 4.2, { align: "right" });
+  doc.text("IMPORTE", xImp + wImp - 1.5, startY + 4.2, { align: "right" });
 
   let y = startY + headerH;
+  const bodyStart = y;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.2);
-  setBlack(doc);
-  doc.setLineWidth(0.3);
-  doc.rect(MARGIN, startY, CONTENT_W, headerH);
-
-  const minBody = 42;
-  const bodyStart = y;
+  ink(doc);
 
   for (const item of items) {
-    const descLines = doc.splitTextToSize(item.descripcion || "—", descWidth) as string[];
-    const rowH = Math.max(6.5, descLines.length * 3.4 + 2.5);
-
-    if (y + rowH > 200) {
-      // keep drawing; page overflow handled lightly by compressing
-    }
-
-    doc.text(String(item.cantidad), cols.cant + 6, y + 4, { align: "center" });
-    doc.text(normalizeUnidad(item.unidad), cols.um + 1, y + 4);
-    doc.text(descLines, cols.desc + 1, y + 4);
-    doc.text(money(item.precio, "PEN"), cols.pu, y + 4, { align: "right" });
-    doc.text(money(item.importe, "PEN"), cols.importe - 1, y + 4, { align: "right" });
+    const descLines = doc.splitTextToSize(item.descripcion || "—", wDesc - 3) as string[];
+    const rowH = Math.max(7, descLines.length * 3.35 + 2.8);
+    doc.text(String(item.cantidad), x0 + wCant / 2, y + 4.2, { align: "center" });
+    doc.text(normalizeUnidad(item.unidad), xUm + 1.5, y + 4.2);
+    doc.text(descLines, xDesc + 1.5, y + 4.2);
+    doc.text(money(item.precio, moneda), xPu + wPu - 1.5, y + 4.2, { align: "right" });
+    doc.text(money(item.importe, moneda), xImp + wImp - 1.5, y + 4.2, { align: "right" });
     y += rowH;
   }
 
-  const bodyH = Math.max(minBody, y - bodyStart);
-  const tableBottom = bodyStart + bodyH;
-  doc.rect(MARGIN, startY, CONTENT_W, headerH + bodyH);
-  // column guides
-  doc.line(cols.um, startY, cols.um, tableBottom);
-  doc.line(cols.desc, startY, cols.desc, tableBottom);
-  doc.line(cols.pu - 18, startY, cols.pu - 18, tableBottom);
-  doc.line(cols.importe - 28, startY, cols.importe - 28, tableBottom);
+  const bodyH = Math.max(minBodyH, y - bodyStart);
+  const bottom = bodyStart + bodyH;
 
-  return tableBottom + 4;
+  doc.setLineWidth(0.45);
+  ink(doc);
+  doc.rect(x0, startY, CONTENT_W, headerH + bodyH);
+  doc.line(xUm, startY, xUm, bottom);
+  doc.line(xDesc, startY, xDesc, bottom);
+  doc.line(xPu, startY, xPu, bottom);
+  doc.line(xImp, startY, xImp, bottom);
+  doc.line(x0, startY + headerH, x0 + CONTENT_W, startY + headerH);
+
+  return bottom + 3.5;
 }
 
 function drawSonAndTotals(doc: jsPDF, y: number, input: ComprobantePdfInput): number {
   const son = `SON: ${numeroALetras(input.total, input.moneda)}`;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  setBlack(doc);
-  const sonLines = doc.splitTextToSize(son, 118) as string[];
-  doc.text(sonLines, MARGIN, y + 3);
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(7.4);
+  ink(doc);
+  const sonLines = doc.splitTextToSize(son, 112) as string[];
+  doc.text(sonLines, MARGIN, y + 3.2);
 
-  const boxX = 138;
+  const boxX = 136;
   const boxW = PAGE_W - MARGIN - boxX;
-  const rows: Array<[string, string, boolean]> = [
-    ["OP. GRAVADA", money(input.subtotal, input.moneda), false],
-    ["I.G.V", money(input.igv, input.moneda), false],
-    ["IMPORTE TOTAL", money(input.total, input.moneda, true), true],
+  const rows: Array<[string, string]> = [
+    ["OP. GRAVADA", money(input.subtotal, input.moneda)],
+    ["I.G.V", money(input.igv, input.moneda)],
+    ["IMPORTE TOTAL", money(input.total, input.moneda, true)],
   ];
-  const rowH = 5.8;
+  const rowH = 5.6;
   const boxH = rows.length * rowH;
-  doc.setLineWidth(0.35);
-  doc.rect(boxX, y, boxW, boxH);
 
-  rows.forEach(([label, value, bold], index) => {
+  doc.setLineWidth(0.4);
+  doc.rect(boxX, y, boxW, boxH);
+  const midX = boxX + boxW * 0.52;
+  doc.line(midX, y, midX, y + boxH);
+
+  rows.forEach(([label, value], index) => {
     const rowY = y + index * rowH;
     if (index > 0) doc.line(boxX, rowY, boxX + boxW, rowY);
-    doc.line(boxX + boxW * 0.55, rowY, boxX + boxW * 0.55, rowY + rowH);
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(7.2);
-    doc.text(label, boxX + 2, rowY + 4);
+    const isTotal = index === rows.length - 1;
+    doc.setFont("helvetica", isTotal ? "bold" : "normal");
+    doc.setFontSize(7.3);
+    doc.text(label, boxX + 2, rowY + 3.9);
     doc.setFont("helvetica", "bold");
-    doc.text(value, boxX + boxW - 2, rowY + 4, { align: "right" });
+    doc.text(value, boxX + boxW - 2, rowY + 3.9, { align: "right" });
   });
 
-  return y + Math.max(sonLines.length * 4, boxH) + 5;
+  return y + Math.max(sonLines.length * 3.8 + 2, boxH) + 4;
 }
 
 async function drawObservacionesQr(
@@ -355,125 +393,126 @@ async function drawObservacionesQr(
   y: number,
   input: ComprobantePdfInput,
 ): Promise<number> {
-  const boxH = 34;
-  const qrSize = 28;
-  const qrPad = 3;
-  const textW = CONTENT_W - qrSize - qrPad * 3;
+  const boxH = 36;
+  const qrSize = 30;
+  const qrPad = 2.5;
+  const textW = CONTENT_W - qrSize - qrPad * 3 - 2;
 
-  doc.setLineWidth(0.4);
+  doc.setLineWidth(0.45);
+  ink(doc);
   doc.rect(MARGIN, y, CONTENT_W, boxH);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  setBlack(doc);
-  doc.text("OBSERVACIONES:", MARGIN + 2, y + 5);
+  doc.text("OBSERVACIONES:", MARGIN + 2.5, y + 5);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
+  doc.setFontSize(6.4);
   let ty = y + 9;
   const obs = input.observaciones?.trim();
   if (obs) {
     const obsLines = doc.splitTextToSize(obs, textW) as string[];
-    doc.text(obsLines.slice(0, 2), MARGIN + 2, ty);
-    ty += obsLines.slice(0, 2).length * 3 + 1;
+    doc.text(obsLines.slice(0, 2), MARGIN + 2.5, ty);
+    ty += obsLines.slice(0, 2).length * 3 + 1.2;
   }
 
   const resolucion = input.emisor.resolucionSunat || DEFAULT_RESOLUCION_SUNAT;
   const proveedor = input.emisor.proveedorFacturacion || DEFAULT_PROVEEDOR_FACTURACION;
+  const tituloPlain = input.titulo.replace(/\n/g, " ");
   const legal =
-    `Representación impresa de la ${input.titulo.replace(/\s+/g, " ")}. ` +
+    `Representación impresa de la ${tituloPlain}. ` +
     `Autorizado mediante Resolución de Intendencia N° ${resolucion}. ` +
     `Emitido a través de ${proveedor} Proveedor Autorizado por SUNAT, ` +
     `descarga el documento en WWW.RAPIFAC.COM`;
   const legalLines = doc.splitTextToSize(legal, textW) as string[];
-  doc.text(legalLines.slice(0, 5), MARGIN + 2, ty);
+  doc.text(legalLines.slice(0, 6), MARGIN + 2.5, ty);
 
-  const qrPayload =
-    `https://www.rapifac.com/?ruc=${encodeURIComponent(input.emisor.ruc)}` +
-    `&tipo=${encodeURIComponent(input.titulo)}` +
-    `&serie=${encodeURIComponent(input.numero)}` +
-    `&total=${input.total.toFixed(2)}`;
+  const qrPayload = [
+    input.emisor.ruc,
+    input.numero,
+    input.fecha,
+    input.total.toFixed(2),
+    input.clienteRuc,
+  ].join("|");
   const qrDataUrl = await generateQrDataUrl(qrPayload);
-  doc.addImage(
-    qrDataUrl,
-    "PNG",
-    PAGE_W - MARGIN - qrSize - qrPad,
-    y + (boxH - qrSize) / 2,
-    qrSize,
-    qrSize,
-  );
+  const qrX = PAGE_W - MARGIN - qrSize - qrPad;
+  const qrY = y + (boxH - qrSize) / 2;
+  doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+  doc.setLineWidth(0.3);
+  doc.rect(qrX - 0.4, qrY - 0.4, qrSize + 0.8, qrSize + 0.8);
 
   return y + boxH + 4;
 }
 
-function drawCuentasBancariasFixed(
-  doc: jsPDF,
-  y: number,
-  cuentas: CuentaBancariaPdf[],
-): number {
-  const headerH = 6;
-  const colHeaderH = 5;
-  const rowH = 5;
+function drawCuentasBancarias(doc: jsPDF, y: number, cuentas: CuentaBancariaPdf[]): number {
   const rows = cuentas.length > 0 ? cuentas : DEFAULT_CUENTAS_BANCARIAS;
-  const tableH = headerH + colHeaderH + rows.length * rowH;
+  const titleH = 6.2;
+  const colH = 5;
+  const rowH = 4.8;
+  const tableH = titleH + colH + rows.length * rowH;
 
-  doc.setFillColor(45, 45, 45);
-  doc.rect(MARGIN, y, CONTENT_W, headerH, "F");
+  // Título oscuro a todo el ancho
+  doc.setFillColor(HEADER_BG.r, HEADER_BG.g, HEADER_BG.b);
+  doc.rect(MARGIN, y, CONTENT_W, titleH, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.text("CUENTAS BANCARIAS", MARGIN + CONTENT_W / 2, y + 4.2, { align: "center" });
+  doc.setFontSize(8);
+  doc.text("CUENTAS BANCARIAS", MARGIN + CONTENT_W / 2, y + 4.3, { align: "center" });
 
-  const col = {
-    banco: MARGIN + 2,
-    moneda: MARGIN + 30,
-    cuenta: MARGIN + 58,
-    cci: MARGIN + 118,
-  };
+  const colBanco = MARGIN + 2;
+  const colMoneda = MARGIN + 28;
+  const colCuenta = MARGIN + 55;
+  const colCci = MARGIN + 115;
 
-  let rowY = y + headerH;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(MARGIN, rowY, CONTENT_W, colHeaderH, "F");
-  setBlack(doc);
+  // Encabezados de columna (primera fila blanca)
+  let rowY = y + titleH;
+  ink(doc);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.text("BANCO", col.banco, rowY + 3.5);
-  doc.text("MONEDA", col.moneda, rowY + 3.5);
-  doc.text("NRO. CUENTA", col.cuenta, rowY + 3.5);
-  doc.text("NRO. CUENTA CCI", col.cci, rowY + 3.5);
-  rowY += colHeaderH;
+  doc.setFontSize(6.6);
+  doc.text("BANCO", colBanco, rowY + 3.5);
+  doc.text("MONEDA", colMoneda, rowY + 3.5);
+  doc.text("NRO. CUENTA", colCuenta, rowY + 3.5);
+  doc.text("NRO. CUENTA CCI", colCci, rowY + 3.5);
+  rowY += colH;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.7);
   for (const cuenta of rows) {
-    doc.text(cuenta.banco, col.banco, rowY + 3.5);
-    doc.text(cuenta.moneda, col.moneda, rowY + 3.5);
-    doc.text(cuenta.cuenta, col.cuenta, rowY + 3.5);
-    doc.text(cuenta.cci, col.cci, rowY + 3.5);
+    doc.text(cuenta.banco, colBanco, rowY + 3.4);
+    doc.text(cuenta.moneda, colMoneda, rowY + 3.4);
+    doc.text(cuenta.cuenta, colCuenta, rowY + 3.4);
+    doc.text(cuenta.cci, colCci, rowY + 3.4);
     rowY += rowH;
   }
 
-  doc.setLineWidth(0.35);
+  doc.setLineWidth(0.4);
   doc.rect(MARGIN, y, CONTENT_W, tableH);
-  doc.line(MARGIN, y + headerH, MARGIN + CONTENT_W, y + headerH);
-  doc.line(MARGIN, y + headerH + colHeaderH, MARGIN + CONTENT_W, y + headerH + colHeaderH);
+  doc.line(MARGIN, y + titleH, MARGIN + CONTENT_W, y + titleH);
+  doc.line(MARGIN, y + titleH + colH, MARGIN + CONTENT_W, y + titleH + colH);
+  // Separadores verticales
+  const v1 = MARGIN + 26;
+  const v2 = MARGIN + 53;
+  const v3 = MARGIN + 113;
+  doc.line(v1, y + titleH, v1, y + tableH);
+  doc.line(v2, y + titleH, v2, y + tableH);
+  doc.line(v3, y + titleH, v3, y + tableH);
 
-  return y + tableH + 6;
+  return y + tableH + 5;
 }
 
 export async function renderComprobantePdf(input: ComprobantePdfInput): Promise<jsPDF> {
   const doc = await createPdfDocument();
   let y = await drawHeader(doc, input);
   y = drawClientBlock(doc, y, input);
-  y = drawItemsTable(doc, y, input.items);
+  y = drawItemsTable(doc, y, input.items, input.moneda);
   y = drawSonAndTotals(doc, y, input);
   y = await drawObservacionesQr(doc, y, input);
-  y = drawCuentasBancariasFixed(doc, y, input.emisor.cuentasBancarias ?? DEFAULT_CUENTAS_BANCARIAS);
+  y = drawCuentasBancarias(doc, y, input.emisor.cuentasBancarias ?? DEFAULT_CUENTAS_BANCARIAS);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  setBlack(doc);
-  doc.text("GRACIAS POR SU PREFERENCIA...", MARGIN, Math.min(y + 2, 290));
+  ink(doc);
+  doc.text("GRACIAS POR SU PREFERENCIA...", MARGIN, Math.min(y + 1, 288));
 
   return doc;
 }
@@ -497,18 +536,19 @@ export function toComprobantePdfEmisor(
       : anyEmisor.telefono;
 
   return {
-    razonSocial: anyEmisor.razonSocial || "Mi Empresa",
-    nombreComercial: anyEmisor.nombreComercial || undefined,
-    ruc: anyEmisor.ruc || "—",
-    direccion: anyEmisor.direccion || "—",
-    telefono: telefono || "—",
+    razonSocial: anyEmisor.razonSocial || "NBN TECNOLOGIA TOTAL S.A.C.",
+    nombreComercial: anyEmisor.nombreComercial || "HAITECH",
+    ruc: anyEmisor.ruc || "20612146561",
+    direccion: anyEmisor.direccion || "Av. Petit Thouars Nro - LINCE - LIMA - LIMA",
+    telefono:
+      telefono || "Ventas: 915149290 / Soporte: 965805873 / Ventas 2: 926224243",
     email: anyEmisor.email || "—",
-    web: anyEmisor.web,
-    giro: anyEmisor.giro,
+    web: anyEmisor.web || "https://haitech.pe/",
+    giro: anyEmisor.giro || DEFAULT_COMPROBANTE_GIRO,
     logoUrl: anyEmisor.logoUrl,
-    resolucionSunat: anyEmisor.resolucionSunat,
-    proveedorFacturacion: anyEmisor.proveedorFacturacion,
-    cuentasBancarias: anyEmisor.cuentasBancarias,
+    resolucionSunat: anyEmisor.resolucionSunat || DEFAULT_RESOLUCION_SUNAT,
+    proveedorFacturacion: anyEmisor.proveedorFacturacion || DEFAULT_PROVEEDOR_FACTURACION,
+    cuentasBancarias: anyEmisor.cuentasBancarias || DEFAULT_CUENTAS_BANCARIAS,
   };
 }
 
@@ -521,7 +561,6 @@ export async function generateComprobantePdf(
   const number = buildComprobanteNumber(data.serie);
   const titulo = getComprobanteTitle(data.tipoComprobante);
   const pdfEmisor = toComprobantePdfEmisor(emisor);
-  const symbol = currencySymbol(data.moneda);
 
   const doc = await renderComprobantePdf({
     titulo,
@@ -532,17 +571,19 @@ export async function generateComprobantePdf(
     direccion: data.direccion || "—",
     formaPago: data.formaPago || "Contado",
     vendedor: data.vendedor || "—",
-    medioPago: `${data.formaPago || "Contado"} ${symbol} ${money(total, data.moneda)}`,
+    medioPago: resolveMedioPago(data.formaPago || "Contado", data.moneda, total),
     moneda: data.moneda,
-    items: lineItems.map((line) => ({
-      cantidad: line.cantidad,
-      unidad: line.unidad,
-      descripcion: [line.producto, line.productoCodigo ? `(${line.productoCodigo})` : "", line.observaciones]
-        .filter(Boolean)
-        .join("\n"),
-      precio: line.precioUnitario,
-      importe: line.cantidad * line.precioUnitario,
-    })),
+    items: lineItems.map((line) => {
+      const parts = [line.producto];
+      if (line.observaciones?.trim()) parts.push(line.observaciones.trim());
+      return {
+        cantidad: line.cantidad,
+        unidad: line.unidad,
+        descripcion: parts.join("\n"),
+        precio: line.precioUnitario,
+        importe: line.cantidad * line.precioUnitario,
+      };
+    }),
     subtotal,
     igv,
     total,
