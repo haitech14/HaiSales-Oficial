@@ -68,11 +68,13 @@ export default function InboxPage() {
   };
 
   const isSupabaseLive = Boolean(snapshot && "source" in snapshot && snapshot.source === "supabase");
-  const hasWhatsAppConnected = whatsappConnections.some((item) => item.status === "connected");
+  const hasMessagingConnected =
+    channelConnections.some((item) => item.channel === "zavu" && item.status === "connected") ||
+    whatsappConnections.some((item) => item.status === "connected");
   const isTeamChatView = filters.view === "team-chat";
   const showWhatsAppSelector =
     !isTeamChatView &&
-    hasWhatsAppConnected &&
+    hasMessagingConnected &&
     (filters.view === "all" || filters.view === "whatsapp" || filters.view === "unread");
   const showDemoCleanupBanner =
     Boolean(user?.id) &&
@@ -153,7 +155,7 @@ export default function InboxPage() {
       {isSupabaseLive && (
         <div className="shrink-0 border-b border-emerald-100 bg-emerald-50 px-6 py-1.5 text-xs text-emerald-700">
           Conectado a Supabase · {snapshot.conversations.length} conversaciones sincronizadas
-          {hasWhatsAppConnected ? " · WhatsApp Kapso activo" : " · Conecta WhatsApp en Integraciones"}
+          {hasMessagingConnected ? " · Zavu activo" : " · Conecta Zavu en Integraciones"}
         </div>
       )}
 
@@ -186,8 +188,8 @@ export default function InboxPage() {
                 onSearchChange={(search) => updateFilter("search", search)}
                 activeView={filters.view}
                 contactPanelHidden={contactPanelHidden}
-                useLiveWhatsApp={hasWhatsAppConnected}
-                showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasWhatsAppConnected}
+                useLiveMessaging={hasMessagingConnected}
+                showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasMessagingConnected}
                 onMessageSent={invalidate}
               />
             )}

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Plug, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppPageHeader } from "@/components/app/CrmShared";

@@ -1,6 +1,7 @@
-import { Building2, ChevronDown, Loader2, Settings2 } from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
+import { memo, useState } from "react";
+import { Building2, ChevronDown, MapPin, Settings2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HAISALES_LOGO_SRC } from "@/components/landing/HaiSalesLogo";
+import {
+  SIDEBAR_AVATAR_SIZE,
+  SIDEBAR_DROPDOWN_BG,
+  SIDEBAR_DROPDOWN_LABEL,
+} from "@/components/layout/sidebar-theme";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   WORKSPACE_EMPRESA_SCOPE,
@@ -24,6 +31,167 @@ type EmpresaSucursalSwitcherProps = {
   className?: string;
 };
 
+const MENU_CLASS =
+  "z-[120] w-[min(100vw-2rem,300px)] border border-slate-200 bg-white p-2 text-slate-800 shadow-lg " +
+  "data-[state=open]:animate-none data-[state=closed]:animate-none";
+
+function formatEmpresaDisplay(name: string): string {
+  const upper = (name || "HAITECH S.A.C.").toUpperCase().trim();
+  if (upper.length <= 13) return upper;
+  return `${upper.slice(0, 11).trim()}…`;
+}
+
+function formatSucursalDisplay(name: string): string {
+  return (name || "LIMA").toUpperCase().trim();
+}
+
+function SidebarDropdownContent({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuContent>) {
+  return (
+    <DropdownMenuContent
+      sideOffset={6}
+      collisionPadding={12}
+      className={cn(MENU_CLASS, className)}
+      {...props}
+    />
+  );
+}
+
+function ScopeDropdown({
+  label,
+  value,
+  leadingIcon,
+  children,
+  open,
+  onOpenChange,
+}: {
+  label: string;
+  value: string;
+  leadingIcon?: ReactNode;
+  children: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  return (
+    <DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-[filter,transform] duration-75 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 active:scale-[0.99] data-[state=open]:brightness-110"
+          style={{ backgroundColor: SIDEBAR_DROPDOWN_BG }}
+        >
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[9px] font-semibold uppercase leading-none tracking-[0.12em]"
+              style={{ color: SIDEBAR_DROPDOWN_LABEL }}
+            >
+              {label}
+            </p>
+            <div className="mt-1 flex min-w-0 items-center gap-1">
+              {leadingIcon}
+              <span className="truncate text-[11px] font-bold uppercase leading-tight tracking-wide text-white">
+                {value}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className="h-3.5 w-3.5 shrink-0 text-white/85 transition-transform duration-75 group-data-[state=open]:rotate-180"
+            strokeWidth={2}
+          />
+        </button>
+      </DropdownMenuTrigger>
+      {children}
+    </DropdownMenu>
+  );
+}
+
+const EmpresaMenuContent = memo(function EmpresaMenuContent({
+  selectedValue,
+  empresaNombre,
+  empresaRuc,
+  onEmpresaChange,
+  onNavigateParametros,
+}: {
+  selectedValue: string;
+  empresaNombre: string;
+  empresaRuc: string;
+  onEmpresaChange: (value: string) => void;
+  onNavigateParametros: () => void;
+}) {
+  return (
+    <SidebarDropdownContent align="start" forceMount>
+      <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        Empresa
+      </DropdownMenuLabel>
+      <DropdownMenuRadioGroup value={selectedValue} onValueChange={onEmpresaChange}>
+        <DropdownMenuRadioItem
+          value={WORKSPACE_EMPRESA_SCOPE}
+          className="cursor-pointer rounded-lg py-2 pl-8 pr-2"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold text-slate-900">{empresaNombre}</p>
+            <p className="truncate text-[10px] text-slate-500">RUC {empresaRuc}</p>
+          </div>
+        </DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className="cursor-pointer gap-2" onSelect={onNavigateParametros}>
+        <Building2 className="h-4 w-4 text-slate-400" />
+        Datos de empresa
+      </DropdownMenuItem>
+    </SidebarDropdownContent>
+  );
+});
+
+const SucursalMenuContent = memo(function SucursalMenuContent({
+  selectedValue,
+  empresaNombre,
+  sedes,
+  onSucursalChange,
+  onNavigateParametros,
+}: {
+  selectedValue: string;
+  empresaNombre: string;
+  sedes: Array<{ id: string; nombre: string }>;
+  onSucursalChange: (value: string) => void;
+  onNavigateParametros: () => void;
+}) {
+  return (
+    <SidebarDropdownContent align="start" forceMount>
+      <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        Sucursales
+      </DropdownMenuLabel>
+      <DropdownMenuRadioGroup value={selectedValue} onValueChange={onSucursalChange}>
+        <DropdownMenuRadioItem
+          value={WORKSPACE_EMPRESA_SCOPE}
+          className="cursor-pointer rounded-lg py-2 pl-8 pr-2"
+        >
+          General · {empresaNombre}
+        </DropdownMenuRadioItem>
+        {sedes.map((sede) => (
+          <DropdownMenuRadioItem
+            key={sede.id}
+            value={`sede:${sede.id}`}
+            className="cursor-pointer rounded-lg py-2 pl-8 pr-2"
+          >
+            {sede.nombre}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+      {sedes.length === 0 ? (
+        <p className="px-2 py-1.5 text-xs text-slate-500">Sin sucursales registradas.</p>
+      ) : null}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className="cursor-pointer gap-2" onSelect={onNavigateParametros}>
+        <Settings2 className="h-4 w-4 text-slate-400" />
+        Gestionar sucursales
+      </DropdownMenuItem>
+    </SidebarDropdownContent>
+  );
+});
+
 export function EmpresaSucursalSwitcher({
   collapsed = false,
   className,
@@ -33,177 +201,120 @@ export function EmpresaSucursalSwitcher({
     scope,
     setScope,
     sedes,
+    activeSede,
     empresaNombre,
     empresaRuc,
     empresaLogo,
     empresaIniciales,
-    subtitle,
-    isLoading,
   } = useWorkspace();
 
+  const [empresaOpen, setEmpresaOpen] = useState(false);
+  const [sucursalOpen, setSucursalOpen] = useState(false);
+
   const selectedValue = workspaceScopeToValue(scope);
+  const empresaLabel = formatEmpresaDisplay(empresaNombre);
+  const sucursalLabel = formatSucursalDisplay(activeSede?.nombre ?? "LIMA");
 
-  const handleScopeChange = (value: string) => {
-    const nextScope = workspaceValueToScope(value);
-    setScope(nextScope);
-
-    if (nextScope.type === WORKSPACE_EMPRESA_SCOPE) {
-      toast.success(`Vista general: ${empresaNombre}`);
-      return;
-    }
-
-    const sede = sedes.find((item) => item.id === nextScope.sedeId);
-    toast.success(sede ? `Sucursal activa: ${sede.nombre}` : "Sucursal actualizada");
+  const handleEmpresaChange = (value: string) => {
+    if (value !== WORKSPACE_EMPRESA_SCOPE) return;
+    setScope({ type: WORKSPACE_EMPRESA_SCOPE });
+    setEmpresaOpen(false);
   };
+
+  const handleSucursalChange = (value: string) => {
+    setScope(workspaceValueToScope(value));
+    setSucursalOpen(false);
+  };
+
+  const logoSrc = empresaLogo?.trim() || HAISALES_LOGO_SRC;
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const avatar = (
     <span
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden",
-        empresaLogo
-          ? "h-9 w-9 rounded-lg border border-white/15 bg-white p-1 shadow-sm"
-          : "h-9 w-9 rounded-lg bg-blue-600 text-[11px] font-bold text-white",
-        collapsed && (empresaLogo ? "h-10 w-10 p-1.5" : "h-10 w-10"),
-      )}
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+      style={{ width: SIDEBAR_AVATAR_SIZE, height: SIDEBAR_AVATAR_SIZE }}
     >
-      {isLoading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-      ) : empresaLogo ? (
-        <img
-          src={empresaLogo}
-          alt={`Logo ${empresaNombre}`}
-          width={36}
-          height={36}
-          decoding="async"
-          className="h-full w-full object-contain object-center"
-        />
+      {logoFailed ? (
+        <span className="text-xs font-bold leading-none text-[#1845ad]">{empresaIniciales}</span>
       ) : (
-        empresaIniciales
+        <img
+          src={logoSrc}
+          alt={`Logo ${empresaNombre}`}
+          width={SIDEBAR_AVATAR_SIZE}
+          height={SIDEBAR_AVATAR_SIZE}
+          decoding="async"
+          loading="eager"
+          fetchPriority="high"
+          className="h-[90%] w-[90%] object-contain object-center"
+          onError={() => setLogoFailed(true)}
+        />
       )}
     </span>
   );
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "w-full rounded-lg border border-white/[0.08] bg-white/[0.04] text-left transition hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
-            collapsed ? "mx-auto flex h-10 w-10 items-center justify-center border-none bg-transparent p-0 hover:bg-white/[0.05]" : "p-2.5",
-            className,
-          )}
-          aria-label="Cambiar empresa o sucursal"
-        >
-          {collapsed ? (
-            avatar
-          ) : (
-            <div className="flex items-center gap-2.5">
-              {avatar}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-semibold leading-tight text-white">
-                  {empresaNombre}
-                </p>
-                <p className="mt-0.5 truncate text-[10px] leading-tight text-slate-400">
-                  {scope.type === WORKSPACE_EMPRESA_SCOPE
-                    ? `RUC ${empresaRuc}`
-                    : subtitle}
-                </p>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            </div>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent
-        align="start"
-        side={collapsed ? "right" : "bottom"}
-        className="w-[min(100vw-2rem,300px)] border border-slate-200 bg-white p-2 text-slate-800 shadow-lg"
-      >
-        <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          Empresa
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={selectedValue} onValueChange={handleScopeChange}>
-          <DropdownMenuRadioItem
-            value={WORKSPACE_EMPRESA_SCOPE}
-            className="cursor-pointer rounded-lg border border-transparent py-2 pl-8 pr-2 text-sm text-slate-800 focus:bg-slate-50 focus:text-slate-900 data-[state=checked]:border-blue-200 data-[state=checked]:bg-blue-50"
+  if (collapsed) {
+    return (
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn("mx-auto flex justify-center", className)}
+            aria-label="Cambiar empresa o sucursal"
           >
-            <div className="min-w-0">
-              <p className="truncate text-[12px] font-semibold text-slate-900">{empresaNombre}</p>
-              <p className="truncate text-[10px] text-slate-500">
-                Vista general · RUC {empresaRuc}
-              </p>
-            </div>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+            {avatar}
+          </button>
+        </DropdownMenuTrigger>
+        <SidebarDropdownContent align="start" side="right" forceMount>
+          <DropdownMenuRadioGroup value={selectedValue} onValueChange={handleSucursalChange}>
+            <DropdownMenuRadioItem value={WORKSPACE_EMPRESA_SCOPE}>{empresaNombre}</DropdownMenuRadioItem>
+            {sedes.map((sede) => (
+              <DropdownMenuRadioItem key={sede.id} value={`sede:${sede.id}`}>
+                {sede.nombre}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </SidebarDropdownContent>
+      </DropdownMenu>
+    );
+  }
 
-        {sedes.length > 0 && (
-          <>
-            <DropdownMenuSeparator className="my-2 bg-slate-100" />
-            <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Sucursales
-            </DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={selectedValue}
-              onValueChange={handleScopeChange}
-              className="space-y-1.5"
-            >
-              {sedes.map((sede) => (
-                <DropdownMenuRadioItem
-                  key={sede.id}
-                  value={`sede:${sede.id}`}
-                  className={cn(
-                    "cursor-pointer rounded-lg border border-slate-200 bg-slate-50/80 py-2.5 pl-8 pr-2.5 text-sm text-slate-800",
-                    "focus:bg-blue-50 focus:text-slate-900",
-                    "data-[state=checked]:border-blue-300 data-[state=checked]:bg-blue-50 data-[state=checked]:shadow-sm",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-[12px] font-semibold text-slate-900">
-                        {sede.nombre}
-                      </p>
-                      {sede.esPrincipal && (
-                        <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-                          Principal
-                        </span>
-                      )}
-                    </div>
-                    {sede.direccion.trim() ? (
-                      <p className="mt-0.5 truncate text-[10px] text-slate-500">{sede.direccion}</p>
-                    ) : (
-                      <p className="mt-0.5 truncate text-[10px] text-slate-400">Sin dirección</p>
-                    )}
-                  </div>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </>
-        )}
-
-        {sedes.length === 0 && (
-          <p className="px-2 py-1.5 text-xs text-slate-500">
-            Agrega sucursales en Configuración para filtrar por local.
-          </p>
-        )}
-
-        <DropdownMenuSeparator className="my-2 bg-slate-100" />
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 rounded-md text-sm text-slate-700 focus:bg-slate-50 focus:text-slate-900"
-          onSelect={() => navigate("/app/parametros")}
+  return (
+    <div className={cn("flex items-center gap-2.5 px-3 py-1", className)}>
+      {avatar}
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <ScopeDropdown
+          label="Empresa"
+          value={empresaLabel}
+          open={empresaOpen}
+          onOpenChange={setEmpresaOpen}
         >
-          <Settings2 className="h-4 w-4 text-slate-400" />
-          Gestionar sucursales
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 rounded-md text-sm text-slate-700 focus:bg-slate-50 focus:text-slate-900"
-          onSelect={() => navigate("/app/parametros")}
+          <EmpresaMenuContent
+            selectedValue={selectedValue}
+            empresaNombre={empresaNombre}
+            empresaRuc={empresaRuc}
+            onEmpresaChange={handleEmpresaChange}
+            onNavigateParametros={() => navigate("/app/parametros")}
+          />
+        </ScopeDropdown>
+
+        <ScopeDropdown
+          label="Sucursal"
+          value={sucursalLabel}
+          open={sucursalOpen}
+          onOpenChange={setSucursalOpen}
+          leadingIcon={
+            <MapPin className="h-3 w-3 shrink-0 text-white" strokeWidth={2.5} fill="white" />
+          }
         >
-          <Building2 className="h-4 w-4 text-slate-400" />
-          Datos de empresa
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <SucursalMenuContent
+            selectedValue={selectedValue}
+            empresaNombre={empresaNombre}
+            sedes={sedes}
+            onSucursalChange={handleSucursalChange}
+            onNavigateParametros={() => navigate("/app/parametros")}
+          />
+        </ScopeDropdown>
+      </div>
+    </div>
   );
 }

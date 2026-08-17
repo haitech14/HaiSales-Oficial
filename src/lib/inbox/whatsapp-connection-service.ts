@@ -12,7 +12,12 @@ export type WhatsAppSyncResult = {
     phoneNumberId: string;
     displayLabel: string;
   }>;
+  conversationsSynced?: number;
 };
+
+const CONVERSATION_SYNC_TTL_MS = 2 * 60_000;
+let lastConversationSyncAt = 0;
+let conversationSyncInFlight: Promise<number> | null = null;
 
 export type WhatsAppWebhookActivation = {
   webhookUrl: string;
@@ -103,17 +108,70 @@ export async function syncKapsoWhatsAppNumbers(userId?: string): Promise<WhatsAp
       throw new Error(String(data.error));
     }
 
+    const conversationsSynced =
+      typeof data?.conversationsSynced === "number" ? data.conversationsSynced : 0;
+    if (conversationsSynced > 0) {
+      lastConversationSyncAt = Date.now();
+    }
+
     return {
       connections: (data?.connections ?? []) as WhatsAppSyncResult["connections"],
+      conversationsSynced,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (userId && isKapsoDeployOrConfigError(message)) {
       const local = await upsertLocalWhatsAppConnection(userId);
-      return { connections: local.connections };
+      return { connections: local.connections, conversationsSynced: 0 };
     }
     throw error;
   }
+}
+
+/** Importa conversaciones WhatsApp desde la API de Kapso (Inbox + Prospección). */
+export async function syncKapsoConversations(options?: { force?: boolean }): Promise<number> {
+  if (!options?.force && conversationSyncInFlight) {
+    return conversationSyncInFlight;
+  }
+
+  const now = Date.now();
+  if (!options?.force && now - lastConversationSyncAt < CONVERSATION_SYNC_TTL_MS) {
+    return 0;
+  }
+
+  conversationSyncInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("kapso-whatsapp-sync", {
+        body: { syncConversations: true },
+      });
+
+      if (error) {
+        console.warn(
+          "[whatsapp] Sync conversaciones:",
+          formatEdgeFunctionError(error, "kapso-whatsapp-sync"),
+        );
+        return 0;
+      }
+
+      if (data?.error) {
+        console.warn("[whatsapp] Sync conversaciones:", data.error);
+        return 0;
+      }
+
+      lastConversationSyncAt = Date.now();
+      return typeof data?.conversationsSynced === "number" ? data.conversationsSynced : 0;
+    } catch (error) {
+      console.warn(
+        "[whatsapp] Sync conversaciones:",
+        error instanceof Error ? error.message : error,
+      );
+      return 0;
+    } finally {
+      conversationSyncInFlight = null;
+    }
+  })();
+
+  return conversationSyncInFlight;
 }
 
 export async function activateWhatsAppWebhook(userId: string): Promise<WhatsAppWebhookActivation> {

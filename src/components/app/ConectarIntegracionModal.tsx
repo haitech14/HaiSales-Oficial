@@ -41,9 +41,10 @@ export function ConectarIntegracionModal({
       try {
         const result = await syncZavuConnection();
         const label = [result.teamName, result.projectName].filter(Boolean).join(" · ");
+        const synced = result.conversationsSynced ?? 0;
         toast.success(
           label
-            ? `Zavu conectado (${label}${result.isTestMode ? " · test" : ""})`
+            ? `Zavu conectado (${label}${result.isTestMode ? " · test" : ""}${synced ? ` · ${synced} conversaciones` : ""})`
             : "Zavu conectado correctamente",
         );
         onConnected?.();

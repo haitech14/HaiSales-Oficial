@@ -3,56 +3,52 @@ import { ChevronsLeft, ChevronsRight, Menu } from "lucide-react";
 import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AppSidebarContent } from "@/components/layout/AppSidebarContent";
-import {
-  loadSidebarViewMode,
-  saveSidebarViewMode,
-  type SidebarViewMode,
-} from "@/lib/app-navigation";
+import { AppSidebarHeaderActions } from "@/components/layout/AppSidebarHeaderActions";
+import { SIDEBAR_BG, SIDEBAR_WIDTH } from "@/components/layout/sidebar-theme";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState<SidebarViewMode>(() => loadSidebarViewMode());
-
-  const handleViewModeChange = (mode: SidebarViewMode) => {
-    saveSidebarViewMode(mode);
-    setViewMode(mode);
-  };
 
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-dvh shrink-0 flex-col self-start bg-[#15233b] transition-[width] duration-200 md:flex",
-        collapsed ? "w-[64px]" : viewMode === "modulos" ? "w-[244px]" : "w-[228px]",
+        "sticky top-0 hidden h-dvh shrink-0 flex-col self-start transition-[width] duration-200 md:flex",
+        collapsed ? "w-[72px]" : "w-[280px]",
       )}
+      style={{
+        backgroundColor: SIDEBAR_BG,
+        width: collapsed ? 72 : SIDEBAR_WIDTH,
+      }}
     >
-      <div className="relative flex items-center justify-center px-2.5 py-2.5">
+      <div className="flex items-center justify-between gap-1 border-b border-white/10 px-2 py-2.5">
         <HaiSalesLogo
           to="/app/dashboard"
           theme="onDark"
           iconOnly={collapsed}
-          className="mx-auto"
+          className="min-w-0 shrink"
           imageClassName={
             collapsed
-              ? "h-7 w-7 object-contain object-center"
-              : "h-8 w-auto max-w-[150px] object-contain object-center"
+              ? "h-7 w-7 object-contain object-left"
+              : "h-7 w-auto max-w-[96px] object-contain object-left"
           }
         />
-        <button
-          type="button"
-          onClick={() => setCollapsed((current) => !current)}
-          className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/5 hover:text-slate-300"
-          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
-        >
-          {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {!collapsed ? <AppSidebarHeaderActions iconClassName="h-[17px] w-[17px]" /> : null}
+          <button
+            type="button"
+            onClick={() => setCollapsed((current) => !current)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white/90"
+            aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+          >
+            {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       <AppSidebarContent
         collapsed={collapsed}
         showBrand={false}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
         className="min-h-0 flex-1"
       />
     </aside>
@@ -65,22 +61,28 @@ type AppMobileHeaderProps = {
 
 export function AppMobileHeader({ onOpenMenu }: AppMobileHeaderProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#15233b] px-4 md:hidden">
-      <button
-        type="button"
-        onClick={onOpenMenu}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-white"
-        aria-label="Abrir menú"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-      <HaiSalesLogo
-        to="/app/dashboard"
-        theme="onDark"
-        iconOnly
-        imageClassName="h-8 w-8 object-contain object-center"
-      />
-      <div className="h-10 w-10" aria-hidden="true" />
+    <header
+      className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 md:hidden"
+      style={{ backgroundColor: SIDEBAR_BG }}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/15 text-white"
+          aria-label="Abrir menú"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <HaiSalesLogo
+          to="/app/dashboard"
+          theme="onDark"
+          iconOnly={false}
+          className="min-w-0"
+          imageClassName="h-7 w-auto max-w-[96px] object-contain object-left"
+        />
+      </div>
+      <AppSidebarHeaderActions />
     </header>
   );
 }
@@ -91,25 +93,14 @@ type AppMobileNavProps = {
 };
 
 export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
-  const [viewMode, setViewMode] = useState<SidebarViewMode>(() => loadSidebarViewMode());
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="left"
-        className={cn(
-          "border-none p-0 md:hidden",
-          viewMode === "modulos" ? "w-[min(100vw,244px)]" : "w-[min(100vw,228px)]",
-        )}
+        className="w-[min(100vw,280px)] border-none p-0 md:hidden"
+        style={{ backgroundColor: SIDEBAR_BG }}
       >
-        <AppSidebarContent
-          viewMode={viewMode}
-          onViewModeChange={(mode) => {
-            saveSidebarViewMode(mode);
-            setViewMode(mode);
-          }}
-          onNavigate={() => onOpenChange(false)}
-        />
+        <AppSidebarContent onNavigate={() => onOpenChange(false)} />
       </SheetContent>
     </Sheet>
   );

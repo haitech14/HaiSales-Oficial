@@ -42,10 +42,10 @@ function DonutCard({
   const slices = data.length > 0 ? data : [{ name: "Sin datos", value: 100, color: "#e2e8f0" }];
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <h3 className="app-panel-title">{title}</h3>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="relative h-32 w-32 shrink-0">
+      <div className="mt-4 flex items-center gap-5">
+        <div className="relative h-36 w-36 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={slices} dataKey="value" innerRadius={38} outerRadius={58} paddingAngle={2} strokeWidth={0}>
@@ -95,12 +95,12 @@ function RankingTable({
   nameMaxWidthClass?: string;
 }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <h3 className="app-panel-title">{title}</h3>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <th className="pb-2 pr-2">{nameHeader}</th>
               <th className="pb-2 pr-2">{valueHeader}</th>
               <th className="pb-2">Participación</th>
@@ -162,37 +162,32 @@ export function DashboardGeneralView() {
   const gastosAmount = analytics.generalKpis[1]?.value ?? "S/ 0";
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-800">
-        Mostrando datos de <span className="font-semibold">{analytics.periodLabel}</span>
-        {analytics.source === "empty" && " · Sin movimientos registrados en este periodo"}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6">
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {analytics.generalKpis.map((kpi) => (
           <CrmKpiCard key={kpi.label} {...kpi} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="app-panel-title">Resumen financiero</h3>
-              <p className="text-xs text-slate-500">Ingresos, gastos y utilidad — {range.label}</p>
+              <p className="mt-1 text-sm text-slate-500">Ingresos, gastos y utilidad — {range.label}</p>
             </div>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
               {range.shortLabel}
             </span>
           </div>
-          <div className="mt-4 h-[240px]">
+          <div className="mt-5 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={analytics.resumenFinancieroChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="ingresos" name="Ingresos" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={28} />
                 <Bar dataKey="gastos" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
                 <Line type="monotone" dataKey="utilidad" name="Utilidad neta" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
@@ -201,7 +196,7 @@ export function DashboardGeneralView() {
           </div>
         </article>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:col-span-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:col-span-6">
           <DonutCard
             title="Distribución de ingresos"
             total={ingresosTotal > 0 ? ingresosAmount : "S/ 0"}
@@ -217,7 +212,7 @@ export function DashboardGeneralView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <RankingTable
           title="Top 10 clientes por facturación"
           nameHeader="Cliente"
@@ -232,21 +227,21 @@ export function DashboardGeneralView() {
           rows={analytics.topProductos}
         />
 
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <h3 className="app-panel-title">Flujo de caja</h3>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
               {range.shortLabel}
             </span>
           </div>
-          <div className="mt-3 h-[280px]">
+          <div className="mt-4 h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={analytics.flujoCajaChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}K`} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="entradas" name="Entradas" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={24} />
                 <Bar dataKey="salidas" name="Salidas" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={24} />
                 <Line type="monotone" dataKey="neto" name="Flujo neto" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
@@ -256,7 +251,7 @@ export function DashboardGeneralView() {
         </article>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm sm:px-6">
         <span>
           {analytics.source === "empty"
             ? "Sin ventas en este periodo. Prueba un mes con ventas en el filtro de periodo."

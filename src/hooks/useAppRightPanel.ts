@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useIsBelowXl } from "@/hooks/use-media-query";
 
-export function useAppRightPanel(initialHidden = false) {
+export function useAppRightPanel(initialHidden = true) {
   const isBelowXl = useIsBelowXl();
   const [panelHidden, setPanelHidden] = useState(initialHidden);
   const [mobileOpen, setMobileOpen] = useState(false);

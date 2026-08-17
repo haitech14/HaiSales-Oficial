@@ -33,6 +33,8 @@ import {
   type SegmentChartItem,
 } from "@/lib/clientes-mock-data";
 
+const legacySetupDone = new Set<string>();
+
 async function ensureVentaItemsLegacyImported(userId: string): Promise<void> {
   const { error } = await supabase.rpc("import_venta_items_legacy_for_user", {
     p_user_id: userId,
@@ -41,6 +43,13 @@ async function ensureVentaItemsLegacyImported(userId: string): Promise<void> {
   if (error) {
     console.warn("[clientes] Import ítems venta legacy:", error.message);
   }
+}
+
+async function runOnceLegacySetup(userId: string): Promise<void> {
+  if (legacySetupDone.has(userId)) return;
+  await purgeDemoClientesRemnants(userId);
+  await ensureVentaItemsLegacyImported(userId);
+  legacySetupDone.add(userId);
 }
 
 type ClienteRow = Database["public"]["Tables"]["clientes"]["Row"];
@@ -418,8 +427,6 @@ async function augmentVentasStatsFromLegacy(
 }
 
 async function loadVentasStatsMaps(userId: string): Promise<VentasStatsMaps> {
-  await ensureVentaItemsLegacyImported(userId);
-
   const { data, error } = await supabase
     .from("ventas")
     .select("cliente_id, cliente_ruc, fecha, total, venta_items(descripcion, productos(nombre, sku))")
@@ -523,27 +530,8 @@ async function enrichClientsWithVentasStats(
   return { clients: enriched, maps, avgTicket };
 }
 
-async function buildSnapshotFromRows(
-  userId: string,
-  rows: ClienteRow[],
-): Promise<ClientesSnapshot> {
-  const { clients, maps, avgTicket } = await enrichClientsWithVentasStats(
-    userId,
-    rows.map(mapRowToClient),
-  );
-  const debtByAge = await loadDebtByAge(userId);
-  const analytics = buildAnalytics(clients, maps, debtByAge);
-  return buildSnapshot(clients, analytics, avgTicket);
-}
 
-export async function fetchClientesSnapshot(userId: string | null): Promise<ClientesSnapshot> {
-  if (!userId) {
-    return buildSnapshot([], emptyAnalytics(), 0);
-  }
-
-  await purgeDemoClientesRemnants(userId);
-  await ensureVentaItemsLegacyImported(userId);
-
+async function loadClientesRows(userId: string): Promise<ClienteRow[]> {
   const { data, error } = await supabase
     .from("clientes")
     .select("*")
@@ -552,27 +540,67 @@ export async function fetchClientesSnapshot(userId: string | null): Promise<Clie
 
   if (error) {
     console.warn("[clientes] Error al cargar clientes:", error.message);
+    return [];
+  }
+
+  if (data?.length) return data;
+
+  const imported = await importLegacyClientesIfNeeded(userId);
+  if (!imported) return [];
+
+  const retry = await supabase
+    .from("clientes")
+    .select("*")
+    .eq("user_id", userId)
+    .order("fecha_alta", { ascending: false });
+
+  if (retry.error) {
+    console.warn("[clientes] Error al recargar clientes:", retry.error.message);
+    return [];
+  }
+
+  return retry.data ?? [];
+}
+
+/** Carga rápida: solo filas de clientes, sin estadísticas de ventas/guias. */
+export async function fetchClientesList(userId: string | null): Promise<ClientesSnapshot> {
+  if (!userId) {
     return buildSnapshot([], emptyAnalytics(), 0);
   }
 
-  if (!data || data.length === 0) {
-    const imported = await importLegacyClientesIfNeeded(userId);
-    if (imported) {
-      const retry = await supabase
-        .from("clientes")
-        .select("*")
-        .eq("user_id", userId)
-        .order("fecha_alta", { ascending: false });
+  await runOnceLegacySetup(userId);
+  const rows = await loadClientesRows(userId);
+  return buildSnapshot(rows.map(mapRowToClient), emptyAnalytics(), 0);
+}
 
-      if (!retry.error && retry.data?.length) {
-        return buildSnapshotFromRows(userId, retry.data);
-      }
-    }
-
-    return buildSnapshot([], emptyAnalytics(), 0);
+/** Enriquecimiento en segundo plano: ventas, guías y analytics. */
+export async function fetchClientesEnrichment(
+  userId: string,
+  clients: ClientRecord[],
+): Promise<{ clients: ClientRecord[]; analytics: ClientesAnalytics; avgTicket: number }> {
+  if (clients.length === 0) {
+    return { clients, analytics: emptyAnalytics(), avgTicket: 0 };
   }
 
-  return buildSnapshotFromRows(userId, data);
+  const { clients: enriched, maps, avgTicket } = await enrichClientsWithVentasStats(userId, clients);
+  const debtByAge = await loadDebtByAge(userId);
+  return {
+    clients: enriched,
+    analytics: buildAnalytics(enriched, maps, debtByAge),
+    avgTicket,
+  };
+}
+
+export function mergeClientesEnrichment(
+  enrichment: Awaited<ReturnType<typeof fetchClientesEnrichment>>,
+): ClientesSnapshot {
+  return buildSnapshot(enrichment.clients, enrichment.analytics, enrichment.avgTicket);
+}
+
+export async function fetchClientesSnapshot(userId: string | null): Promise<ClientesSnapshot> {
+  const list = await fetchClientesList(userId);
+  if (!userId || list.clients.length === 0) return list;
+  return mergeClientesEnrichment(await fetchClientesEnrichment(userId, list.clients));
 }
 
 const SEGMENT_TO_DB: Record<string, string> = {

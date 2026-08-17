@@ -108,7 +108,20 @@ export function PipelineProspectDetailSheet({
                 {detail && (
                   <div className="flex flex-wrap gap-2">
                     {detail.statusBadge && (
-                      <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
+                          detail.statusBadge === "WhatsApp"
+                            ? "bg-green-100 text-green-700"
+                            : detail.statusBadge === "Facebook"
+                              ? "bg-blue-100 text-blue-700"
+                              : detail.statusBadge === "Instagram"
+                                ? "bg-pink-100 text-pink-700"
+                                : detail.statusBadge === "Ganada"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-slate-100 text-slate-600",
+                        )}
+                      >
                         {detail.statusBadge}
                       </span>
                     )}

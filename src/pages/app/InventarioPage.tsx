@@ -1,25 +1,23 @@
-﻿import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  AlertTriangle,
   ChevronDown,
   Download,
   Filter,
+  List,
   Loader2,
   MoreHorizontal,
   Package,
   RefreshCw,
-  RotateCw,
-  Search,
   Star,
   Upload,
-  Wallet,
 } from "lucide-react";
 import { AppTablePagination } from "@/components/app/AppTablePagination";
-import { AppPageHeader, CrmKpiCard } from "@/components/app/CrmShared";
-import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
-import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { ImportProductosModal } from "@/components/app/ImportProductosModal";
-import { InventarioRightPanel } from "@/components/app/InventarioRightPanel";
+import { InventarioResumenPanel } from "@/components/app/inventario/InventarioResumenPanel";
+import { ModuleActionBar } from "@/components/app/module-shell/ModuleActionBar";
+import { ModuleEmptyState } from "@/components/app/module-shell/ModuleEmptyState";
+import { ModuleFab } from "@/components/app/module-shell/ModuleFab";
+import { ModulePageHeader } from "@/components/app/module-shell/ModulePageHeader";
 import { NuevoProductoModal } from "@/components/app/NuevoProductoModal";
 import { Button } from "@/components/ui/button";
 import { useInventario } from "@/hooks/useInventario";
@@ -31,9 +29,8 @@ import {
 } from "@/lib/inventario/inventario-service";
 import { inventarioTabs } from "@/lib/inventario-mock-data";
 import { downloadProductoPlantilla } from "@/lib/inventario/producto-import";
+import { MODULE_PAGE_BG } from "@/lib/module-page-theme";
 import { cn } from "@/lib/utils";
-
-const kpiIcons = [Package, Wallet, AlertTriangle, RotateCw];
 
 export default function InventarioPage() {
   const {
@@ -53,27 +50,8 @@ export default function InventarioPage() {
   } = useInventario();
   useSearchQueryParam(setSearch);
 
-  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-
-  const inventarioActionItems = useMemo(
-    () => [
-      {
-        id: "import-products",
-        label: "Importar productos",
-        icon: Upload,
-        onClick: () => setImportModalOpen(true),
-      },
-      {
-        id: "download-template",
-        label: "Descargar plantilla CSV",
-        icon: Download,
-        onClick: downloadProductoPlantilla,
-      },
-    ],
-    [],
-  );
 
   const tabsWithCounts = inventarioTabs.map((tab) => ({
     ...tab,
@@ -83,56 +61,55 @@ export default function InventarioPage() {
   const totalRecords = snapshot?.totalRecords ?? filteredProducts.length;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppPageHeader
-        title="Productos / Inventario"
-        subtitle="Controla productos, stock, almacenes, costos, lotes y movimientos en tiempo real."
-        showPanelToggle
-        panelHidden={!isPanelVisible}
-        onTogglePanel={togglePanel}
-        actionLabel="+ Nuevo producto"
-        showActionDropdown
-        actionDropdownItems={inventarioActionItems}
-        notificationCount={0}
-        onActionClick={() => setProductModalOpen(true)}
+    <div className="relative flex min-h-full flex-col" style={{ backgroundColor: MODULE_PAGE_BG }}>
+      <ModulePageHeader
+        title="Inventario"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por SKU, producto, marca..."
+        showDateNav={false}
       />
 
-      {snapshot?.source === "supabase" && (
-        <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-2 text-xs text-emerald-700">
-          Conectado a Supabase · {snapshot.totalRecords} productos sincronizados
-        </div>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pb-24 pt-2 sm:px-6 xl:flex-row xl:items-start xl:pb-6">
+        <div className="min-w-0 flex-1">
+          <ModuleActionBar
+            primaryLabel="Productos"
+            primaryIcon={Package}
+            primaryColor="#00897b"
+            className="mb-4"
+          >
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm"
+              aria-label="Vista lista"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm"
+              aria-label="Importar"
+            >
+              <Upload className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={downloadProductoPlantilla}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm"
+              aria-label="Plantilla"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+          </ModuleActionBar>
 
-      {snapshot?.importError && snapshot.totalRecords === 0 && (
-        <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs text-amber-900">
-          No se pudo cargar el catálogo: {snapshot.importError}
-        </div>
-      )}
-
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-4 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {(snapshot?.kpis ?? []).map((kpi, index) => {
-                const Icon = kpiIcons[index];
-                return (
-                  <CrmKpiCard
-                    key={kpi.label}
-                    label={kpi.label}
-                    value={kpi.value}
-                    change={kpi.change}
-                    sparkColor={kpi.sparkColor}
-                    sparkPoints={kpi.sparkPoints}
-                    changePositive={kpi.changePositive}
-                    icon={Icon}
-                    iconBg={kpi.iconBg}
-                    iconColor={kpi.iconColor}
-                  />
-                );
-              })}
+          {snapshot?.importError && snapshot.totalRecords === 0 && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+              No se pudo cargar el catalogo: {snapshot.importError}
             </div>
+          )}
 
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 pt-3">
                 <div className="flex gap-1 overflow-x-auto pb-1">
                   {tabsWithCounts.map((tab) => (
@@ -176,28 +153,18 @@ export default function InventarioPage() {
                     className="app-toolbar-link"
                   >
                     <Filter className="h-3.5 w-3.5" />
-                    Más filtros
+                    Mas filtros
                   </button>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
-                <div className="relative min-w-[220px] flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Buscar por SKU, producto, marca, categoría, almacén..."
-                    className="app-search-input pl-9 pr-3"
-                  />
-                </div>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Categoría: Todas
+                  Categoria: Todas
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
-                  Almacén: Todos
+                  Almacen: Todos
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="outline" size="sm" className="h-9 gap-2 border-slate-200 text-slate-600">
@@ -226,23 +193,35 @@ export default function InventarioPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1240px]">
+                  <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[1360px]">
                     <thead>
                       <tr className="app-table-head-row">
                         <th className="app-table-cell">SKU</th>
                         <th className="app-table-cell">Producto</th>
                         <th className="app-table-cell">Marca</th>
-                        <th className="app-table-cell">Categoría</th>
-                        <th className="app-table-cell">Almacén</th>
+                        <th className="app-table-cell">Categoria</th>
+                        <th className="app-table-cell">Almacen</th>
                         <th className="app-table-cell">Stock</th>
                         <th className="app-table-cell">Costo</th>
                         <th className="app-table-cell">Precio venta</th>
+                        <th className="app-table-cell">Precio distribuidor</th>
                         <th className="app-table-cell">Estado</th>
-                        <th className="app-table-cell text-right">Acción</th>
+                        <th className="app-table-cell text-right">Accion</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredProducts.map((product) => {
+                      {filteredProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="p-0">
+                            <ModuleEmptyState
+                              compact
+                              message="No hay productos que coincidan con la busqueda"
+                              hint="Prueba otro termino o agrega un producto nuevo."
+                            />
+                          </td>
+                        </tr>
+                      ) : (
+                      filteredProducts.map((product) => {
                         const Icon = product.icon;
                         const lowStock = isLowStock(product.stock, product.status);
 
@@ -277,7 +256,7 @@ export default function InventarioPage() {
                             <td className="app-table-cell text-slate-600">{product.warehouse}</td>
                             <td className="app-table-cell">
                               {product.type === "service" ? (
-                                <span className="text-slate-400">—</span>
+                                <span className="text-slate-400">-</span>
                               ) : (
                                 <span
                                   className={cn(
@@ -295,6 +274,12 @@ export default function InventarioPage() {
                             <td className="app-table-cell font-semibold text-slate-900">
                               {formatProductCurrency(product.price, product.moneda)}
                             </td>
+                            <td className="app-table-cell font-semibold text-slate-900">
+                              {formatProductCurrency(
+                                product.distributorPrice ?? 0,
+                                product.moneda,
+                              )}
+                            </td>
                             <td className="app-table-cell">
                               <span
                                 className={cn(
@@ -309,32 +294,28 @@ export default function InventarioPage() {
                               <button
                                 type="button"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                aria-label="Más acciones"
+                                aria-label="Mas acciones"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </button>
                             </td>
                           </tr>
                         );
-                      })}
+                      })
+                      )}
                     </tbody>
                   </table>
                 </div>
               )}
 
               <AppTablePagination shownCount={filteredProducts.length} totalCount={totalRecords} />
-            </section>
-          </div>
+          </section>
         </div>
 
-        <AppRightPanelSlot
-          panelHidden={panelHidden}
-          mobileOpen={mobileOpen}
-          onMobileOpenChange={setMobileOpen}
-        >
-          <InventarioRightPanel snapshot={snapshot} />
-        </AppRightPanelSlot>
+        <InventarioResumenPanel snapshot={snapshot} className="xl:sticky xl:top-4" />
       </div>
+
+      <ModuleFab onClick={() => setProductModalOpen(true)} />
 
       <NuevoProductoModal
         open={productModalOpen}

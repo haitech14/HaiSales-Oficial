@@ -1,8 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppPeriod } from "@/hooks/useAppPeriod";
-import { buildCrmSnapshotFromOpportunities, fetchCrmSnapshot } from "@/lib/crm/crm-service";
+import {
+  buildCrmSnapshotFromOpportunities,
+  createOportunidad,
+  fetchCrmSnapshot,
+  type CreateOportunidadInput,
+} from "@/lib/crm/crm-service";
 import type { Opportunity } from "@/lib/crm-mock-data";
 import { isIsoDateInRange } from "@/lib/period-filter";
 import type { PipelineCard } from "@/lib/pipeline-mock-data";
@@ -83,12 +88,30 @@ export function useCrm() {
   }, [allPipelineCards, search]);
 
   const refresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
+    if (!user?.id) {
+      await refetch();
+      return;
+    }
+    const snapshot = await fetchCrmSnapshot(user.id, { forceWhatsAppSync: true });
+    queryClient.setQueryData([...CRM_QUERY_KEY, user.id], snapshot);
+  }, [queryClient, refetch, user?.id]);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: CRM_QUERY_KEY });
   }, [queryClient]);
+
+  const createMutation = useMutation({
+    mutationFn: (input: CreateOportunidadInput) => {
+      if (!user?.id) throw new Error("Debes iniciar sesión para crear oportunidades");
+      const meta = user.user_metadata as Record<string, unknown> | undefined;
+      const responsableNombre =
+        typeof meta?.full_name === "string" && meta.full_name.trim()
+          ? meta.full_name.trim()
+          : user.email?.split("@")[0] ?? "Sin asignar";
+      return createOportunidad(user.id, input, { responsableNombre });
+    },
+    onSuccess: () => invalidate(),
+  });
 
   return {
     snapshot: displaySnapshot,
@@ -102,6 +125,8 @@ export function useCrm() {
     isFetching,
     refresh,
     invalidate,
+    createOportunidad: createMutation.mutateAsync,
+    isCreatingOportunidad: createMutation.isPending,
     lastUpdatedAt: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
   };
 }

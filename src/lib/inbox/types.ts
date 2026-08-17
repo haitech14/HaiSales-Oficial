@@ -60,6 +60,7 @@ export interface InboxConversation {
   campaign?: string;
   isAssigned?: boolean;
   contactType?: "cliente" | "lead" | "prospecto";
+  provider?: string;
 }
 
 export interface InboxKpi {

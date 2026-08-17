@@ -5,14 +5,21 @@ import { useAuth } from "@/hooks/useAuth";
 import type { NuevoClienteFormState } from "@/lib/clientes-form-data";
 import {
   createCliente,
-  fetchClientesSnapshot,
+  fetchClientesEnrichment,
+  fetchClientesList,
+  mergeClientesEnrichment,
   normalizeTipoClienteKey,
   updateClienteField,
   type ClienteEditableField,
 } from "@/lib/clientes/clientes-service";
 import type { ClientRecord } from "@/lib/clientes-mock-data";
 
-const CLIENTES_QUERY_KEY = ["clientes", "snapshot"] as const;
+const CLIENTES_QUERY_KEY = ["clientes"] as const;
+const PAGE_SIZE = 25;
+
+function clientesQueryKey(userId: string | undefined, segment: "list" | "enrich") {
+  return [...CLIENTES_QUERY_KEY, userId ?? "guest", segment] as const;
+}
 
 export type ClienteColumnKey = keyof Pick<
   ClientRecord,
@@ -158,15 +165,37 @@ export function useClientes() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("todos");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [columnFilters, setColumnFilters] = useState<ClientesColumnFilters>(createDefaultColumnFilters);
   const [sortField, setSortField] = useState<ClienteColumnKey | null>(null);
   const [sortDirection, setSortDirection] = useState<ClienteSortDirection>(null);
 
-  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
-    queryKey: [...CLIENTES_QUERY_KEY, user?.id ?? "guest"],
-    queryFn: () => fetchClientesSnapshot(user?.id ?? null),
-    staleTime: 30_000,
+  const listQueryKey = clientesQueryKey(user?.id, "list");
+  const enrichQueryKey = clientesQueryKey(user?.id, "enrich");
+
+  const listQuery = useQuery({
+    queryKey: listQueryKey,
+    queryFn: () => fetchClientesList(user?.id ?? null),
+    staleTime: 60_000,
   });
+
+  const enrichQuery = useQuery({
+    queryKey: enrichQueryKey,
+    queryFn: () => fetchClientesEnrichment(user!.id, listQuery.data!.clients),
+    enabled: Boolean(user?.id && listQuery.data && listQuery.data.clients.length > 0),
+    staleTime: 120_000,
+  });
+
+  const data = useMemo(() => {
+    if (!listQuery.data) return undefined;
+    if (!enrichQuery.data) return listQuery.data;
+    return mergeClientesEnrichment(enrichQuery.data);
+  }, [enrichQuery.data, listQuery.data]);
+
+  const isLoading = listQuery.isLoading;
+  const isFetching = listQuery.isFetching || enrichQuery.isFetching;
+  const isEnriching = enrichQuery.isFetching && !enrichQuery.isLoading;
+  const dataUpdatedAt = enrichQuery.dataUpdatedAt || listQuery.dataUpdatedAt;
 
   const columnFilterOptions = useMemo(() => {
     const clients = data?.clients ?? [];
@@ -235,17 +264,32 @@ export function useClientes() {
     });
   }, [activeTab, columnFilters, data, search, sortDirection, sortField]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
+
+  const paginatedClients = useMemo(() => {
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredClients.slice(start, start + PAGE_SIZE);
+  }, [filteredClients, page, totalPages]);
+
   const setActiveTabWithReset = useCallback((tab: string) => {
     setActiveTab(tab);
+    setPage(1);
     setColumnFilters((current) => ({ ...current, tipoCliente: "todos" }));
   }, []);
 
   const clearFilters = useCallback(() => {
     setActiveTab("todos");
     setSearch("");
+    setPage(1);
     setColumnFilters(createDefaultColumnFilters());
     setSortField(null);
     setSortDirection(null);
+  }, []);
+
+  const setSearchSafe = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
   }, []);
 
   const setColumnFilter = useCallback((key: ClienteColumnKey, value: string) => {
@@ -263,8 +307,8 @@ export function useClientes() {
   }, []);
 
   const refresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
+    await Promise.all([listQuery.refetch(), enrichQuery.refetch()]);
+  }, [enrichQuery, listQuery]);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
@@ -294,12 +338,11 @@ export function useClientes() {
       return updateClienteField(user.id, clientId, field, value, currentClient);
     },
     onMutate: async ({ clientId, field, value, currentClient }) => {
-      const queryKey = [...CLIENTES_QUERY_KEY, user?.id ?? "guest"];
-      await queryClient.cancelQueries({ queryKey });
+      await queryClient.cancelQueries({ queryKey: listQueryKey });
 
-      const previous = queryClient.getQueryData<Awaited<ReturnType<typeof fetchClientesSnapshot>>>(queryKey);
+      const previous = queryClient.getQueryData<Awaited<ReturnType<typeof fetchClientesList>>>(listQueryKey);
       if (previous) {
-        queryClient.setQueryData(queryKey, {
+        queryClient.setQueryData(listQueryKey, {
           ...previous,
           clients: previous.clients.map((client) => {
             if (client.id !== clientId) return client;
@@ -318,7 +361,7 @@ export function useClientes() {
         });
       }
 
-      return { previous, queryKey };
+      return { previous, queryKey: listQueryKey };
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {
@@ -348,6 +391,11 @@ export function useClientes() {
   return {
     snapshot: data,
     filteredClients,
+    paginatedClients,
+    page,
+    setPage,
+    totalPages,
+    pageSize: PAGE_SIZE,
     hasActiveFilters,
     columnFilterOptions,
     columnFilters,
@@ -359,9 +407,10 @@ export function useClientes() {
     setActiveTab: setActiveTabWithReset,
     clearFilters,
     search,
-    setSearch,
+    setSearch: setSearchSafe,
     isLoading,
     isFetching,
+    isEnriching,
     refresh,
     invalidate,
     createCliente: createMutation.mutateAsync,

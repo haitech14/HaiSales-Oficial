@@ -22,16 +22,16 @@ type DashboardPageHeaderProps = {
 
 export function DashboardPageHeader({ view }: DashboardPageHeaderProps) {
   return (
-    <header className="border-b border-slate-200 bg-white px-6 py-4">
+    <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="app-page-title sm:text-base">
+          <h1 className="app-page-title">
             {titles[view]}
           </h1>
           <p className="app-page-subtitle">{subtitles[view]}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <GlobalSearchTrigger />
           <AppPeriodFilter />
 

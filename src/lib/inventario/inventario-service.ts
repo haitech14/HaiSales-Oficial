@@ -82,6 +82,8 @@ function mapRowToProduct(row: ProductoRow): InventarioProduct {
     unit,
     cost: Number(row.costo ?? 0),
     price: Number(row.precio),
+    distributorPrice:
+      row.precio_distribuidor != null ? Number(row.precio_distribuidor) : null,
     moneda: row.moneda ?? "PEN",
     status: computeStatus(row),
     type: tipo,

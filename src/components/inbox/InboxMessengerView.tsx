@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { InboxContactPanel } from "@/components/inbox/InboxContactPanel";
 import { InboxConversationList } from "@/components/inbox/InboxConversationList";
 import { InboxConversationThread } from "@/components/inbox/InboxConversationThread";
+import { canSendConversation } from "@/lib/inbox/messaging-providers";
 import type { InboxConversation, InboxViewFilter } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +12,7 @@ type InboxMessengerViewProps = {
   onSearchChange: (value: string) => void;
   activeView: InboxViewFilter;
   contactPanelHidden: boolean;
-  useLiveWhatsApp?: boolean;
+  useLiveMessaging?: boolean;
   showSourcePhoneBadge?: boolean;
   onMessageSent?: () => void;
 };
@@ -22,7 +23,7 @@ export function InboxMessengerView({
   onSearchChange,
   activeView,
   contactPanelHidden,
-  useLiveWhatsApp = false,
+  useLiveMessaging = false,
   showSourcePhoneBadge = false,
   onMessageSent,
 }: InboxMessengerViewProps) {
@@ -51,7 +52,10 @@ export function InboxMessengerView({
   const threadContent = selectedConversation ? (
     <InboxConversationThread
       conversation={selectedConversation}
-      canSendWhatsApp={useLiveWhatsApp && selectedConversation.channel === "whatsapp"}
+      canSendLive={
+        useLiveMessaging &&
+        canSendConversation(selectedConversation.provider, selectedConversation.channel)
+      }
       onMessageSent={onMessageSent}
     />
   ) : (

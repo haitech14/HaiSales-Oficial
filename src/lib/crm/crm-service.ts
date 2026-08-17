@@ -1,6 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseUbicacion } from "@/lib/clientes/location-utils";
 import { withRealKpi } from "@/lib/kpi-utils";
+import {
+  socialLeadBadgeFromCodigo,
+  syncWhatsAppLeadsToProspeccion,
+} from "@/lib/crm/whatsapp-prospeccion-sync";
+import { deleteEmptyConversations } from "@/lib/inbox/empty-conversations-cleanup";
+import { MESSAGING_PROVIDERS } from "@/lib/inbox/messaging-providers";
+import { syncKapsoConversations } from "@/lib/inbox/whatsapp-connection-service";
+import { syncZernioConversations } from "@/lib/inbox/zernio-connection-service";
+import { syncZavuConversations } from "@/lib/inbox/zavu-connection-service";
 import type { Database } from "@/integrations/supabase/types";
 import {
   crmKpis as staticKpis,
@@ -95,20 +104,28 @@ function mapRowToOpportunity(row: OportunidadRow): Opportunity {
 function opportunityToPipelineCard(opp: Opportunity): PipelineCard {
   const dueDate = opp.date;
   const isProspection = opp.stage === "Prospectos";
+  const socialBadge = socialLeadBadgeFromCodigo(opp.id, opp.title);
 
   return {
     id: opp.id,
     title: isProspection ? opp.client : opp.title,
-    company: isProspection
-      ? opp.subtitle || "Sin compra reciente · Contactar y promocionar"
-      : opp.client,
+    company: socialBadge
+      ? opp.subtitle || opp.ruc || `Conversación ${socialBadge}`
+      : isProspection
+        ? opp.subtitle || "Sin compra reciente · Contactar y promocionar"
+        : opp.client,
     value: opp.value,
     owner: opp.owner,
     ownerInitials: opp.ownerInitials,
     dueDate,
     dueDateUrgent: opp.stage === "Negociación",
-    statusBadge: opp.stage === "Cierre ganado" ? "Ganada" : undefined,
-    intereses: isProspection ? opp.intereses : undefined,
+    statusBadge:
+      opp.stage === "Cierre ganado"
+        ? "Ganada"
+        : socialBadge && isProspection
+          ? socialBadge
+          : undefined,
+    intereses: isProspection && !socialBadge ? opp.intereses : socialBadge ? opp.ruc : undefined,
     ciudad: isProspection ? opp.ciudad : undefined,
   };
 }
@@ -233,23 +250,44 @@ async function syncProspeccionWhatsAppIfNeeded(userId: string): Promise<boolean>
     p_user_id: userId,
   });
 
-  if (error) {
-    console.warn("[crm] Sync prospección WhatsApp:", error.message);
-    return false;
+  if (!error) {
+    return typeof data === "number" && data >= 0;
   }
 
-  return typeof data === "number" && data >= 0;
+  console.warn("[crm] Sync prospección WhatsApp (RPC):", error.message);
+  const synced = await syncWhatsAppLeadsToProspeccion(userId);
+  return synced >= 0;
 }
 
-export async function fetchCrmSnapshot(userId: string | null): Promise<CrmSnapshot> {
+export async function fetchCrmSnapshot(
+  userId: string | null,
+  options?: { forceWhatsAppSync?: boolean },
+): Promise<CrmSnapshot> {
   if (!userId) {
     return buildSnapshot([], "supabase");
   }
+
+  const syncTasks: Promise<unknown>[] = [];
+  if (MESSAGING_PROVIDERS.zavu) {
+    syncTasks.push(syncZavuConversations({ force: options?.forceWhatsAppSync }));
+  }
+  if (MESSAGING_PROVIDERS.zernio) {
+    syncTasks.push(syncZernioConversations({ force: options?.forceWhatsAppSync }));
+  }
+  if (MESSAGING_PROVIDERS.kapso) {
+    syncTasks.push(syncKapsoConversations({ force: options?.forceWhatsAppSync }));
+  }
+  await Promise.all(syncTasks);
+
+  await deleteEmptyConversations(userId);
 
   await Promise.all([
     syncProspeccionSinCompraIfNeeded(userId),
     syncProspeccionWhatsAppIfNeeded(userId),
   ]);
+
+  // Refuerzo client-side: garantiza leads WA aunque el RPC no esté desplegado aún.
+  await syncWhatsAppLeadsToProspeccion(userId);
 
   const { data, error } = await supabase
     .from("oportunidades")
@@ -523,10 +561,91 @@ export async function fetchProspectDetail(
     fechaOportunidad: opp.date,
     horaOportunidad: opp.time,
     fechaCierreEstimada: fechaCierre,
-    statusBadge: opp.stage === "Cierre ganado" ? "Ganada" : undefined,
+    statusBadge:
+      opp.stage === "Cierre ganado"
+        ? "Ganada"
+        : socialLeadBadgeFromCodigo(opp.id, opp.title) ?? undefined,
     cliente,
     ventasRecientes,
   };
+}
+
+async function nextOportunidadCodigo(userId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("oportunidades")
+    .select("codigo")
+    .eq("user_id", userId)
+    .like("codigo", "OP-%")
+    .order("codigo", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn("[crm] No se pudo calcular código de oportunidad:", error.message);
+  }
+
+  const last = data?.[0]?.codigo;
+  const match = last?.match(/^OP-(\d+)$/i);
+  const next = match ? Number(match[1]) + 1 : 1;
+  return `OP-${String(next).padStart(6, "0")}`;
+}
+
+export type CreateOportunidadInput = {
+  clienteNombre: string;
+  titulo?: string;
+  subtitulo?: string;
+  valor?: number;
+  clienteRuc?: string;
+};
+
+export async function createOportunidad(
+  userId: string,
+  input: CreateOportunidadInput,
+  options?: { responsableNombre?: string; responsableIniciales?: string },
+): Promise<Opportunity> {
+  const clienteNombre = input.clienteNombre.trim();
+  if (!clienteNombre) {
+    throw new Error("El nombre del prospecto es obligatorio");
+  }
+
+  const codigo = await nextOportunidadCodigo(userId);
+  const responsable = options?.responsableNombre?.trim() || "Sin asignar";
+  const iniciales =
+    options?.responsableIniciales?.trim() ||
+    responsable
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") ||
+    "SA";
+
+  const titulo = input.titulo?.trim() || `Oportunidad — ${clienteNombre}`;
+  const subtitulo = input.subtitulo?.trim() || "Prospecto nuevo";
+  const valor = Number.isFinite(input.valor) ? Math.max(0, input.valor ?? 0) : 0;
+
+  const { data, error } = await supabase
+    .from("oportunidades")
+    .insert({
+      user_id: userId,
+      codigo,
+      cliente_nombre: clienteNombre,
+      cliente_ruc: input.clienteRuc?.trim() || null,
+      titulo,
+      subtitulo,
+      valor,
+      etapa: "Prospectos",
+      probabilidad: 10,
+      responsable_nombre: responsable,
+      responsable_iniciales: iniciales,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapRowToOpportunity(data);
 }
 
 export {

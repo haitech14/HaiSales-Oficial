@@ -114,7 +114,7 @@ export function useVentas() {
       invalidate();
       queryClient.invalidateQueries({ queryKey: CAJA_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: CXC_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: ["clientes", "snapshot"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
       queryClient.invalidateQueries({ queryKey: CRM_QUERY_KEY });
     },
   });

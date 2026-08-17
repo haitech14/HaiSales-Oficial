@@ -58,14 +58,14 @@ export function AppPageHeader({
   onActionClick,
 }: AppPageHeaderProps) {
   return (
-    <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+    <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="app-page-title">{title}</h1>
           <p className="app-page-subtitle">{subtitle}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <GlobalSearchTrigger />
 
           {showDateRange && <AppPeriodFilter className="hidden sm:inline-flex" />}
@@ -112,7 +112,8 @@ export function AppPageHeader({
               <CircleHelp className="h-4 w-4" />
             </button>
           )}
-          {showActionDropdown && actionDropdownItems.length > 0 ? (
+          {onActionClick &&
+            (showActionDropdown && actionDropdownItems.length > 0 ? (
             <div className="inline-flex items-stretch rounded-lg shadow-sm">
               <Button
                 type="button"
@@ -164,7 +165,7 @@ export function AppPageHeader({
               <span className="sm:hidden">Nuevo</span>
               {showActionDropdown && <ChevronDown className="h-3.5 w-3.5 opacity-80" />}
             </Button>
-          )}
+          ))}
         </div>
       </div>
     </header>
@@ -210,8 +211,8 @@ export function CrmKpiCard({
   const max = Math.max(...sparkPoints);
   const min = Math.min(...sparkPoints);
   const range = max - min || 1;
-  const width = 120;
-  const height = 36;
+  const width = 140;
+  const height = 44;
   const points = sparkPoints
     .map((point, index) => {
       const x = (index / (sparkPoints.length - 1)) * width;
@@ -223,19 +224,19 @@ export function CrmKpiCard({
   const card = (
     <article
       className={cn(
-        "rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm",
+        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm",
         note && "cursor-default",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <p className="app-kpi-label">{label}</p>
         {Icon && iconBg && iconColor && (
-          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", iconBg)}>
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", iconBg)}>
             <Icon className={cn("h-4 w-4", iconColor)} strokeWidth={2} />
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
+      <div className="mt-3 flex items-end justify-between gap-4">
         <div>
           <KpiValueDisplay value={value} />
           <p
@@ -247,7 +248,7 @@ export function CrmKpiCard({
             {change}
           </p>
         </div>
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-9 w-[120px] shrink-0" aria-hidden="true">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-11 w-[140px] shrink-0" aria-hidden="true">
           <polyline
             points={points}
             fill="none"

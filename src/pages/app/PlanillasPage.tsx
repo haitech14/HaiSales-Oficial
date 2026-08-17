@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   Banknote,
   Calendar,
@@ -84,7 +84,7 @@ export default function PlanillasPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-4 sm:p-6">
+          <div className="app-page-body">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(snapshot?.kpis ?? []).map((kpi, index) => {
                 const Icon = kpiIcons[index];

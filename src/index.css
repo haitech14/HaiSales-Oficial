@@ -111,6 +111,10 @@
 }
 
 @layer base {
+  html {
+    font-size: 106.25%;
+  }
+
   * {
     @apply border-border;
   }
@@ -127,75 +131,79 @@
 
 @layer components {
   .app-page-title {
-    @apply text-sm font-bold tracking-tight text-slate-900 sm:text-base;
+    @apply text-base font-bold tracking-tight text-slate-900 sm:text-lg;
   }
 
   .app-page-subtitle {
-    @apply mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-500;
+    @apply mt-1.5 max-w-3xl text-sm leading-relaxed text-slate-500;
   }
 
   .app-kpi-label {
-    @apply text-[11px] font-medium leading-snug text-slate-500;
+    @apply text-xs font-medium leading-snug text-slate-500 sm:text-sm;
   }
 
   .app-kpi-value {
-    @apply text-xl font-bold tracking-tight text-slate-900 sm:text-2xl;
+    @apply text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
   }
 
   .app-kpi-change {
-    @apply mt-1 text-[10px] font-medium;
+    @apply mt-1.5 text-xs font-medium;
   }
 
   .app-panel-title {
-    @apply text-xs font-bold text-slate-900;
+    @apply text-sm font-bold text-slate-900;
   }
 
   .app-panel-meta {
-    @apply text-[10px] text-slate-500;
+    @apply text-xs text-slate-500;
   }
 
   .app-panel-list {
-    @apply space-y-1.5 text-[10px] leading-relaxed text-slate-600;
+    @apply space-y-2 text-xs leading-relaxed text-slate-600 sm:text-sm;
   }
 
   .app-tab {
-    @apply flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-medium transition;
+    @apply flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition;
   }
 
   .app-tab-badge {
-    @apply rounded-full px-1.5 py-0.5 text-[9px] font-semibold;
+    @apply rounded-full px-2 py-0.5 text-[10px] font-semibold;
   }
 
   .app-table-head-row {
-    @apply border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500;
+    @apply border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500;
   }
 
   .app-table-body {
-    @apply text-[11px];
+    @apply text-sm;
   }
 
   .app-table-cell {
-    @apply px-3 py-2.5;
+    @apply px-4 py-3;
   }
 
   .app-table-meta {
-    @apply text-[10px] text-slate-400;
+    @apply text-xs text-slate-400;
   }
 
   .app-table-badge {
-    @apply inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold;
+    @apply inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold;
   }
 
   .app-toolbar-link {
-    @apply flex items-center gap-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-700;
+    @apply flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-700;
   }
 
   .app-search-input {
-    @apply h-8 w-full rounded-lg border border-slate-200 bg-white text-[11px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20;
+    @apply h-9 w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20;
   }
 
   .app-pagination-bar {
-    @apply text-[11px] text-slate-500;
+    @apply text-sm text-slate-500;
+  }
+
+  .app-page-body {
+    @apply space-y-7 p-6 sm:p-8 lg:px-10;
   }
 
   .app-sidebar-section {

@@ -13,11 +13,13 @@ export type AutocompleteOption = {
 type SearchableAutocompleteProps = {
   placeholder: string;
   value: string;
+  selectedDisplay?: string;
   options?: AutocompleteOption[];
   loadOptions?: (query: string) => Promise<AutocompleteOption[]>;
   onChange: (value: string) => void;
   onSelect?: (option: AutocompleteOption) => void;
   onAdd?: () => void;
+  variant?: "default" | "plain";
   maxResults?: number;
   debounceMs?: number;
   emptyMessage?: string;
@@ -40,11 +42,13 @@ function matchesOption(option: AutocompleteOption, query: string) {
 export function SearchableAutocomplete({
   placeholder,
   value,
+  selectedDisplay,
   options = [],
   loadOptions,
   onChange,
   onSelect,
   onAdd,
+  variant = "default",
   maxResults = 12,
   debounceMs = 220,
   emptyMessage = "Sin resultados",
@@ -156,11 +160,16 @@ export function SearchableAutocomplete({
   };
 
   const showDropdown = open && (isLoading || filteredOptions.length > 0 || Boolean(loadOptions));
+  const displayValue = value || selectedDisplay || "";
+  const showingSelection = !value && Boolean(selectedDisplay);
+  const isPlain = variant === "plain";
 
   return (
-    <div ref={containerRef} className="flex gap-1.5">
+    <div ref={containerRef} className={cn("flex w-full", isPlain ? "gap-1" : "gap-1.5")}>
       <div className="relative z-30 min-w-0 flex-1">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        {isPlain ? null : (
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        )}
         <input
           ref={inputRef}
           type="text"
@@ -168,15 +177,30 @@ export function SearchableAutocomplete({
           aria-expanded={showDropdown}
           aria-controls={listId}
           aria-autocomplete="list"
-          value={value}
+          value={displayValue}
           onChange={(event) => {
             onChange(event.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            if (showingSelection) {
+              window.requestAnimationFrame(() => inputRef.current?.select());
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 transition focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-600/10"
+          className={cn(
+            "h-9 w-full bg-transparent text-sm text-slate-800 transition placeholder:text-slate-400 focus:outline-none",
+            isPlain
+              ? "border-0 px-0 focus:ring-0"
+              : cn(
+                  "rounded-lg border pl-8 pr-3 text-xs focus:border-blue-300 focus:ring-2 focus:ring-blue-600/10",
+                  showingSelection
+                    ? "border-slate-200 font-medium"
+                    : "border-slate-200",
+                ),
+          )}
         />
         {showDropdown && (
           <div
@@ -232,7 +256,12 @@ export function SearchableAutocomplete({
         <button
           type="button"
           onClick={onAdd}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+          className={cn(
+            "flex shrink-0 items-center justify-center text-slate-500 transition hover:text-slate-700",
+            isPlain
+              ? "h-8 w-8 rounded-md hover:bg-slate-100"
+              : "h-9 w-9 rounded-lg border border-slate-200 hover:bg-slate-50",
+          )}
           aria-label="Agregar"
         >
           <Plus className="h-3.5 w-3.5" />

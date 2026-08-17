@@ -18,6 +18,7 @@ export function useEmpresaConfig() {
     queryKey: empresaConfigQueryKey(userId),
     queryFn: () => (userId ? fetchEmpresaConfig(userId) : Promise.resolve(defaultEmpresaConfig)),
     enabled: Boolean(userId),
+    placeholderData: defaultEmpresaConfig,
     staleTime: 60_000,
   });
 }

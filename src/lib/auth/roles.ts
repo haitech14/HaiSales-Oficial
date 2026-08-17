@@ -84,3 +84,14 @@ export function filterNavSectionsByRole<
     .filter((section) => section.items.length > 0 || (section.groups?.length ?? 0) > 0);
 }
 
+export function filterSidebarNavSections<
+  T extends { title: string; entries: { href: string; quickAction?: { href: string } }[] },
+>(sections: T[], role: UserRole): T[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      entries: section.entries.filter((entry) => isHrefAllowedForRole(entry.href, role)),
+    }))
+    .filter((section) => section.entries.length > 0);
+}
+

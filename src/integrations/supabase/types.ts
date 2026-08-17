@@ -1299,6 +1299,10 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: number;
       };
+      sync_prospeccion_whatsapp_for_user: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
     };
     Enums: Record<string, never>;
   };

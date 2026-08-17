@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import Zavudev from "npm:@zavudev/sdk@0.55.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,6 +51,7 @@ Deno.serve(async (req) => {
       text?: string;
       channel?: string;
       senderId?: string;
+      conversationId?: string;
     };
 
     const to = body.to?.trim();
@@ -58,37 +60,26 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Se requieren 'to' y 'text'" }, 400);
     }
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    };
-    if (body.senderId?.trim()) {
-      headers["Zavu-Sender"] = body.senderId.trim();
-    }
+    const zavu = new Zavudev({ apiKey });
+    const channel = body.channel?.trim() as
+      | "whatsapp"
+      | "instagram"
+      | "messenger"
+      | "sms"
+      | "email"
+      | undefined;
+    const result = await zavu.messages.send(
+      {
+        to,
+        text,
+        ...(channel ? { channel } : {}),
+      },
+      body.senderId?.trim()
+        ? { headers: { "Zavu-Sender": body.senderId.trim() } }
+        : undefined,
+    );
 
-    const payload: Record<string, unknown> = {
-      to,
-      text,
-    };
-    if (body.channel?.trim()) {
-      payload.channel = body.channel.trim();
-    }
-
-    const response = await fetch("https://api.zavu.dev/v1/messages", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return jsonResponse(
-        { error: `Zavu API ${response.status}`, details: data },
-        502,
-      );
-    }
-
-    return jsonResponse({ ok: true, message: data });
+    return jsonResponse({ ok: true, message: result.message ?? result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return jsonResponse({ error: message }, 500);

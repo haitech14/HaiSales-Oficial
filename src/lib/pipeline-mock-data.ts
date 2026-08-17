@@ -12,7 +12,7 @@ export type PipelineCard = {
   ownerInitials: string;
   dueDate: string;
   dueDateUrgent?: boolean;
-  statusBadge?: "Ganada" | "Cerrada";
+  statusBadge?: "Ganada" | "Cerrada" | "WhatsApp" | "Facebook" | "Instagram";
   intereses?: string;
   ciudad?: string;
 };

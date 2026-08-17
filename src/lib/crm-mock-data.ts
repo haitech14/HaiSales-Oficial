@@ -38,7 +38,7 @@ export type ProspectDetail = {
   fechaOportunidad: string;
   horaOportunidad: string;
   fechaCierreEstimada: string | null;
-  statusBadge?: "Ganada" | "Cerrada";
+  statusBadge?: "Ganada" | "Cerrada" | "WhatsApp" | "Facebook" | "Instagram";
   cliente: {
     contacto: string | null;
     celular: string | null;

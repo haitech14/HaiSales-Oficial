@@ -18,6 +18,7 @@ export type InventarioProduct = {
   unit: string;
   cost: number;
   price: number;
+  distributorPrice: number | null;
   moneda: string;
   status: ProductStatus;
   type: ProductType;

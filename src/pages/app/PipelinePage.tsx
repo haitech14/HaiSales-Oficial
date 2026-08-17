@@ -1,4 +1,5 @@
-Ôªøimport { useState } from "react";
+import { useCallback, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Calendar,
   ChevronDown,
@@ -8,19 +9,21 @@ import {
   Loader2,
   MoreHorizontal,
   RefreshCw,
-  Search,
   Star,
 } from "lucide-react";
 import { AppTablePagination } from "@/components/app/AppTablePagination";
-import { AppPageHeader, CrmKpiCard, CrmRightPanel } from "@/components/app/CrmShared";
-import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
-import { NuevaVentaModal } from "@/components/app/NuevaVentaModal";
+import { CrmResumenPanel } from "@/components/app/crm/CrmResumenPanel";
+import { CrmViewBar } from "@/components/app/crm/CrmViewBar";
+import { ModuleFab } from "@/components/app/module-shell/ModuleFab";
+import { ModulePageHeader } from "@/components/app/module-shell/ModulePageHeader";
+import { NuevoProspectoModal } from "@/components/app/NuevoProspectoModal";
+import { PipelineInboxView } from "@/components/app/PipelineInboxView";
 import { PipelineProspectDetailSheet } from "@/components/app/PipelineProspectDetailSheet";
-import { PipelineRightPanel } from "@/components/app/PipelineRightPanel";
-import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccionQueryParam } from "@/hooks/useAccionQueryParam";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { useCrm } from "@/hooks/useCrm";
 import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import {
@@ -29,9 +32,12 @@ import {
   getProbabilityStyles,
   getStageStyles,
   pipelineTabs,
+  type CreateOportunidadInput,
 } from "@/lib/crm/crm-service";
+import { MODULE_PAGE_BG } from "@/lib/module-page-theme";
 import type { PipelineCard } from "@/lib/pipeline-mock-data";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ViewMode = "kanban" | "tabla";
 
@@ -53,56 +59,62 @@ function PipelineKanbanCard({
           onSelect?.(card.id);
         }
       }}
-      className="cursor-pointer rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+      className="cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-300 hover:shadow-md"
     >
       <div className="flex items-start gap-1.5">
         <div className="min-w-0 flex-1">
           {card.statusBadge && (
             <span
               className={cn(
-                "mb-1 inline-flex rounded-full px-1.5 py-0 text-[10px] font-semibold leading-4",
+                "mb-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4",
                 card.statusBadge === "Ganada"
                   ? "bg-emerald-100 text-emerald-700"
-                  : "bg-slate-100 text-slate-600",
+                  : card.statusBadge === "WhatsApp"
+                    ? "bg-green-100 text-green-700"
+                    : card.statusBadge === "Facebook"
+                      ? "bg-blue-100 text-blue-700"
+                      : card.statusBadge === "Instagram"
+                        ? "bg-pink-100 text-pink-700"
+                        : "bg-slate-100 text-slate-600",
               )}
             >
               {card.statusBadge}
             </span>
           )}
-          <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-slate-900">{card.title}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">{card.title}</p>
           {card.intereses || card.ciudad ? (
             <div className="mt-0.5 space-y-0.5">
               {card.intereses && (
-                <p className="line-clamp-2 text-[10px] leading-snug text-slate-600">{card.intereses}</p>
+                <p className="line-clamp-2 text-xs leading-snug text-slate-600">{card.intereses}</p>
               )}
               {card.ciudad && (
-                <p className="line-clamp-1 text-[10px] leading-snug text-slate-400">{card.ciudad}</p>
+                <p className="line-clamp-1 text-xs leading-snug text-slate-400">{card.ciudad}</p>
               )}
             </div>
           ) : (
-            <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-500">{card.company}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500">{card.company}</p>
           )}
         </div>
         <button
           type="button"
           onClick={(event) => event.stopPropagation()}
-          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          aria-label="M√°s acciones"
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          aria-label="Mùs acciones"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-xs font-bold text-blue-600">{formatPipelineCurrency(card.value)}</p>
-        <Avatar className="h-5 w-5">
-          <AvatarFallback className="bg-blue-100 text-[8px] font-semibold text-blue-700">
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-blue-600">{formatPipelineCurrency(card.value)}</p>
+        <Avatar className="h-7 w-7">
+          <AvatarFallback className="bg-blue-100 text-[10px] font-semibold text-blue-700">
             {card.ownerInitials}
           </AvatarFallback>
         </Avatar>
       </div>
 
-      <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
         <span className="truncate text-slate-500">{card.owner}</span>
         <span className={cn("shrink-0", card.dueDateUrgent ? "font-medium text-red-500" : "text-slate-400")}>
           {card.dueDate}
@@ -114,6 +126,8 @@ function PipelineKanbanCard({
 
 export default function PipelinePage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isConversacionesView = searchParams.get("vista") === "conversaciones";
   const {
     snapshot,
     filteredOpportunities,
@@ -124,20 +138,66 @@ export default function PipelinePage() {
     isLoading,
     isFetching,
     refresh,
+    createOportunidad,
+    isCreatingOportunidad,
   } = useCrm();
   useSearchQueryParam(setSearch);
-  const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
+  const { togglePanel, isPanelVisible } = useAppRightPanel();
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
-  const [nuevaVentaOpen, setNuevaVentaOpen] = useState(false);
   const [prospectDetailCodigo, setProspectDetailCodigo] = useState<string | null>(null);
   const [prospectDetailPreview, setProspectDetailPreview] = useState<PipelineCard | null>(null);
   const [prospectDetailOpen, setProspectDetailOpen] = useState(false);
+  const [nuevoProspectoOpen, setNuevoProspectoOpen] = useState(false);
 
-  const openProspectDetail = (codigo: string, preview?: PipelineCard) => {
+  const openProspectDetail = useCallback((codigo: string, preview?: PipelineCard) => {
     setProspectDetailCodigo(codigo);
     setProspectDetailPreview(preview ?? null);
     setProspectDetailOpen(true);
-  };
+  }, []);
+
+  const setCrmView = useCallback(
+    (view: "pipeline" | "conversaciones") => {
+      const next = new URLSearchParams(searchParams);
+      if (view === "conversaciones") {
+        next.set("vista", "conversaciones");
+      } else {
+        next.delete("vista");
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const openNuevoProspecto = useCallback(() => {
+    setCrmView("pipeline");
+    setNuevoProspectoOpen(true);
+  }, [setCrmView]);
+
+  const handleCrearOportunidad = useCallback(
+    async (input: CreateOportunidadInput) => {
+      if (!user?.id || isCreatingOportunidad) return;
+
+      try {
+        const opportunity = await createOportunidad(input);
+        openProspectDetail(opportunity.id, {
+          id: opportunity.id,
+          title: opportunity.client,
+          company: opportunity.subtitle || opportunity.title,
+          value: opportunity.value,
+          owner: opportunity.owner,
+          ownerInitials: opportunity.ownerInitials,
+          dueDate: opportunity.date,
+        });
+        toast.success("Oportunidad creada");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo crear la oportunidad");
+        throw error;
+      }
+    },
+    [createOportunidad, isCreatingOportunidad, openProspectDetail, user?.id],
+  );
+
+  useAccionQueryParam("nueva", openNuevoProspecto);
 
   const pipelineColumns = snapshot?.pipelineColumns ?? [];
   const tabsWithCounts = pipelineTabs.map((tab) => ({
@@ -145,27 +205,19 @@ export default function PipelinePage() {
     count: snapshot?.tabCounts[tab.id] ?? null,
   }));
   const totalRecords = snapshot?.totalRecords ?? 0;
-  const kpis = snapshot?.pipelineKpis ?? snapshot?.kpis ?? [];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppPageHeader
-        title="Pipeline de ventas"
-        subtitle="Gestiona oportunidades en kanban o tabla, con actividades, cotizaciones y cierres."
-        showPanelToggle
-        panelHidden={!isPanelVisible}
-        onTogglePanel={togglePanel}
-        panelToggleLabel="Ocultar Panel lateral derecho"
-        panelToggleLabelHidden="Mostrar Panel lateral derecho"
-        showDateRange
-        showFiltersButton
-        hideHelp
-        notificationCount={0}
-        actionLabel="Nueva oportunidad"
-        onActionClick={() => setNuevaVentaOpen(true)}
+    <div className="relative flex min-h-full flex-col" style={{ backgroundColor: MODULE_PAGE_BG }}>
+      <ModulePageHeader
+        title="CRM"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar oportunidad, cliente..."
+        showDateNav={false}
+        onToggleResumen={togglePanel}
+        resumenOpen={isPanelVisible}
       />
 
-      <NuevaVentaModal open={nuevaVentaOpen} onOpenChange={setNuevaVentaOpen} />
       <PipelineProspectDetailSheet
         codigo={prospectDetailCodigo}
         preview={prospectDetailPreview}
@@ -174,22 +226,29 @@ export default function PipelinePage() {
         userId={user?.id}
       />
 
-      {snapshot?.source === "supabase" && (
-        <div className="border-b border-emerald-100 bg-emerald-50 px-6 py-2 text-xs text-emerald-700">
-          Conectado a Supabase ¬∑ {totalRecords} oportunidades sincronizadas
-        </div>
-      )}
+      <NuevoProspectoModal
+        open={nuevoProspectoOpen}
+        onOpenChange={setNuevoProspectoOpen}
+        onSubmit={handleCrearOportunidad}
+        isSubmitting={isCreatingOportunidad}
+      />
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-4 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {kpis.map((kpi) => (
-                <CrmKpiCard key={kpi.label} {...kpi} />
-              ))}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pb-24 pt-2 sm:px-6 xl:flex-row xl:items-start xl:pb-6">
+        <div className="min-w-0 flex-1">
+          <CrmViewBar
+            activeView={isConversacionesView ? "conversaciones" : "pipeline"}
+            onViewChange={setCrmView}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            className="mb-4"
+          />
+
+          {isConversacionesView ? (
+            <div className="min-h-[520px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <PipelineInboxView />
             </div>
-
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          ) : (
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
@@ -263,7 +322,7 @@ export default function PipelinePage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                   {viewMode === "tabla" && (
                     <>
                       <button type="button" className="app-toolbar-link">
@@ -272,24 +331,10 @@ export default function PipelinePage() {
                       </button>
                       <button type="button" className="app-toolbar-link">
                         <Filter className="h-3.5 w-3.5" />
-                        M√°s filtros
+                        Mùs filtros
                       </button>
                     </>
                   )}
-                  <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder={
-                        viewMode === "kanban"
-                          ? "Buscar oportunidad, cliente o empresa..."
-                          : "Buscar por cliente, vendedor, oportunidad..."
-                      }
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -331,12 +376,12 @@ export default function PipelinePage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto p-4">
-                    <div className="flex h-[min(520px,calc(100vh-16rem))] gap-3">
+                    <div className="flex h-[min(600px,calc(100vh-15rem))] gap-3">
                       {pipelineColumns.map((column) => (
                         <div
                           key={column.id}
                           className={cn(
-                            "flex w-[236px] shrink-0 flex-col rounded-xl border border-slate-200 border-t-[3px] bg-slate-50/60",
+                            "flex w-[280px] shrink-0 flex-col rounded-xl border border-slate-200 border-t-[3px] bg-slate-50/60",
                             column.borderColor,
                           )}
                         >
@@ -347,12 +392,12 @@ export default function PipelinePage() {
                                 {column.count}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-[11px] font-medium text-slate-500">
+                            <p className="mt-0.5 text-xs font-medium text-slate-500">
                               {formatPipelineCurrency(column.totalValue)}
                             </p>
                           </div>
 
-                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain p-2">
+                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain p-2.5">
                             {column.cards.map((card) => (
                               <PipelineKanbanCard
                                 key={card.id}
@@ -367,7 +412,7 @@ export default function PipelinePage() {
                               type="button"
                               className="border-t border-slate-100 px-3 py-2.5 text-left text-xs font-semibold text-blue-600 hover:text-blue-500"
                             >
-                              + {column.moreCount} oportunidades m√°s
+                              + {column.moreCount} oportunidades m·s
                             </button>
                           )}
                         </div>
@@ -389,7 +434,7 @@ export default function PipelinePage() {
                           <th className="px-4 py-2.5">Etapa</th>
                           <th className="px-4 py-2.5">Probabilidad</th>
                           <th className="px-4 py-2.5">Responsable</th>
-                          <th className="px-4 py-2.5 text-right">Acci√≥n</th>
+                          <th className="px-4 py-2.5 text-right">Acciùn</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -472,7 +517,7 @@ export default function PipelinePage() {
                                   type="button"
                                   onClick={(event) => event.stopPropagation()}
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                  aria-label="M√°s acciones"
+                                  aria-label="Mùs acciones"
                                 >
                                   <MoreHorizontal className="h-4 w-4" />
                                 </button>
@@ -491,17 +536,20 @@ export default function PipelinePage() {
                 </>
               )}
             </section>
-          </div>
+          )}
         </div>
 
-        <AppRightPanelSlot
-          panelHidden={panelHidden}
-          mobileOpen={mobileOpen}
-          onMobileOpenChange={setMobileOpen}
-        >
-          {viewMode === "kanban" ? <PipelineRightPanel snapshot={snapshot} /> : <CrmRightPanel />}
-        </AppRightPanelSlot>
+        {!isConversacionesView && isPanelVisible ? (
+          <CrmResumenPanel snapshot={snapshot} className="xl:sticky xl:top-4" />
+        ) : null}
       </div>
+
+      {!isConversacionesView && (
+        <ModuleFab
+          onClick={openNuevoProspecto}
+          label="NUEVO"
+        />
+      )}
     </div>
   );
 }

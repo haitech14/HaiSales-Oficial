@@ -19,13 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useInboxMessages } from "@/hooks/useInboxMessages";
 import { inboxChannelMeta } from "@/lib/inbox/channels";
+import { canSendConversation } from "@/lib/inbox/messaging-providers";
 import { sendInboxMessage } from "@/lib/inbox/inbox-service";
 import type { InboxConversation } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
 type InboxConversationThreadProps = {
   conversation: InboxConversation;
-  canSendWhatsApp?: boolean;
+  canSendLive?: boolean;
   onMessageSent?: () => void;
 };
 
@@ -64,7 +65,7 @@ const contactTypeLabel: Record<NonNullable<InboxConversation["contactType"]>, st
 
 export function InboxConversationThread({
   conversation,
-  canSendWhatsApp = false,
+  canSendLive = false,
   onMessageSent,
 }: InboxConversationThreadProps) {
   const [composerTab, setComposerTab] = useState<"reply" | "note">("reply");
@@ -82,8 +83,11 @@ export function InboxConversationThread({
     const body = draft.trim();
     if (!body || composerTab !== "reply") return;
 
-    if (!canSendWhatsApp || conversation.channel !== "whatsapp") {
-      toast.message("Conecta WhatsApp Kapso para enviar mensajes reales.");
+    const sendable =
+      canSendLive && canSendConversation(conversation.provider, conversation.channel);
+
+    if (!sendable) {
+      toast.message("Conecta Zavu en Integraciones para enviar mensajes reales.");
       return;
     }
 

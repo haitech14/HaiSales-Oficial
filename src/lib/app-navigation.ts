@@ -50,7 +50,7 @@ export type NavGroup = {
 };
 
 export const dashboardNavGroup: NavGroup = {
-  label: "Dashboard",
+  label: "Estadísticas",
   icon: LayoutDashboard,
   href: "/app/dashboard",
   items: [
@@ -60,10 +60,108 @@ export const dashboardNavGroup: NavGroup = {
 };
 
 export const anunciosNavItem: NavItem = {
-  label: "Wiki",
+  label: "Mural",
   href: "/app/anuncios",
   icon: Megaphone,
 };
+
+export type SidebarQuickAction = {
+  label: string;
+  href: string;
+  /** Muestra el icono + antes del texto (por defecto true). */
+  showPlus?: boolean;
+};
+
+export type SidebarNavEntry = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Color de fondo del tile (hex). */
+  color: string;
+  /** Ocupa el ancho completo del grid (2 columnas). */
+  wide?: boolean;
+  quickAction?: SidebarQuickAction;
+  badge?: string | number;
+};
+
+export type SidebarNavSection = {
+  title: string;
+  entries: SidebarNavEntry[];
+};
+
+export const sidebarEstadisticasTile = {
+  label: dashboardNavGroup.label,
+  href: dashboardNavGroup.href ?? "/app/dashboard",
+  icon: dashboardNavGroup.icon,
+  color: "#8cc63f",
+  wide: true,
+} satisfies Omit<SidebarNavEntry, "quickAction">;
+
+export const sidebarMuralTile = {
+  label: anunciosNavItem.label,
+  href: anunciosNavItem.href ?? "/app/anuncios",
+  icon: anunciosNavItem.icon,
+  color: "#1e88e5",
+  wide: true,
+} satisfies Omit<SidebarNavEntry, "quickAction">;
+
+export const sidebarPrimaryTiles = [sidebarEstadisticasTile, sidebarMuralTile] as const;
+
+export const sidebarNavSections: SidebarNavSection[] = [
+  {
+    title: "OPERACIÓN",
+    entries: [
+      {
+        label: "CRM",
+        href: "/app/pipeline",
+        icon: Target,
+        color: "#7e57c2",
+        quickAction: { label: "Nuevo", href: "/app/pipeline?accion=nueva" },
+      },
+      {
+        label: "Ventas",
+        href: "/app/ventas",
+        icon: Receipt,
+        color: "#fb8c00",
+        quickAction: { label: "Nuevo", href: "/app/ventas?accion=nueva" },
+      },
+      {
+        label: "Servicios",
+        href: "/app/servicios",
+        icon: Briefcase,
+        color: "#5e35b1",
+        quickAction: { label: "Nuevo", href: "/app/servicios?accion=nueva" },
+      },
+      {
+        label: "Guías",
+        href: "/app/logistica",
+        icon: Truck,
+        color: "#00acc1",
+        quickAction: { label: "Nuevo", href: "/app/logistica?accion=nueva" },
+      },
+      {
+        label: "Contactos",
+        href: "/app/clientes",
+        icon: Users,
+        color: "#43a047",
+        quickAction: { label: "Nuevo", href: "/app/clientes?accion=nueva" },
+      },
+    ],
+  },
+  {
+    title: "ADMINISTRACIÓN",
+    entries: [
+      { label: "Inventario", href: "/app/inventario", icon: Package, color: "#00897b" },
+      {
+        label: "Compras",
+        href: "/app/compras",
+        icon: ShoppingCart,
+        color: "#e64a19",
+        quickAction: { label: "Nuevo", href: "/app/compras?accion=nueva" },
+      },
+    ],
+  },
+];
 
 /** @deprecated Usar dashboardNavGroup */
 export const dashboardNavItem: NavItem = {

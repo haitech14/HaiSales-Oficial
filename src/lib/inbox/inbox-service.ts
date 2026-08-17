@@ -1,5 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  inferProviderFromExternalId,
+  MESSAGING_PROVIDERS,
+} from "@/lib/inbox/messaging-providers";
+import { syncKapsoConversations } from "@/lib/inbox/whatsapp-connection-service";
+import { syncZernioConversations } from "@/lib/inbox/zernio-connection-service";
+import { syncZavuConversations } from "@/lib/inbox/zavu-connection-service";
+import { deleteEmptyConversations } from "@/lib/inbox/empty-conversations-cleanup";
 import { buildInboxSnapshot } from "@/lib/inbox/providers";
 import type {
   ChannelConnection,
@@ -25,9 +33,15 @@ function mapRowToConversation(row: InboxRow): InboxConversation {
   const sourcePhoneLabel =
     typeof metadata.source_phone_label === "string" ? metadata.source_phone_label : undefined;
 
+  const provider =
+    typeof metadata.provider === "string"
+      ? metadata.provider
+      : inferProviderFromExternalId(row.external_id) ?? undefined;
+
   return {
     id: row.id,
     channel: row.channel as InboxChannel,
+    provider,
     connectionId: connectionId ?? undefined,
     sourcePhoneLabel,
     externalId: row.external_id,
@@ -65,6 +79,13 @@ export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDa
     return buildSnapshotWithSource([], "supabase");
   }
 
+  const syncTasks: Promise<unknown>[] = [];
+  if (MESSAGING_PROVIDERS.zavu) syncTasks.push(syncZavuConversations());
+  if (MESSAGING_PROVIDERS.zernio) syncTasks.push(syncZernioConversations());
+  if (MESSAGING_PROVIDERS.kapso) syncTasks.push(syncKapsoConversations());
+  await Promise.all(syncTasks);
+  await deleteEmptyConversations(userId);
+
   const { data, error } = await supabase
     .from("inbox_conversations")
     .select("*")
@@ -86,7 +107,7 @@ export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDa
 export async function fetchInboxChannelConnections(userId: string): Promise<ChannelConnection[]> {
   const { data, error } = await supabase
     .from("inbox_channel_connections")
-    .select("channel, status, display_name, last_sync_at, error_message")
+    .select("id, channel, status, display_name, last_sync_at, error_message, external_account_id, config")
     .eq("user_id", userId);
 
   if (error) {
@@ -120,7 +141,44 @@ function mapRowToMessage(row: MessageRow): InboxMessage {
   };
 }
 
+const messageSyncInFlight = new Map<string, Promise<void>>();
+const messageSyncedAt = new Map<string, number>();
+const MESSAGE_SYNC_TTL_MS = 30_000;
+
+async function syncInboxConversationMessages(conversationId: string): Promise<void> {
+  const last = messageSyncedAt.get(conversationId) ?? 0;
+  if (Date.now() - last < MESSAGE_SYNC_TTL_MS) return;
+  const pending = messageSyncInFlight.get(conversationId);
+  if (pending) return pending;
+
+  const task = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("inbox-messages-sync", {
+        body: { conversationId },
+      });
+      if (error) {
+        console.warn("[inbox] Sync mensajes:", error.message);
+        return;
+      }
+      if (data?.error) {
+        console.warn("[inbox] Sync mensajes:", data.error);
+        return;
+      }
+      messageSyncedAt.set(conversationId, Date.now());
+    } catch (error) {
+      console.warn("[inbox] Sync mensajes:", error instanceof Error ? error.message : error);
+    } finally {
+      messageSyncInFlight.delete(conversationId);
+    }
+  })();
+
+  messageSyncInFlight.set(conversationId, task);
+  return task;
+}
+
 export async function fetchInboxMessages(conversationId: string): Promise<InboxMessage[]> {
+  await syncInboxConversationMessages(conversationId);
+
   const { data, error } = await supabase
     .from("inbox_messages")
     .select("*")
@@ -147,17 +205,47 @@ export async function markConversationRead(conversationId: string): Promise<void
 }
 
 export async function sendInboxMessage(conversationId: string, body: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke("whatsapp-send", {
-    body: { conversationId, body },
-  });
+  const { data: conversation } = await supabase
+    .from("inbox_conversations")
+    .select("contact_identifier, channel, metadata")
+    .eq("id", conversationId)
+    .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
+  const metadata = (conversation?.metadata ?? {}) as Record<string, unknown>;
+  const provider =
+    typeof metadata.provider === "string" ? metadata.provider : undefined;
+
+  if (provider === "zavu" && MESSAGING_PROVIDERS.zavu) {
+    const { data, error } = await supabase.functions.invoke("zavu-send", {
+      body: {
+        to: conversation?.contact_identifier,
+        text: body,
+        channel: conversation?.channel === "facebook" ? "messenger" : conversation?.channel,
+        senderId: typeof metadata.sender_id === "string" ? metadata.sender_id : undefined,
+        conversationId,
+      },
+    });
+
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(String(data.error));
+    return;
   }
 
-  if (data?.error) {
-    throw new Error(String(data.error));
+  if (provider === "kapso" && MESSAGING_PROVIDERS.kapso) {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { conversationId, body },
+    });
+
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(String(data.error));
+    return;
   }
+
+  throw new Error(
+    provider === "kapso"
+      ? "Kapso está desactivado temporalmente. Sincroniza conversaciones desde Zavu."
+      : "Esta conversación no admite envío. Conecta Zavu en Integraciones.",
+  );
 }
 
 export async function persistInboxConversations(

@@ -71,7 +71,7 @@ export function AnunciosWikiSidebar({
   onNewPage,
   className,
 }: AnunciosWikiSidebarProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside

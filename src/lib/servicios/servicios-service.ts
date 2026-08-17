@@ -4,6 +4,7 @@ import {
   getServicioEstadoStyles,
   getServicioTipoStyles,
   serviciosKpis as staticKpis,
+  serviciosMockRecords,
   serviciosTabs,
   type ServicioRecord,
 } from "@/lib/servicios/servicios-mock-data";
@@ -51,7 +52,7 @@ function buildSnapshot(records: ServicioRecord[]): ServiciosSnapshot {
 }
 
 export async function fetchServiciosSnapshot(): Promise<ServiciosSnapshot> {
-  return buildSnapshot([]);
+  return buildSnapshot(serviciosMockRecords);
 }
 
 export function filterServicioRecords(

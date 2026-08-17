@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChannelIcon } from "@/components/inbox/ChannelIcon";
+import { ModuleEmptyState } from "@/components/app/module-shell/ModuleEmptyState";
 import { inboxPriorityMeta, inboxStageMeta } from "@/lib/inbox/channels";
 import type { InboxConversation } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
@@ -25,8 +26,11 @@ function formatConversationDate(isoDate: string) {
 function InboxConversationCards({ conversations }: { conversations: InboxConversation[] }) {
   if (conversations.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-        No hay conversaciones con los filtros seleccionados.
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white md:hidden">
+        <ModuleEmptyState
+          compact
+          message="No hay conversaciones con los filtros seleccionados."
+        />
       </div>
     );
   }
@@ -128,8 +132,11 @@ export function InboxConversationTable({ conversations }: { conversations: Inbox
           <TableBody>
             {conversations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-sm text-slate-500">
-                  No hay conversaciones con los filtros seleccionados.
+                <TableCell colSpan={8} className="p-0">
+                  <ModuleEmptyState
+                    compact
+                    message="No hay conversaciones con los filtros seleccionados."
+                  />
                 </TableCell>
               </TableRow>
             ) : (

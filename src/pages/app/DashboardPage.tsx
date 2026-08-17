@@ -3,16 +3,18 @@ import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { CrmKpiCard } from "@/components/app/CrmShared";
 import { AppRightPanelSlot } from "@/components/app/AppRightPanelSlot";
+import { EstadisticasPageHeader } from "@/components/app/estadisticas/EstadisticasPageHeader";
 import { DashboardPageHeader, type DashboardView } from "@/components/app/DashboardPageHeader";
 import { DashboardRightPanel } from "@/components/app/DashboardRightPanel";
 import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { dashboardTabs, type DashboardTabId } from "@/lib/dashboard-mock-data";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { useAppPeriod } from "@/hooks/useAppPeriod";
+import type { EstadisticasScope } from "@/lib/estadisticas/estadisticas-types";
 
-const DashboardGeneralView = lazy(() =>
-  import("@/components/app/DashboardGeneralView").then((module) => ({
-    default: module.DashboardGeneralView,
+const EstadisticasView = lazy(() =>
+  import("@/components/app/estadisticas/EstadisticasView").then((module) => ({
+    default: module.EstadisticasView,
   })),
 );
 const DashboardDetalladoView = lazy(() =>
@@ -55,6 +57,7 @@ export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = parseView(searchParams);
   const [activeTab, setActiveTab] = useState<DashboardTabId>(() => parseTab(searchParams));
+  const [estadisticasScope, setEstadisticasScope] = useState<EstadisticasScope>("establecimiento");
   const { panelHidden, mobileOpen, setMobileOpen, togglePanel, isPanelVisible } = useAppRightPanel();
   const { data: analytics } = useDashboardAnalytics();
   const { range } = useAppPeriod();
@@ -73,14 +76,18 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <DashboardPageHeader view={view} />
+    <div className="flex min-h-screen flex-col bg-[#f3f4f6]">
+      {view === "dashboard" ? (
+        <EstadisticasPageHeader scope={estadisticasScope} onScopeChange={setEstadisticasScope} />
+      ) : (
+        <DashboardPageHeader view={view} />
+      )}
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto">
-          <div className="space-y-5 p-4 sm:p-6">
+          <div className="app-page-body">
             <Suspense fallback={<ViewFallback />}>
-              {view === "dashboard" && <DashboardGeneralView />}
+              {view === "dashboard" && <EstadisticasView />}
 
               {view === "resumen" && (
                 <DashboardDetalladoView activeTab={activeTab} onTabChange={handleTabChange} />

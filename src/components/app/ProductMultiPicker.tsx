@@ -1,5 +1,20 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Box, Check, Cog, Package, Plus, Search, Wrench, X } from "lucide-react";
+import {
+  Award,
+  Barcode,
+  Box,
+  Check,
+  Cog,
+  ImageIcon,
+  MoreVertical,
+  Package,
+  Plus,
+  Search,
+  Tag,
+  Warehouse,
+  Wrench,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AutocompleteOption } from "@/components/app/SearchableAutocomplete";
 import { cn } from "@/lib/utils";
@@ -49,28 +64,34 @@ function ProductOptionThumb({
   iconColor = "text-blue-600",
   imageUrl,
   label,
+  shape = "square",
 }: {
   iconKind?: string;
   iconBg?: string;
   iconColor?: string;
   imageUrl?: string | null;
   label: string;
+  shape?: "square" | "circle";
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const Icon =
     iconKind === "service" ? Wrench : iconKind === "kit" ? Box : iconKind === "cog" ? Cog : Package;
+  const isCircle = shape === "circle";
 
   if (imageUrl && !imgFailed) {
     return (
       <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white"
+        className={cn(
+          "flex shrink-0 items-center justify-center overflow-hidden border border-slate-100 bg-white",
+          isCircle ? "h-12 w-12 rounded-full" : "h-10 w-10 rounded-lg",
+        )}
         aria-hidden
       >
         <img
           src={imageUrl}
           alt=""
           loading="lazy"
-          className="h-full w-full object-contain"
+          className="h-full w-full object-cover"
           onError={() => setImgFailed(true)}
         />
       </span>
@@ -80,13 +101,36 @@ function ProductOptionThumb({
   return (
     <span
       className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100",
-        iconBg,
+        "flex shrink-0 items-center justify-center overflow-hidden border border-slate-100",
+        isCircle ? "h-12 w-12 rounded-full bg-slate-100" : cn("h-10 w-10 rounded-lg", iconBg),
       )}
       aria-hidden
       title={label}
     >
-      <Icon className={cn("h-4 w-4", iconColor)} />
+      {isCircle ? (
+        <ImageIcon className="h-5 w-5 text-slate-400" />
+      ) : (
+        <Icon className={cn("h-4 w-4", iconColor)} />
+      )}
+    </span>
+  );
+}
+
+function MetaCell({
+  icon: Icon,
+  children,
+  emphasize,
+}: {
+  icon: typeof Check;
+  children: React.ReactNode;
+  emphasize?: boolean;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] leading-4">
+      <Icon className={cn("h-3.5 w-3.5 shrink-0", emphasize ? "text-amber-600" : "text-slate-400")} />
+      <span className={cn("truncate", emphasize ? "font-medium text-amber-700" : "text-slate-500")}>
+        {children}
+      </span>
     </span>
   );
 }
@@ -277,23 +321,23 @@ export function ProductMultiPicker({
             <div
               ref={dropdownRef}
               data-haisales-portal="autocomplete"
-              className="absolute left-0 right-0 top-[calc(100%+4px)] z-[100] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl"
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
             >
               {isLoading && (
-                <p className="px-3 py-2.5 text-xs text-slate-400">Buscando en Haitech…</p>
+                <p className="px-4 py-3 text-xs text-slate-400">Buscando en Haitech…</p>
               )}
               {!isLoading && loadError && (
-                <p className="px-3 py-2.5 text-xs text-red-500">{loadError}</p>
+                <p className="px-4 py-3 text-xs text-red-500">{loadError}</p>
               )}
               {!isLoading && !loadError && filteredOptions.length === 0 && (
-                <p className="px-3 py-2.5 text-xs text-slate-400">Sin resultados</p>
+                <p className="px-4 py-3 text-xs text-slate-400">Sin resultados</p>
               )}
               <ul
                 ref={listRef}
                 id={listId}
                 role="listbox"
                 aria-multiselectable="true"
-                className="max-h-64 overflow-y-auto overscroll-contain py-1 [scrollbar-gutter:stable]"
+                className="max-h-[min(420px,50vh)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
               >
                 {filteredOptions.map((option, index) => {
                   const isSelected = selectedValues.has(option.value);
@@ -310,15 +354,32 @@ export function ProductMultiPicker({
                       ? option.meta.imageUrl
                       : null;
                   const codigo =
-                    typeof option.meta?.codigo === "string" ? option.meta.codigo : null;
+                    typeof option.meta?.codigo === "string" && option.meta.codigo.trim()
+                      ? option.meta.codigo
+                      : "Sin código";
                   const brand =
-                    typeof option.meta?.brand === "string" && option.meta.brand
+                    typeof option.meta?.brand === "string" && option.meta.brand.trim()
                       ? option.meta.brand
-                      : null;
+                      : "Sin Marca";
+                  const category =
+                    typeof option.meta?.category === "string" && option.meta.category.trim()
+                      ? option.meta.category
+                      : "Sin categoría";
+                  const barcode =
+                    typeof option.meta?.barcode === "string" && option.meta.barcode.trim()
+                      ? option.meta.barcode
+                      : "Sin Código De Barras";
                   const stock = metaNumber(option.meta, "stock");
+                  const sinStock = stock == null || stock <= 0;
                   const precioPen =
                     metaNumber(option.meta, "precioPen") ?? metaNumber(option.meta, "precio");
                   const precioUsd = metaNumber(option.meta, "precioUsd");
+                  const displayPrice =
+                    precioPen != null && precioPen > 0
+                      ? `S/ ${precioPen.toFixed(2)}`
+                      : precioUsd != null && precioUsd > 0
+                        ? `$ ${precioUsd.toFixed(2)}`
+                        : null;
 
                   return (
                     <li key={option.value} role="presentation">
@@ -337,49 +398,44 @@ export function ProductMultiPicker({
                         }}
                         onMouseEnter={() => setActiveIndex(index)}
                         className={cn(
-                          "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition",
-                          index === activeIndex ? "bg-blue-50" : "hover:bg-slate-50",
-                          isSelected && "bg-blue-50/70",
+                          "flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-b-0",
+                          index === activeIndex || isSelected ? "bg-slate-50" : "bg-white hover:bg-slate-50",
                         )}
                       >
-                        <span
-                          className={cn(
-                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                            isSelected
-                              ? "border-blue-600 bg-blue-600 text-white"
-                              : "border-slate-300 bg-white text-transparent",
-                          )}
-                        >
-                          {isSelected && <Check className="h-3 w-3" />}
-                        </span>
                         <ProductOptionThumb
                           iconKind={iconKind}
                           iconBg={iconBg}
                           iconColor={iconColor}
                           imageUrl={imageUrl}
                           label={option.label}
+                          shape="circle"
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="block font-medium text-slate-800">{option.label}</span>
-                          <span className="mt-0.5 flex items-start justify-between gap-3 text-xs text-slate-500">
-                            <span className="min-w-0 truncate">
-                              {[codigo, brand, stock != null ? `Stock ${stock}` : null]
-                                .filter(Boolean)
-                                .join(" · ")}
+                          <span className="flex items-start justify-between gap-3">
+                            <span className="min-w-0 text-sm font-semibold text-slate-900">
+                              {option.label}
                             </span>
-                            {(precioPen != null || precioUsd != null) && (
-                              <span className="shrink-0 text-right font-medium tabular-nums text-slate-700">
-                                {precioPen != null && (
-                                  <span className="block">S/ {precioPen.toFixed(2)}</span>
-                                )}
-                                {precioUsd != null && precioUsd > 0 && (
-                                  <span className="block text-[11px] font-normal text-slate-500">
-                                    $ {precioUsd.toFixed(2)}
-                                  </span>
-                                )}
-                              </span>
-                            )}
+                            <span
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400"
+                              aria-hidden
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </span>
                           </span>
+                          <span className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
+                            <MetaCell icon={Check}>{codigo}</MetaCell>
+                            <MetaCell icon={Barcode}>{barcode}</MetaCell>
+                            <MetaCell icon={Tag}>{category}</MetaCell>
+                            <MetaCell icon={Award}>{brand}</MetaCell>
+                            <MetaCell icon={Warehouse} emphasize={sinStock}>
+                              {sinStock ? "Sin Stock" : `Stock ${stock}`}
+                            </MetaCell>
+                          </span>
+                          {displayPrice ? (
+                            <span className="mt-2 block text-right text-sm font-bold tabular-nums text-emerald-600">
+                              {displayPrice}
+                            </span>
+                          ) : null}
                         </span>
                       </button>
                     </li>

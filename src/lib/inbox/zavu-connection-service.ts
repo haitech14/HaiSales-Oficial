@@ -1,10 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const SYNC_TTL_MS = 2 * 60_000;
+let lastSyncAt = 0;
+let syncInFlight: Promise<number> | null = null;
+
 export type ZavuSyncResult = {
   connected: boolean;
   projectName?: string;
   teamName?: string;
   isTestMode?: boolean;
+  conversationsSynced?: number;
+  opportunitiesSynced?: number;
 };
 
 function formatEdgeFunctionError(error: { message?: string } | null, functionName: string): string {
@@ -34,10 +40,35 @@ export async function syncZavuConnection(): Promise<ZavuSyncResult> {
     throw new Error(String(data.error));
   }
 
+  lastSyncAt = Date.now();
   return {
     connected: Boolean(data?.connected),
     projectName: data?.project?.name as string | undefined,
     teamName: data?.team?.name as string | undefined,
     isTestMode: Boolean(data?.isTestMode),
+    conversationsSynced:
+      typeof data?.conversationsSynced === "number" ? data.conversationsSynced : 0,
+    opportunitiesSynced:
+      typeof data?.opportunitiesSynced === "number" ? data.opportunitiesSynced : 0,
   };
+}
+
+/** Importa conversaciones WhatsApp, Facebook e Instagram desde Zavu. */
+export async function syncZavuConversations(options?: { force?: boolean }): Promise<number> {
+  if (!options?.force && syncInFlight) return syncInFlight;
+  if (!options?.force && Date.now() - lastSyncAt < SYNC_TTL_MS) return 0;
+
+  syncInFlight = (async () => {
+    try {
+      const result = await syncZavuConnection();
+      return result.conversationsSynced ?? 0;
+    } catch (error) {
+      console.warn("[zavu] Sync conversaciones:", error instanceof Error ? error.message : error);
+      return 0;
+    } finally {
+      syncInFlight = null;
+    }
+  })();
+
+  return syncInFlight;
 }

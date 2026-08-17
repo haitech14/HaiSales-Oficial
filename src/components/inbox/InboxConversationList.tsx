@@ -2,6 +2,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Settings2 } from "lucide-react";
 import { ChannelIcon } from "@/components/inbox/ChannelIcon";
+import { ModuleEmptyState } from "@/components/app/module-shell/ModuleEmptyState";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { splitConversationsByAssignment } from "@/lib/inbox/mock-data";
@@ -167,9 +168,11 @@ export function InboxConversationList({
 
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
-          <div className="flex h-full min-h-[200px] items-center justify-center px-4 text-center text-sm text-slate-500">
-            No hay conversaciones con los filtros actuales.
-          </div>
+          <ModuleEmptyState
+            compact
+            className="min-h-[220px] py-10"
+            message="No hay conversaciones con los filtros actuales."
+          />
         ) : (
           <>
             <ConversationSection
