@@ -1,6 +1,6 @@
 /** Tema visual del sidebar estilo HAISupport (referencia mockup). */
 export const SIDEBAR_BG = "#1845ad";
-export const SIDEBAR_WIDTH = 280;
+export const SIDEBAR_WIDTH = 260;
 export const SIDEBAR_DASHBOARD = "#8cc63f";
 /** Fondo de módulos del sidebar (pill). */
 export const SIDEBAR_MODULE = "rgba(255, 255, 255, 0.14)";
@@ -19,4 +19,4 @@ export const SIDEBAR_LOGO_HEIGHT = 28;
 export const SIDEBAR_LOGO_MAX_WIDTH = 96;
 
 /** Logo circular del selector (px). */
-export const SIDEBAR_AVATAR_SIZE = 68;
+export const SIDEBAR_AVATAR_SIZE = 60;

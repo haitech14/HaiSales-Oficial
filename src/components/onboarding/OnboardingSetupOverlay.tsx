@@ -6,8 +6,8 @@ import { useEmpresaSetupStatus } from "@/hooks/useEmpresaConfig";
 export function OnboardingSetupOverlay() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isSetupComplete, isLoading } = useEmpresaSetupStatus();
-  const setupOpen = !isLoading && !isSetupComplete;
+  const { shouldShowSetup } = useEmpresaSetupStatus();
+  const setupOpen = shouldShowSetup;
 
   useEffect(() => {
     if (!setupOpen) return;

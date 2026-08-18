@@ -41,7 +41,7 @@ export function ClientesTableHeader({
   };
 
   return (
-    <th className={cn("app-table-cell align-bottom py-2", className)}>
+    <th className={cn("app-table-cell align-bottom py-1.5", className)}>
       <div className={cn("relative", columnMinWidth)}>
         <div className="group/label relative inline-block max-w-full">
           <span

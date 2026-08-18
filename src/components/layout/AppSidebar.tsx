@@ -14,7 +14,7 @@ export function AppSidebar() {
     <aside
       className={cn(
         "sticky top-0 hidden h-dvh shrink-0 flex-col self-start transition-[width] duration-200 md:flex",
-        collapsed ? "w-[72px]" : "w-[280px]",
+        collapsed && "w-[72px]",
       )}
       style={{
         backgroundColor: SIDEBAR_BG,
@@ -97,8 +97,8 @@ export function AppMobileNav({ open, onOpenChange }: AppMobileNavProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="left"
-        className="w-[min(100vw,280px)] border-none p-0 md:hidden"
-        style={{ backgroundColor: SIDEBAR_BG }}
+        className="border-none p-0 md:hidden"
+        style={{ backgroundColor: SIDEBAR_BG, width: `min(100vw, ${SIDEBAR_WIDTH}px)` }}
       >
         <AppSidebarContent onNavigate={() => onOpenChange(false)} />
       </SheetContent>

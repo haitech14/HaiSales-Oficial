@@ -14,6 +14,7 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
+  BookOpen,
   Briefcase,
   Key,
   ShieldCheck,
@@ -59,11 +60,20 @@ export const dashboardNavGroup: NavGroup = {
   ],
 };
 
-export const anunciosNavItem: NavItem = {
-  label: "Mural",
-  href: "/app/anuncios",
+export const wikiNavItem: NavItem = {
+  label: "Wiki",
+  href: "/app/wiki",
+  icon: BookOpen,
+};
+
+export const muralNavItem: NavItem = {
+  label: "Mural de Apuntes",
+  href: "/app/mural",
   icon: Megaphone,
 };
+
+/** @deprecated Usar wikiNavItem */
+export const anunciosNavItem: NavItem = wikiNavItem;
 
 export type SidebarQuickAction = {
   label: string;
@@ -80,6 +90,8 @@ export type SidebarNavEntry = {
   color: string;
   /** Ocupa el ancho completo del grid (2 columnas). */
   wide?: boolean;
+  /** Usa el estilo compacto de píldora (icono + texto en una fila). */
+  pill?: boolean;
   quickAction?: SidebarQuickAction;
   badge?: string | number;
 };
@@ -97,15 +109,23 @@ export const sidebarEstadisticasTile = {
   wide: true,
 } satisfies Omit<SidebarNavEntry, "quickAction">;
 
-export const sidebarMuralTile = {
-  label: anunciosNavItem.label,
-  href: anunciosNavItem.href ?? "/app/anuncios",
-  icon: anunciosNavItem.icon,
-  color: "#1e88e5",
-  wide: true,
+export const sidebarWikiTile = {
+  label: wikiNavItem.label,
+  href: wikiNavItem.href ?? "/app/wiki",
+  icon: wikiNavItem.icon,
+  color: "#5c6bc0",
+  pill: true,
 } satisfies Omit<SidebarNavEntry, "quickAction">;
 
-export const sidebarPrimaryTiles = [sidebarEstadisticasTile, sidebarMuralTile] as const;
+export const sidebarMuralTile = {
+  label: "Mural",
+  href: muralNavItem.href ?? "/app/mural",
+  icon: muralNavItem.icon,
+  color: "#1e88e5",
+  pill: true,
+} satisfies Omit<SidebarNavEntry, "quickAction">;
+
+export const sidebarPrimaryTiles = [sidebarEstadisticasTile, sidebarWikiTile, sidebarMuralTile] as const;
 
 export const sidebarNavSections: SidebarNavSection[] = [
   {
@@ -190,6 +210,7 @@ export const configuracionNavGroup: NavGroup = {
   href: "/app/parametros",
   items: [
     { label: "Integraciones", href: "/app/integraciones" },
+    { label: "Usuarios", href: "/app/usuarios" },
     { label: "Parámetros", href: "/app/parametros" },
   ],
 };

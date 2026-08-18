@@ -21,6 +21,10 @@ export type Opportunity = {
   fechaIso?: string;
   intereses?: string;
   ciudad?: string;
+  tipoCliente?: string;
+  lastMessage?: string;
+  lastContactAt?: string;
+  contactPhone?: string;
 };
 
 export type ProspectDetail = {
@@ -39,6 +43,12 @@ export type ProspectDetail = {
   horaOportunidad: string;
   fechaCierreEstimada: string | null;
   statusBadge?: "Ganada" | "Cerrada" | "WhatsApp" | "Facebook" | "Instagram";
+  recentMessages?: Array<{
+    id: string;
+    direction: "inbound" | "outbound";
+    body: string;
+    sentAt: string;
+  }>;
   cliente: {
     contacto: string | null;
     celular: string | null;
@@ -99,7 +109,7 @@ export const pipelineTabs = [
   { id: "todos", label: "Todos", count: null },
   { id: "prospectos", label: "Prospectos", count: 36 },
   { id: "calificacion", label: "Calificación", count: 24 },
-  { id: "propuesta", label: "Propuesta", count: 28 },
+  { id: "propuesta", label: "Cotización", count: 28 },
   { id: "negociacion", label: "Negociación", count: 18 },
   { id: "cierre", label: "Cierre ganado", count: 12 },
 ];
@@ -250,7 +260,7 @@ export const opportunities: Opportunity[] = [
 export const pipelineByStage = [
   { stage: "Prospectos", count: 36, color: "#94a3b8", percent: 28 },
   { stage: "Calificación", count: 24, color: "#a855f7", percent: 19 },
-  { stage: "Propuesta", count: 28, color: "#3b82f6", percent: 22 },
+  { stage: "Cotización", count: 28, color: "#3b82f6", percent: 22 },
   { stage: "Negociación", count: 18, color: "#f97316", percent: 14 },
   { stage: "Cierre ganado", count: 12, color: "#22c55e", percent: 9 },
   { stage: "Perdidas", count: 10, color: "#ef4444", percent: 8 },
@@ -301,7 +311,7 @@ export const kanbanColumns: {
     ],
   },
   {
-    title: "Propuesta",
+    title: "Cotización",
     count: 28,
     cards: [
       { id: "OP-000122", name: "INVERSIONES SUR S.A.C.", amount: "S/ 32,400", time: "Hoy", owner: "Ana Martínez", probability: 55 },

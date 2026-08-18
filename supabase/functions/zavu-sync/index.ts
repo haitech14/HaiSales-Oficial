@@ -23,7 +23,23 @@ type ZavuConversation = {
   unreadCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  whatsapp?: {
+    bsuid?: string;
+    username?: string;
+  };
 };
+
+type ZavuContact = {
+  id: string;
+  displayName?: string | null;
+  profileName?: string | null;
+  primaryPhone?: string | null;
+  phoneNumber?: string | null;
+  channels?: Array<{ identifier?: string | null }>;
+};
+
+const GENERIC_NAME =
+  /^(lead|contacto|conversaci[oó]n)(\s+(whatsapp|facebook|instagram))?$/i;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -61,6 +77,55 @@ function initialsFrom(label: string, fallback: string): string {
   return label.replace(/[^A-Za-zÁÉÍÓÚáéíóú]/g, "").slice(0, 2).toUpperCase() || fallback;
 }
 
+function digitsOnly(value?: string | null): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function isHumanName(value?: string | null): boolean {
+  const text = value?.trim() ?? "";
+  if (!text || GENERIC_NAME.test(text)) return false;
+  const compact = text.replace(/\s/g, "");
+  const digits = compact.replace(/\D/g, "");
+  if (digits.length >= 7 && digits.length / Math.max(compact.length, 1) >= 0.7) return false;
+  return /[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/.test(text);
+}
+
+function pickHumanName(...candidates: Array<string | null | undefined>): string {
+  for (const value of candidates) {
+    if (isHumanName(value)) return value!.trim();
+  }
+  return "";
+}
+
+function indexContact(
+  contact: ZavuContact,
+  contactsById: Map<string, ZavuContact>,
+  contactsByPhone: Map<string, ZavuContact>,
+) {
+  contactsById.set(contact.id, contact);
+  const phones = [
+    contact.primaryPhone,
+    contact.phoneNumber,
+    ...(contact.channels ?? []).map((item) => item.identifier),
+  ];
+  for (const phone of phones) {
+    const digits = digitsOnly(phone);
+    if (digits.length >= 6 && !contactsByPhone.has(digits)) {
+      contactsByPhone.set(digits, contact);
+    }
+  }
+}
+
+function resolveContactName(conv: ZavuConversation, contact?: ZavuContact): string {
+  return (
+    pickHumanName(
+      contact?.displayName,
+      contact?.profileName,
+      conv.whatsapp?.username,
+    ) || conv.contactIdentifier
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -96,6 +161,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Sesión inválida" }, 401);
     }
 
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const defaultOwner =
+      (typeof meta.full_name === "string" && meta.full_name.trim()) ||
+      user.email?.split("@")[0] ||
+      "Usuario";
+    const defaultInitials = initialsFrom(defaultOwner, "US");
+
     const zavu = new Zavudev({ apiKey });
     const me = await zavu.me.retrieve();
     const projectId = me.project?.id ?? "zavu-default";
@@ -112,12 +184,38 @@ Deno.serve(async (req) => {
       senders.push(sender);
     }
 
-    const contactsById = new Map<
-      string,
-      { displayName?: string; profileName?: string | null; primaryPhone?: string }
-    >();
-    for await (const contact of zavu.contacts.list()) {
-      contactsById.set(contact.id, contact);
+    for (const sender of senders) {
+      try {
+        const payload = await zavu.get<{
+          sync?: { contacts?: { status?: string; canSync?: boolean } };
+        }>(`/v1/senders/${sender.id}/whatsapp-sync`);
+        const contactsSync = payload.sync?.contacts;
+        if (contactsSync?.canSync && contactsSync.status === "not_requested") {
+          await fetch(`https://api.zavu.dev/v1/senders/${sender.id}/whatsapp-sync/contacts`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+        }
+      } catch (error) {
+        console.warn("[zavu-sync] contacts sync:", error instanceof Error ? error.message : error);
+      }
+    }
+
+    const contactsById = new Map<string, ZavuContact>();
+    const contactsByPhone = new Map<string, ZavuContact>();
+    let contactCursor: string | undefined;
+    for (let page = 0; page < 40; page += 1) {
+      const payload = await zavu.get<{ items?: ZavuContact[]; nextCursor?: string | null }>(
+        "/v1/contacts",
+        { query: { limit: 100, ...(contactCursor ? { cursor: contactCursor } : {}) } },
+      );
+      const rows = payload.items ?? [];
+      for (const contact of rows) indexContact(contact, contactsById, contactsByPhone);
+      contactCursor = payload.nextCursor ?? undefined;
+      if (!contactCursor || rows.length === 0) break;
     }
 
     const conversations: ZavuConversation[] = [];
@@ -131,6 +229,28 @@ Deno.serve(async (req) => {
       conversations.push(...rows);
       cursor = payload.nextCursor ?? undefined;
       if (!cursor || rows.length === 0) break;
+    }
+
+    const missingIds = [...new Set(
+      conversations
+        .map((conv) => conv.contactId)
+        .filter((id): id is string => Boolean(id) && !contactsById.has(id)),
+    )].slice(0, 40);
+
+    for (let i = 0; i < missingIds.length; i += 8) {
+      const chunk = missingIds.slice(i, i + 8);
+      const fetched = await Promise.all(
+        chunk.map(async (id) => {
+          try {
+            return await zavu.get<ZavuContact>(`/v1/contacts/${id}`);
+          } catch {
+            return null;
+          }
+        }),
+      );
+      for (const contact of fetched) {
+        if (contact?.id) indexContact(contact, contactsById, contactsByPhone);
+      }
     }
 
     const admin = createClient(supabaseUrl, serviceRole);
@@ -229,12 +349,11 @@ Deno.serve(async (req) => {
       const connection =
         (conv.senderId ? connectionBySender.get(`${conv.senderId}:${channel}`) : undefined) ??
         [...connectionBySender.values()].find((item) => item.channel === channel);
-      const contact = conv.contactId ? contactsById.get(conv.contactId) : undefined;
+      const contact =
+        (conv.contactId ? contactsById.get(conv.contactId) : undefined) ??
+        contactsByPhone.get(digitsOnly(conv.contactIdentifier));
       const label = connection?.label || `${teamName} · ${channelLabel(channel)}`;
-      const contactName =
-        contact?.profileName?.trim() ||
-        contact?.displayName?.trim() ||
-        conv.contactIdentifier;
+      const contactName = resolveContactName(conv, contact);
       const lastMessage =
         conv.lastMessage?.text?.trim() || `Conversación ${channelLabel(channel)}`;
       const externalId = `zavu:${channel}:${conv.id}`;
@@ -262,6 +381,9 @@ Deno.serve(async (req) => {
           sender_id: conv.senderId ?? null,
           source_phone_label: label,
           message_count: conv.messageCount ?? 0,
+          display_name: contact?.displayName?.trim() || null,
+          profile_name: contact?.profileName?.trim() || null,
+          wa_username: conv.whatsapp?.username?.trim() || null,
         },
       });
 
@@ -279,8 +401,8 @@ Deno.serve(async (req) => {
         valor: 0,
         etapa: "Prospectos",
         probabilidad: 10,
-        responsable_nombre: label,
-        responsable_iniciales: initialsFrom(label, "ZV"),
+        responsable_nombre: defaultOwner,
+        responsable_iniciales: defaultInitials,
         fecha_oportunidad: conv.lastMessage?.at || conv.updatedAt || now,
       });
     }
@@ -296,7 +418,7 @@ Deno.serve(async (req) => {
     for (const row of oppRows) {
       const { data: existing } = await admin
         .from("oportunidades")
-        .select("id, etapa")
+        .select("id, etapa, cliente_nombre")
         .eq("user_id", user.id)
         .eq("codigo", row.codigo as string)
         .maybeSingle();
@@ -305,10 +427,16 @@ Deno.serve(async (req) => {
         const { error } = await admin.from("oportunidades").insert(row);
         if (error) console.error("[zavu-sync] opp insert:", error.message);
       } else if (existing.etapa === "Prospectos") {
+        const nextName = String(row.cliente_nombre ?? "");
+        const clienteNombre = isHumanName(nextName)
+          ? nextName
+          : isHumanName(existing.cliente_nombre)
+            ? existing.cliente_nombre
+            : nextName;
         const { error } = await admin
           .from("oportunidades")
           .update({
-            cliente_nombre: row.cliente_nombre,
+            cliente_nombre: clienteNombre,
             cliente_ruc: row.cliente_ruc,
             subtitulo: row.subtitulo,
             fecha_oportunidad: row.fecha_oportunidad,

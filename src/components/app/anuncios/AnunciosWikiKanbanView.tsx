@@ -117,6 +117,10 @@ type AnunciosWikiKanbanViewProps = {
   /** Modo conectar: clic en A y luego en B crea una flecha */
   connectMode?: boolean;
   onCancelConnect?: () => void;
+  /** ID del contenedor donde se renderizan los controles de zoom (portal). */
+  zoomSlotId?: string;
+  /** Fondo transparente para mostrar patrón del lienzo padre. */
+  transparentCanvas?: boolean;
 };
 
 type CardRect = { x: number; y: number; w: number; h: number };
@@ -1265,6 +1269,8 @@ export function AnunciosWikiKanbanView({
   onCancelPlace,
   connectMode = false,
   onCancelConnect,
+  zoomSlotId = "wiki-zoom-slot",
+  transparentCanvas = false,
 }: AnunciosWikiKanbanViewProps) {
   const [zoom, setZoom] = useState(1);
   const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
@@ -1400,8 +1406,8 @@ export function AnunciosWikiKanbanView({
   }, [columns]);
 
   useLayoutEffect(() => {
-    setZoomSlot(document.getElementById("wiki-zoom-slot"));
-  }, []);
+    setZoomSlot(document.getElementById(zoomSlotId));
+  }, [zoomSlotId]);
 
   useLayoutEffect(() => {
     const el = contentRef.current;
@@ -2684,7 +2690,8 @@ export function AnunciosWikiKanbanView({
   return (
     <div
       className={cn(
-        "relative flex h-full min-h-0 flex-col bg-[#e8ebf0]",
+        "relative flex h-full min-h-0 flex-col",
+        transparentCanvas ? "bg-transparent" : "bg-[#e8ebf0]",
         framed && !hideChrome && "-mx-4 -my-5 sm:-mx-6",
         !framed && "-mx-3 sm:-mx-4",
       )}

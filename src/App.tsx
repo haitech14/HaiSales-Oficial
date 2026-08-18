@@ -43,6 +43,7 @@ const PlanesMantenimientoSuministroPage = lazyWithRetry(() =>
 );
 const ServiciosPage = lazyWithRetry(() => import("@/pages/app/ServiciosPage"));
 const AnunciosPage = lazyWithRetry(() => import("@/pages/app/AnunciosPage"));
+const MuralPage = lazyWithRetry(() => import("@/pages/app/MuralPage"));
 
 const placeholderRoutes: string[] = [];
 
@@ -72,8 +73,10 @@ export default function App() {
                   >
                     <Route index element={<AppIndexPage />} />
                     <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="anuncios" element={<AnunciosPage />} />
-                    <Route path="modulo" element={<Navigate to="/app/anuncios" replace />} />
+                    <Route path="wiki" element={<AnunciosPage />} />
+                    <Route path="mural" element={<MuralPage />} />
+                    <Route path="anuncios" element={<Navigate to="/app/wiki" replace />} />
+                    <Route path="modulo" element={<Navigate to="/app/wiki" replace />} />
                     <Route path="reportes" element={<Navigate to="/app/dashboard?mode=reportes" replace />} />
                     <Route path="tesoreria" element={<TesoreriaPage />} />
                     <Route
@@ -110,10 +113,10 @@ export default function App() {
                     <Route path="servicios" element={<ServiciosPage />} />
                     <Route element={<ConfiguracionLayout />}>
                       <Route path="integraciones" element={<IntegracionesPage />} />
+                      <Route path="usuarios" element={<UsuariosPage />} />
                       <Route path="parametros" element={<ParametrosPage />} />
                     </Route>
                     <Route path="planillas" element={<PlanillasPage />} />
-                    <Route path="usuarios" element={<UsuariosPage />} />
                     <Route path="cotizaciones" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="oportunidades" element={<Navigate to="/app/pipeline" replace />} />
                     <Route path="comprobantes" element={<Navigate to="/app/ventas" replace />} />

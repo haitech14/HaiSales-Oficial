@@ -247,6 +247,68 @@ export function validateUpdateUsuarioInput(input: CreateUsuarioPayload): string 
   return validateCreateUsuarioInput({ ...input, esBorrador: false }, "create");
 }
 
+const DEFAULT_USUARIOS_EQUIPO = [
+  {
+    codigo: "USR-001",
+    nombre_completo: "Nicolas Aliaga",
+    correo: "nicolas.aliaga@haisales.pe",
+    usuario_interno: "nicolas.aliaga",
+    rol: "admin" as const,
+    cargo: "Director comercial",
+    sede_nombre: "Lima Centro",
+  },
+  {
+    codigo: "USR-002",
+    nombre_completo: "Esmeralda Rojas",
+    correo: "esmeralda.rojas@haisales.pe",
+    usuario_interno: "esmeralda.rojas",
+    rol: "ventas" as const,
+    cargo: "Ejecutiva de ventas",
+    sede_nombre: "Lima Surco",
+  },
+  {
+    codigo: "USR-003",
+    nombre_completo: "Jhelcen Romero",
+    correo: "jhelcen.romero@haisales.pe",
+    usuario_interno: "jhelcen.romero",
+    rol: "admin" as const,
+    cargo: "Administrador",
+    sede_nombre: "Lima Centro",
+  },
+] as const;
+
+async function ensureDefaultUsuarios(userId: string): Promise<void> {
+  for (const seed of DEFAULT_USUARIOS_EQUIPO) {
+    const { data: existing } = await supabase
+      .from("usuarios_empresa")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("correo", seed.correo)
+      .maybeSingle();
+
+    if (existing?.id) continue;
+
+    const { error } = await supabase.from("usuarios_empresa").insert({
+      user_id: userId,
+      codigo: seed.codigo,
+      nombre_completo: seed.nombre_completo,
+      correo: seed.correo,
+      usuario_interno: seed.usuario_interno,
+      rol: seed.rol,
+      cargo: seed.cargo,
+      sede_nombre: seed.sede_nombre,
+      estado: "activo",
+      autenticacion_2fa: "obligatorio",
+      has_2fa: true,
+      es_borrador: false,
+    });
+
+    if (error && error.code !== "23505") {
+      console.warn("[usuarios] Seed equipo:", error.message);
+    }
+  }
+}
+
 export async function fetchUsuariosSnapshot(
   userId: string | null,
   _email?: string | null,
@@ -254,6 +316,8 @@ export async function fetchUsuariosSnapshot(
   if (!userId) {
     return buildSnapshot([], "supabase");
   }
+
+  await ensureDefaultUsuarios(userId);
 
   const { data, error } = await supabase
     .from("usuarios_empresa")

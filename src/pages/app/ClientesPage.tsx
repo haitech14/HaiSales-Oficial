@@ -23,6 +23,7 @@ import { NuevoClienteModal } from "@/components/app/NuevoClienteModal";
 import { Button } from "@/components/ui/button";
 import { useClientes } from "@/hooks/useClientes";
 import { useAccionQueryParam } from "@/hooks/useAccionQueryParam";
+import { useAppRightPanel } from "@/hooks/useAppRightPanel";
 import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import { MODULE_PAGE_BG } from "@/lib/module-page-theme";
 export default function ClientesPage() {
@@ -54,6 +55,7 @@ export default function ClientesPage() {
     sortDirection,
     handleSort,
   } = useClientes();
+  const { togglePanel, isPanelVisible } = useAppRightPanel();
   const [nuevoClienteOpen, setNuevoClienteOpen] = useState(false);
   useSearchQueryParam(setSearch);
   useAccionQueryParam("nueva", () => setNuevoClienteOpen(true));
@@ -69,8 +71,10 @@ export default function ClientesPage() {
         title="Contactos"
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Buscar por razón social, RUC, contacto..."
+        searchPlaceholder="Buscar por raz?n social, RUC, contacto..."
         showDateNav={false}
+        onToggleResumen={togglePanel}
+        resumenOpen={isPanelVisible}
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pb-24 pt-2 sm:px-6 xl:flex-row xl:items-start xl:pb-6">
@@ -96,7 +100,7 @@ export default function ClientesPage() {
                 </button>
                 <button type="button" className="app-toolbar-link">
                   <Filter className="h-3.5 w-3.5" />
-                  Más filtros
+                  M?s filtros
                 </button>
               </div>
 
@@ -136,7 +140,7 @@ export default function ClientesPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="app-table-body w-full min-w-[720px] text-left sm:min-w-[2000px]">
+                <table className="app-table-body app-table-compact w-full min-w-[720px] text-left text-[12px] sm:min-w-[2100px]">
                   <thead>
                     <tr className="app-table-head-row">
                       <ClientesTableHeader
@@ -160,7 +164,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("ruc", value)}
                       />
                       <ClientesTableHeader
-                        label="Razón social"
+                        label="Raz?n social"
                         columnKey="razonSocial"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -192,7 +196,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("segmento", value)}
                       />
                       <ClientesTableHeader
-                        label="Equipo/interés"
+                        label="Equipo/inter?s"
                         columnKey="equipoInteres"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -204,7 +208,7 @@ export default function ClientesPage() {
                         columnMinWidth="min-w-[220px]"
                       />
                       <ClientesTableHeader
-                        label="Producción Mensual"
+                        label="Producci?n Mensual"
                         columnKey="produccionMensual"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -234,7 +238,19 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("contacto", value)}
                       />
                       <ClientesTableHeader
-                        label="Teléfono"
+                        label="WhatsApp"
+                        columnKey="telefono"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        filterValue={columnFilters.telefono}
+                        filterOptions={columnFilterOptions.telefono}
+                        onFilterChange={(value) => setColumnFilter("telefono", value)}
+                        className="w-[150px]"
+                        columnMinWidth="min-w-[130px]"
+                      />
+                      <ClientesTableHeader
+                        label="Tel?fono"
                         columnKey="telefono"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -244,7 +260,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("telefono", value)}
                       />
                       <ClientesTableHeader
-                        label="Dirección"
+                        label="Direcci?n"
                         columnKey="direccion"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -294,7 +310,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("correo", value)}
                       />
                       <ClientesTableHeader
-                        label="Cumpleaños"
+                        label="Cumplea?os"
                         columnKey="cumpleanos"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -304,7 +320,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("cumpleanos", value)}
                       />
                       <ClientesTableHeader
-                        label="Última compra"
+                        label="?ltima compra"
                         columnKey="ultimaCompra"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -334,7 +350,7 @@ export default function ClientesPage() {
                         onFilterChange={(value) => setColumnFilter("ticketCompra", value)}
                       />
                       <ClientesTableHeader
-                        label="Modelos interés"
+                        label="Modelos inter?s"
                         columnKey="modelosInteres"
                         sortField={sortField}
                         sortDirection={sortDirection}
@@ -353,23 +369,23 @@ export default function ClientesPage() {
                         filterOptions={columnFilterOptions.observaciones}
                         onFilterChange={(value) => setColumnFilter("observaciones", value)}
                       />
-                      <th className="app-table-cell text-right">Acción</th>
+                      <th className="app-table-cell text-right">Acci?n</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={22} className="p-0">
+                        <td colSpan={23} className="p-0">
                           <ClientesTableSkeleton />
                         </td>
                       </tr>
                     ) : filteredClients.length === 0 ? (
                       <tr>
-                        <td colSpan={22} className="p-0">
+                        <td colSpan={23} className="p-0">
                           <ModuleEmptyState
                             compact
                             message="No hay contactos que coincidan con los filtros"
-                            hint="Prueba con otro término o limpia los filtros activos."
+                            hint="Prueba con otro t?rmino o limpia los filtros activos."
                           />
                           {hasActiveFilters ? (
                             <div className="pb-6 text-center">
@@ -400,7 +416,7 @@ export default function ClientesPage() {
               <div className="app-pagination-bar flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5">
                 <p>
                   {filteredCount === 0
-                    ? `Sin resultados · ${totalRecords.toLocaleString("es-PE")} en total`
+                    ? `Sin resultados ? ${totalRecords.toLocaleString("es-PE")} en total`
                     : `Mostrando ${startIndex.toLocaleString("es-PE")} a ${endIndex.toLocaleString("es-PE")} de ${filteredCount.toLocaleString("es-PE")} contactos`}
                 </p>
 
@@ -411,7 +427,7 @@ export default function ClientesPage() {
                       onClick={() => setPage((current) => Math.max(1, current - 1))}
                       disabled={page <= 1}
                       className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                      aria-label="Página anterior"
+                      aria-label="P?gina anterior"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -423,7 +439,7 @@ export default function ClientesPage() {
                       onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                       disabled={page >= totalPages}
                       className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-                      aria-label="Página siguiente"
+                      aria-label="P?gina siguiente"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -433,7 +449,9 @@ export default function ClientesPage() {
           </section>
         </div>
 
-        <ClientesResumenPanel snapshot={snapshot} className="xl:sticky xl:top-4" />
+        {isPanelVisible ? (
+          <ClientesResumenPanel snapshot={snapshot} className="xl:sticky xl:top-4" />
+        ) : null}
       </div>
 
       <ModuleFab onClick={() => setNuevoClienteOpen(true)} />

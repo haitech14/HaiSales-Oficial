@@ -11,7 +11,7 @@ type ClientesFilterBarProps = {
 };
 
 const TAB_LABELS: Record<string, string> = {
-  todos: "Contactos",
+  todos: "Todos",
 };
 
 export function ClientesFilterBar({

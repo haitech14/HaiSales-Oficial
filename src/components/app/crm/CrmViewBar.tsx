@@ -1,17 +1,14 @@
 import type { ComponentType } from "react";
-import { LayoutGrid, List, MessageSquare, Target } from "lucide-react";
+import { MessageSquare, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CRM_ACTIVE_COLOR = "#7e57c2";
 
 type CrmView = "pipeline" | "conversaciones";
-type ViewMode = "kanban" | "tabla";
 
 type CrmViewBarProps = {
   activeView: CrmView;
   onViewChange: (view: CrmView) => void;
-  viewMode?: ViewMode;
-  onViewModeChange?: (mode: ViewMode) => void;
   className?: string;
 };
 
@@ -45,13 +42,7 @@ function ViewPill({
   );
 }
 
-export function CrmViewBar({
-  activeView,
-  onViewChange,
-  viewMode = "kanban",
-  onViewModeChange,
-  className,
-}: CrmViewBarProps) {
+export function CrmViewBar({ activeView, onViewChange, className }: CrmViewBarProps) {
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <ViewPill
@@ -66,37 +57,6 @@ export function CrmViewBar({
         active={activeView === "conversaciones"}
         onClick={() => onViewChange("conversaciones")}
       />
-
-      {activeView === "pipeline" && onViewModeChange ? (
-        <>
-          <button
-            type="button"
-            onClick={() => onViewModeChange("kanban")}
-            className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full border shadow-sm",
-              viewMode === "kanban"
-                ? "border-purple-200 bg-purple-50 text-purple-700"
-                : "border-slate-200 bg-white text-slate-500",
-            )}
-            aria-label="Kanban"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange("tabla")}
-            className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full border shadow-sm",
-              viewMode === "tabla"
-                ? "border-purple-200 bg-purple-50 text-purple-700"
-                : "border-slate-200 bg-white text-slate-500",
-            )}
-            aria-label="Tabla"
-          >
-            <List className="h-4 w-4" />
-          </button>
-        </>
-      ) : null}
     </div>
   );
 }

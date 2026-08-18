@@ -107,16 +107,21 @@ export const clientesKpis = [
 export const clientesTabs = [
   { id: "todos", label: "Todos", count: null },
   { id: "publico", label: "Público", count: 0 },
-  { id: "distribuidor", label: "Distribuidor", count: 0 },
+  { id: "distribuidor", label: "Distribuidor No Técnico", count: 0 },
   { id: "tecnico", label: "Técnico", count: 0 },
   { id: "mayorista", label: "Mayorista", count: 0 },
   { id: "proveedor", label: "Proveedor", count: 0 },
-  { id: "gobierno", label: "Gobierno", count: 0 },
 ];
 
-export const clienteTipoOptions = clientesTabs
-  .filter((tab) => tab.id !== "todos")
-  .map((tab) => tab.label);
+/** Gobierno se asigna como tipo, pero pertenece a la pestaña Público. */
+export const clienteTipoOptions = [
+  "Público",
+  "Gobierno",
+  "Distribuidor No Técnico",
+  "Técnico",
+  "Mayorista",
+  "Proveedor",
+];
 
 export const clienteSegmentoOptions: ClientSegment[] = [
   "Corporativo",
@@ -269,10 +274,21 @@ export function normalizeTipoClienteKey(tipo: string): string {
   return "publico";
 }
 
+export function clientesTabIdForTipo(tipo: string): string {
+  const key = normalizeTipoClienteKey(tipo);
+  return key === "gobierno" ? "publico" : key;
+}
+
+export function matchesClientesTipoTab(tipo: string, tabId: string): boolean {
+  if (!tabId || tabId === "todos") return true;
+  const resolvedTab = tabId === "gobierno" ? "publico" : tabId;
+  return clientesTabIdForTipo(tipo) === resolvedTab;
+}
+
 export function formatTipoClienteLabel(tipo: string): string {
   switch (normalizeTipoClienteKey(tipo)) {
     case "distribuidor":
-      return "Distribuidor";
+      return "Distribuidor No Técnico";
     case "tecnico":
       return "Técnico";
     case "mayorista":

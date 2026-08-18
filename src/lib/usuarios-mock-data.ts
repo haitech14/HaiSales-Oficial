@@ -64,6 +64,30 @@ export const usuariosKpis = [
 export const usuarios: UsuarioRecord[] = [
   {
     id: "USR-001",
+    nombre: "Nicolas Aliaga",
+    initials: "NA",
+    avatarBg: "bg-indigo-100",
+    avatarColor: "text-indigo-700",
+    correo: "nicolas.aliaga@haisales.pe",
+    rol: "Administrador",
+    sede: "Lima Centro",
+    estado: "Activo",
+    has2fa: true,
+  },
+  {
+    id: "USR-002",
+    nombre: "Esmeralda Rojas",
+    initials: "ER",
+    avatarBg: "bg-pink-100",
+    avatarColor: "text-pink-700",
+    correo: "esmeralda.rojas@haisales.pe",
+    rol: "Ventas",
+    sede: "Lima Surco",
+    estado: "Activo",
+    has2fa: true,
+  },
+  {
+    id: "USR-003",
     nombre: "Jhelcen Romero",
     initials: "JR",
     avatarBg: "bg-blue-100",
@@ -75,7 +99,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: true,
   },
   {
-    id: "USR-002",
+    id: "USR-004",
     nombre: "Ana Martínez",
     initials: "AM",
     avatarBg: "bg-violet-100",
@@ -87,7 +111,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: true,
   },
   {
-    id: "USR-003",
+    id: "USR-005",
     nombre: "María Gómez",
     initials: "MG",
     avatarBg: "bg-emerald-100",
@@ -99,7 +123,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: true,
   },
   {
-    id: "USR-004",
+    id: "USR-006",
     nombre: "Juan Campos",
     initials: "JC",
     avatarBg: "bg-orange-100",
@@ -111,7 +135,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: false,
   },
   {
-    id: "USR-005",
+    id: "USR-007",
     nombre: "Carlos Vargas",
     initials: "CV",
     avatarBg: "bg-cyan-100",
@@ -123,7 +147,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: false,
   },
   {
-    id: "USR-006",
+    id: "USR-008",
     nombre: "Verónica Salas",
     initials: "VS",
     avatarBg: "bg-pink-100",
@@ -135,7 +159,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: true,
   },
   {
-    id: "USR-007",
+    id: "USR-009",
     nombre: "Roberto Díaz",
     initials: "RD",
     avatarBg: "bg-indigo-100",
@@ -147,7 +171,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: true,
   },
   {
-    id: "USR-008",
+    id: "USR-010",
     nombre: "Patricia Ríos",
     initials: "PR",
     avatarBg: "bg-amber-100",
@@ -159,7 +183,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: false,
   },
   {
-    id: "USR-009",
+    id: "USR-011",
     nombre: "Luis Mendoza",
     initials: "LM",
     avatarBg: "bg-red-100",
@@ -171,7 +195,7 @@ export const usuarios: UsuarioRecord[] = [
     has2fa: false,
   },
   {
-    id: "USR-010",
+    id: "USR-012",
     nombre: "Carmen Delgado",
     initials: "CD",
     avatarBg: "bg-teal-100",

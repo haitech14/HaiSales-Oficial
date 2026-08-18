@@ -53,7 +53,7 @@ const systemModuleCatalog: Record<
   { label: string; subItems?: string[] }
 > = {
   dashboard: { label: "Módulo Dashboard", subItems: ["Resumen", "Reportes"] },
-  anuncios: { label: "Módulo Anuncios" },
+  anuncios: { label: "Módulo Wiki y Mural de Apuntes" },
   inbox: { label: "Módulo Bandeja / Leads" },
   crm: { label: "Módulo CRM", subItems: ["Pipeline"] },
   clientes: { label: "Módulo Clientes / Empresas" },

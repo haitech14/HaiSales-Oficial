@@ -1,20 +1,31 @@
-import { useEffect, useState } from "react";
-import { Building2, Calendar, Loader2, Mail, MapPin, User } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Activity,
+  CalendarClock,
+  ClipboardList,
+  FileText,
+  Info,
+  Loader2,
+  Plus,
+  User,
+  UserRound,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { fetchProspectDetail, formatPipelineCurrency } from "@/lib/crm/crm-service";
 import {
-  fetchProspectDetail,
-  formatCurrency,
-  formatPipelineCurrency,
-  getProbabilityStyles,
-  getStageStyles,
-} from "@/lib/crm/crm-service";
+  buildOwnerInitials,
+  formatContactPhone,
+  isPlaceholderOwner,
+  resolveOwnerName,
+} from "@/lib/crm/contact-display-name";
+import { isGenericLastMessage } from "@/lib/inbox/empty-conversations-cleanup";
 import type { ProspectDetail } from "@/lib/crm-mock-data";
 import type { PipelineCard } from "@/lib/pipeline-mock-data";
 import { cn } from "@/lib/utils";
@@ -24,14 +35,178 @@ type PipelineProspectDetailSheetProps = {
   preview?: PipelineCard | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (codigo: string) => void;
   userId?: string;
 };
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function WhatsAppGlyph({ className }: { className?: string }) {
   return (
-    <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-slate-800">{value}</dd>
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+function ChannelBadge({ badge }: { badge?: string }) {
+  if (badge === "WhatsApp") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+        <WhatsAppGlyph className="h-3.5 w-3.5" />
+        WhatsApp
+      </span>
+    );
+  }
+  if (badge === "Facebook") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+        Facebook
+      </span>
+    );
+  }
+  if (badge === "Instagram") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-1 text-[11px] font-semibold text-pink-700">
+        Instagram
+      </span>
+    );
+  }
+  return null;
+}
+
+function whatsAppUrl(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 8) return null;
+  return `https://wa.me/${digits}`;
+}
+
+function WhatsAppLink({ phone }: { phone: string }) {
+  const formatted = formatContactPhone(phone) || phone;
+  const url = whatsAppUrl(formatted);
+  if (!url) return <span>{phone || "—"}</span>;
+
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span className="truncate">{formatted}</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Abrir WhatsApp: ${formatted}`}
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 transition hover:bg-emerald-200"
+      >
+        <WhatsAppGlyph className="h-3.5 w-3.5" />
+        <span className="sr-only">Abrir WhatsApp</span>
+      </a>
+    </span>
+  );
+}
+
+function Field({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] text-slate-400">{label}</dt>
+      <dd className={cn("mt-0.5 text-[13px] font-medium text-slate-800", valueClassName)}>{value || "—"}</dd>
+    </div>
+  );
+}
+
+function Pill({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[12px] font-semibold text-blue-600", className)}>
+      {children}
+    </span>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  iconClassName,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconClassName: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg text-white", iconClassName)}>
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function formatMessageTime(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function RecentMessages({
+  messages,
+}: {
+  messages: Array<{ id: string; direction: "inbound" | "outbound"; body: string; sentAt: string }>;
+}) {
+  return (
+    <div className="space-y-2">
+      <dt className="text-[11px] text-slate-400">Últimos mensajes</dt>
+      <dd className="space-y-2">
+        {messages.map((message) => {
+          const outbound = message.direction === "outbound";
+          return (
+            <div
+              key={message.id}
+              className={cn("flex", outbound ? "justify-end" : "justify-start")}
+            >
+              <div
+                className={cn(
+                  "max-w-[92%] rounded-2xl px-3 py-2 text-[12px] leading-snug",
+                  outbound
+                    ? "rounded-br-md bg-blue-50 text-slate-800"
+                    : "rounded-bl-md bg-emerald-50 text-slate-800",
+                )}
+              >
+                <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                <p className={cn("mt-1 text-[10px]", outbound ? "text-right text-blue-400" : "text-emerald-500")}>
+                  {outbound ? "Tú · " : ""}
+                  {formatMessageTime(message.sentAt)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </dd>
+    </div>
+  );
+}
+
+function PersonRow({ initials, name }: { initials: string; name: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Avatar className="h-6 w-6">
+        <AvatarFallback className="bg-blue-100 text-[9px] font-semibold text-blue-700">{initials}</AvatarFallback>
+      </Avatar>
+      <span className="truncate text-[13px] font-medium text-slate-800">{name || "—"}</span>
     </div>
   );
 }
@@ -41,8 +216,10 @@ export function PipelineProspectDetailSheet({
   preview,
   open,
   onOpenChange,
+  onEdit,
   userId,
 }: PipelineProspectDetailSheetProps) {
+  const { displayName, initials: defaultInitials } = useUserProfile();
   const [detail, setDetail] = useState<ProspectDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +228,6 @@ export function PipelineProspectDetailSheet({
       setDetail(null);
       return;
     }
-
     if (!userId) {
       setDetail(null);
       setLoading(false);
@@ -65,263 +241,188 @@ export function PipelineProspectDetailSheet({
     });
   }, [open, codigo, userId]);
 
-  const subtitleParts = detail?.subtitulo
-    ? detail.subtitulo.split("·").map((part) => part.trim()).filter(Boolean)
-    : preview?.company
-      ? preview.company.split("·").map((part) => part.trim()).filter(Boolean)
-      : [];
-
-  const displayName = detail?.clienteNombre ?? preview?.title ?? "Detalle del prospecto";
-  const displayValue = detail?.valor ?? preview?.value ?? 0;
-  const displayOwner = detail?.responsable ?? preview?.owner ?? "—";
-  const displayOwnerInitials = detail?.responsableIniciales ?? preview?.ownerInitials ?? "—";
-  const displayDate = detail?.fechaOportunidad ?? preview?.dueDate ?? "—";
-  const displayCiudad = detail?.cliente?.ciudad ?? preview?.ciudad;
-  const displayIntereses = preview?.intereses;
+  const title = detail?.titulo || preview?.title || "—";
+  const phone =
+    formatContactPhone(preview?.contactPhone) ||
+    formatContactPhone(detail?.cliente?.telefono) ||
+    formatContactPhone(detail?.cliente?.celular) ||
+    formatContactPhone(detail?.clienteRuc) ||
+    formatContactPhone(preview?.intereses) ||
+    "—";
+  const source = detail?.statusBadge || preview?.statusBadge || "Manual";
+  const stage = detail?.pipelineStage || "Prospección";
+  const probability = detail?.probabilidad ?? 10;
+  const value = detail?.valor ?? preview?.value ?? 0;
+  const createdAt = detail
+    ? `${detail.fechaOportunidad} ${detail.horaOportunidad}`
+    : preview?.lastContactAt || preview?.dueDate || "—";
+  const closeDate = detail?.fechaCierreEstimada ?? "—";
+  const description = detail?.subtitulo?.trim() || preview?.lastMessage || "—";
+  const recentMessages = detail?.recentMessages ?? [];
+  const showGenericDescription =
+    recentMessages.length === 0 && !isGenericLastMessage(description === "—" ? "" : description);
+  const notes = detail?.cliente?.observaciones?.trim() || "—";
+  const rawOwner = detail?.responsable || preview?.owner || "";
+  const owner = resolveOwnerName(rawOwner, displayName);
+  const ownerInitials = isPlaceholderOwner(rawOwner)
+    ? defaultInitials
+    : detail?.responsableIniciales || preview?.ownerInitials || buildOwnerInitials(owner);
+  const tipoCliente = detail?.cliente?.tipoCliente || preview?.tipoCliente || "—";
+  const channelBadge = detail?.statusBadge || preview?.statusBadge;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90vh,720px)] w-full max-w-2xl overflow-y-auto p-0 sm:rounded-xl">
-        <DialogHeader className="border-b border-slate-100 px-6 pb-4 pt-6">
-          <DialogTitle className="pr-8 text-left text-lg">{displayName}</DialogTitle>
-          <DialogDescription className="text-left">
-            {codigo ? `Oportunidad ${codigo}` : "Información comercial y de seguimiento"}
+      <DialogContent
+        overlayClassName="bg-slate-900/40"
+        className="flex max-h-[min(92vh,860px)] w-full max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl"
+      >
+        <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
+          <DialogTitle className="pr-8 text-left text-[20px] font-bold text-slate-900">
+            Detalles de la oportunidad
+          </DialogTitle>
+          <DialogDescription className="mt-2.5 flex flex-wrap items-center gap-2 text-left">
+            <ChannelBadge badge={channelBadge} />
+            <span className="text-[13px] text-slate-500">Oportunidad {codigo}</span>
           </DialogDescription>
-        </DialogHeader>
+        </div>
 
-        <div className="px-6 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {loading && !detail && !preview ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Cargando prospecto...
-            </div>
-          ) : detail || preview ? (
-            <div className="space-y-4 text-sm">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                {loading && (
-                  <p className="mb-2 flex items-center gap-2 text-xs text-slate-500">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Actualizando detalle...
-                  </p>
-                )}
-
-                {detail && (
-                  <div className="flex flex-wrap gap-2">
-                    {detail.statusBadge && (
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          detail.statusBadge === "WhatsApp"
-                            ? "bg-green-100 text-green-700"
-                            : detail.statusBadge === "Facebook"
-                              ? "bg-blue-100 text-blue-700"
-                              : detail.statusBadge === "Instagram"
-                                ? "bg-pink-100 text-pink-700"
-                                : detail.statusBadge === "Ganada"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-100 text-slate-600",
-                        )}
-                      >
-                        {detail.statusBadge}
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
-                        getStageStyles(detail.etapa),
-                      )}
-                    >
-                      {detail.pipelineStage}
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
-                        getProbabilityStyles(detail.probabilidad),
-                      )}
-                    >
-                      {detail.probabilidad}% probabilidad
-                    </span>
-                  </div>
-                )}
-
-                {detail?.titulo && detail.titulo !== displayName && (
-                  <p className="mt-3 text-base font-semibold text-slate-900">{detail.titulo}</p>
-                )}
-
-                {displayIntereses && (
-                  <p className="mt-2 text-xs leading-relaxed text-slate-600">{displayIntereses}</p>
-                )}
-
-                {subtitleParts.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
-                    {subtitleParts.map((part) => (
-                      <li key={part}>{part}</li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <DetailRow label="Valor" value={formatPipelineCurrency(displayValue)} />
-                  <DetailRow label="Responsable" value={displayOwner} />
-                  <DetailRow label="Fecha" value={displayDate} />
-                  <DetailRow label="Ubicación" value={displayCiudad ?? "—"} />
-                </div>
-              </div>
-
-              {detail ? (
-                <>
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</h3>
-                    <dl className="mt-3 grid grid-cols-2 gap-3">
-                      <DetailRow label="RUC" value={detail.clienteRuc || "—"} />
-                      <DetailRow
-                        label="Tipo"
-                        value={detail.cliente?.tipoCliente ?? subtitleParts.find((p) => !p.includes(":")) ?? "—"}
-                      />
-                      <DetailRow label="Segmento" value={detail.cliente?.segmento ?? "—"} />
-                      <DetailRow label="Estado" value={detail.cliente?.estadoComercial ?? "Prospecto"} />
-                      <DetailRow label="Contacto" value={detail.cliente?.contacto ?? "—"} />
-                      <DetailRow label="Celular" value={detail.cliente?.celular ?? "—"} />
-                    </dl>
-
-                    {(detail.cliente?.correo || detail.cliente?.direccion || detail.cliente?.ciudad) && (
-                      <ul className="mt-3 space-y-2 text-xs text-slate-600">
-                        {detail.cliente.correo && (
-                          <li className="flex items-center gap-2">
-                            <Mail className="h-3.5 w-3.5 text-slate-400" />
-                            {detail.cliente.correo}
-                          </li>
-                        )}
-                        {(detail.cliente.direccion || detail.cliente.ciudad) && (
-                          <li className="flex items-start gap-2">
-                            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                            <span>
-                              {[detail.cliente.direccion, detail.cliente.ciudad].filter(Boolean).join(" · ")}
-                            </span>
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  </section>
-
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seguimiento</h3>
-                    <dl className="mt-3 grid grid-cols-2 gap-3">
-                      <DetailRow
-                        label="Fecha oportunidad"
-                        value={`${detail.fechaOportunidad} ${detail.horaOportunidad}`}
-                      />
-                      <DetailRow label="Cierre estimado" value={detail.fechaCierreEstimada ?? "—"} />
-                    </dl>
-                    <div className="mt-3 flex items-center gap-2">
-                      <Avatar className="h-7 w-7">
-                        <AvatarFallback className="bg-blue-100 text-[10px] font-semibold text-blue-700">
-                          {detail.responsableIniciales}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-xs text-slate-500">Responsable</p>
-                        <p className="font-medium text-slate-800">{detail.responsable}</p>
-                      </div>
-                    </div>
-                    {detail.cliente?.ejecutivo && detail.cliente.ejecutivo !== detail.responsable && (
-                      <p className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                        <User className="h-3.5 w-3.5 text-slate-400" />
-                        Ejecutivo cartera: {detail.cliente.ejecutivo}
-                      </p>
-                    )}
-                  </section>
-
-                  {detail.ventasRecientes.length > 0 && (
-                    <section className="rounded-xl border border-slate-200 p-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Compras recientes
-                      </h3>
-                      <ul className="mt-3 space-y-2">
-                        {detail.ventasRecientes.map((venta) => (
-                          <li
-                            key={venta.codigo}
-                            className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <p className="font-medium text-slate-800">{venta.codigo}</p>
-                                <p className="flex items-center gap-1 text-xs text-slate-500">
-                                  <Calendar className="h-3 w-3" />
-                                  {venta.fecha}
-                                </p>
-                              </div>
-                              <span className="shrink-0 font-semibold text-slate-900">
-                                {formatCurrency(venta.total)}
-                              </span>
-                            </div>
-
-                            {venta.items.length > 0 ? (
-                              <ul className="mt-2 space-y-1.5 border-t border-slate-200/80 pt-2">
-                                {venta.items.map((item, index) => (
-                                  <li
-                                    key={`${venta.codigo}-${index}`}
-                                    className="flex items-start justify-between gap-3 text-xs"
-                                  >
-                                    <span className="min-w-0 text-slate-700">
-                                      <span className="font-medium text-slate-500">{item.cantidad}×</span>{" "}
-                                      {item.descripcion}
-                                    </span>
-                                    <span className="shrink-0 font-medium text-slate-600">
-                                      {formatCurrency(item.subtotal)}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="mt-2 border-t border-slate-200/80 pt-2 text-xs text-slate-400">
-                                Sin detalle de productos
-                              </p>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-
-                  {detail.cliente?.observaciones && (
-                    <section className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-900">
-                      <p className="font-semibold">Observaciones</p>
-                      <p className="mt-1">{detail.cliente.observaciones}</p>
-                    </section>
-                  )}
-
-                  <p className="flex items-center gap-2 text-xs text-slate-400">
-                    <Building2 className="h-3.5 w-3.5" />
-                    Datos sincronizados desde clientes y ventas
-                  </p>
-                </>
-              ) : (
-                <section className="rounded-xl border border-slate-200 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumen</h3>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-blue-100 text-[10px] font-semibold text-blue-700">
-                        {displayOwnerInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-xs text-slate-500">Asesor</p>
-                      <p className="font-medium text-slate-800">{displayOwner}</p>
-                    </div>
-                  </div>
-                  {displayCiudad && (
-                    <p className="mt-3 flex items-center gap-2 text-xs text-slate-600">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                      {displayCiudad}
-                    </p>
-                  )}
-                </section>
-              )}
+              Cargando oportunidad...
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-slate-500">No se encontró el prospecto.</p>
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="space-y-4">
+                <SectionCard title="Información general" icon={ClipboardList} iconClassName="bg-blue-500">
+                  <dl className="space-y-3">
+                    <Field label="Nombre de la oportunidad" value={title} />
+                    <Field label="Número" value={<WhatsAppLink phone={phone} />} />
+                    <Field label="Fuente" value={source} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Etapa actual" value={<Pill>{stage}</Pill>} />
+                      <Field label="Probabilidad de éxito" value={<Pill>{probability}%</Pill>} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-3">
+                      <Field
+                        label="Valor estimado"
+                        value={formatPipelineCurrency(value)}
+                        valueClassName="font-bold text-blue-600"
+                      />
+                      <Field label="Fecha de creación" value={createdAt} />
+                      <Field label="Fecha de cierre estimada" value={closeDate} />
+                    </div>
+                  </dl>
+                </SectionCard>
+
+                <SectionCard title="Resumen" icon={FileText} iconClassName="bg-amber-400">
+                  <dl className="space-y-3">
+                    {recentMessages.length > 0 ? (
+                      <RecentMessages messages={recentMessages} />
+                    ) : loading ? (
+                      <div className="flex items-center gap-2 py-1 text-[12px] text-slate-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Cargando mensajes de WhatsApp...
+                      </div>
+                    ) : (
+                      <Field
+                        label="Descripción"
+                        value={showGenericDescription ? description : "Sin mensajes recientes"}
+                      />
+                    )}
+                    <Field label="Notas internas" value={notes} />
+                  </dl>
+                </SectionCard>
+              </div>
+
+              <div className="space-y-4">
+                <SectionCard title="Cliente" icon={User} iconClassName="bg-emerald-500">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <Field label="RUC" value={detail?.clienteRuc || "—"} />
+                    <Field label="Tipo" value={tipoCliente} />
+                    <Field label="Segmento" value={detail?.cliente?.segmento || "—"} />
+                    <Field label="Estado" value={detail?.cliente?.estadoComercial || "Prospecto"} />
+                    <Field label="Contacto principal" value={detail?.cliente?.contacto || "—"} />
+                    <Field
+                      label="Teléfono"
+                      value={
+                        <WhatsAppLink
+                          phone={detail?.cliente?.telefono || detail?.cliente?.celular || phone}
+                        />
+                      }
+                    />
+                    <Field label="Email" value={detail?.cliente?.correo || "—"} />
+                    <Field
+                      label="Ubicación"
+                      value={[detail?.cliente?.direccion, detail?.cliente?.ciudad].filter(Boolean).join(" · ") || "—"}
+                    />
+                  </dl>
+                </SectionCard>
+
+                <SectionCard title="Seguimiento" icon={CalendarClock} iconClassName="bg-violet-500">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <Field label="Último contacto" value={createdAt} />
+                    <Field label="Próxima acción" value="—" />
+                    <div>
+                      <dt className="text-[11px] text-slate-400">Responsable</dt>
+                      <dd className="mt-0.5">
+                        <PersonRow initials={ownerInitials} name={owner} />
+                      </dd>
+                    </div>
+                    <Field label="Cierre estimado" value={closeDate} />
+                  </dl>
+                </SectionCard>
+
+                <SectionCard title="Responsable" icon={UserRound} iconClassName="bg-blue-500">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <dt className="text-[11px] text-slate-400">Asignado a</dt>
+                      <dd className="mt-0.5">
+                        <PersonRow initials={ownerInitials} name={owner} />
+                      </dd>
+                    </div>
+                    <Field label="Equipo" value="—" />
+                  </dl>
+                </SectionCard>
+
+                <SectionCard title="Actividades recientes" icon={Activity} iconClassName="bg-sky-400">
+                  <div className="rounded-lg bg-sky-50 px-3 py-3 text-[13px] text-sky-800">
+                    <p className="flex items-start gap-2">
+                      <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+                      Aún no hay actividades registradas para esta oportunidad.
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-500"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Registrar actividad
+                    </button>
+                  </div>
+                </SectionCard>
+              </div>
+            </div>
           )}
+        </div>
+
+        <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 rounded-lg border-slate-200 px-5 text-slate-700"
+            onClick={() => codigo && onEdit?.(codigo)}
+            disabled={!codigo}
+          >
+            Editar
+          </Button>
+          <Button
+            type="button"
+            className="h-10 rounded-lg bg-blue-600 px-5 hover:bg-blue-500"
+            onClick={() => onOpenChange(false)}
+          >
+            Cerrar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

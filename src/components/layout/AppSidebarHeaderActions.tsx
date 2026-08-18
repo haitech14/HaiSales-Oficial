@@ -73,7 +73,7 @@ export function AppSidebarHeaderActions({
   return (
     <div className={cn("flex items-center gap-0.5", className)}>
       <Link
-        to="/app/anuncios"
+        to="/app/wiki"
         onClick={onNavigate}
         title="Ayuda"
         className={iconButtonClass}
@@ -144,8 +144,8 @@ export function AppSidebarHeaderActions({
           </div>
           <DropdownMenuSeparator className="m-0" />
           <DropdownMenuItem asChild className="justify-center py-2.5 text-center text-sm font-medium text-blue-600">
-            <Link to="/app/anuncios" onClick={onNavigate}>
-              Ver mural de avisos
+            <Link to="/app/wiki" onClick={onNavigate}>
+              Ver Wiki
             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>

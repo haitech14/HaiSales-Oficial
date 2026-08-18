@@ -301,7 +301,7 @@ export function CrmRightPanel({ className }: { className?: string }) {
               {[
                 ["Prospectos", "36", "28%"],
                 ["Calificación", "24", "19%"],
-                ["Propuesta", "28", "22%"],
+                ["Cotización", "28", "22%"],
                 ["Negociación", "18", "14%"],
                 ["Cierre ganado", "12", "9%"],
                 ["Perdidas", "10", "8%"],

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { DollarSign, Percent, Target, Trophy } from "lucide-react";
 
-export type PipelineStage = "Prospección" | "Calificación" | "Propuesta" | "Negociación" | "Ganada";
+export type PipelineStage = "Prospección" | "Calificación" | "Cotización" | "Negociación" | "Ganada";
 
 export type PipelineCard = {
   id: string;
@@ -15,6 +15,13 @@ export type PipelineCard = {
   statusBadge?: "Ganada" | "Cerrada" | "WhatsApp" | "Facebook" | "Instagram";
   intereses?: string;
   ciudad?: string;
+  tipoCliente?: string;
+  tipoClienteKey?: string;
+  fuenteKey?: string;
+  lastMessage?: string;
+  lastContactAt?: string;
+  contactPhone?: string;
+  contactName?: string;
 };
 
 export type PipelineColumn = {
@@ -155,7 +162,7 @@ export const pipelineColumns: PipelineColumn[] = [
   },
   {
     id: "propuesta",
-    title: "Propuesta",
+    title: "Cotización",
     count: 24,
     totalValue: 356200,
     borderColor: "border-t-violet-500",
@@ -280,15 +287,15 @@ export const pipelineColumns: PipelineColumn[] = [
 export const pipelineFunnel = [
   { stage: "Prospección", count: 128, value: 1248500, color: "#3b82f6", width: "100%" },
   { stage: "Calificación", count: 76, value: 986200, color: "#f59e0b", width: "78%" },
-  { stage: "Propuesta", count: 58, value: 740400, color: "#8b5cf6", width: "62%" },
+  { stage: "Cotización", count: 58, value: 740400, color: "#8b5cf6", width: "62%" },
   { stage: "Negociación", count: 34, value: 489600, color: "#f97316", width: "48%" },
   { stage: "Ganada", count: 34, value: 325800, color: "#22c55e", width: "38%" },
 ];
 
 export const pipelineConversion = [
   { label: "Prospección → Calificación", percent: 60, color: "bg-blue-500" },
-  { label: "Calificación → Propuesta", percent: 72, color: "bg-amber-400" },
-  { label: "Propuesta → Negociación", percent: 58, color: "bg-violet-500" },
+  { label: "Calificación → Cotización", percent: 72, color: "bg-amber-400" },
+  { label: "Cotización → Negociación", percent: 58, color: "bg-violet-500" },
   { label: "Negociación → Ganada", percent: 45, color: "bg-emerald-500" },
 ];
 

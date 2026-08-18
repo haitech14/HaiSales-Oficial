@@ -12,8 +12,8 @@ import { AppMobileHeader, AppMobileNav, AppSidebar } from "./AppSidebar";
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { isSetupComplete, isLoading } = useEmpresaSetupStatus();
-  const setupOpen = !isLoading && !isSetupComplete;
+  const { shouldShowSetup } = useEmpresaSetupStatus();
+  const setupOpen = shouldShowSetup;
 
   return (
     <WorkspaceProvider>

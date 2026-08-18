@@ -22,6 +22,7 @@ export function PipelineInboxView() {
     whatsappConnectionFilter,
     setWhatsappConnectionFilter,
     isLoading,
+    isError,
     invalidate,
   } = useInbox();
 
@@ -57,17 +58,28 @@ export function PipelineInboxView() {
     hasMessagingConnected &&
     (filters.view === "all" || filters.view === "whatsapp" || filters.view === "unread");
 
-  if (isLoading || !snapshot) {
+  if (isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20 text-sm text-slate-500">
+      <div className="flex h-full min-h-[420px] flex-1 items-center justify-center py-20 text-sm text-slate-500">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         Cargando conversaciones...
       </div>
     );
   }
 
+  if (isError || !snapshot) {
+    return (
+      <div className="flex h-full min-h-[420px] flex-1 flex-col items-center justify-center gap-2 px-6 py-20 text-center text-sm text-slate-500">
+        <p>No se pudieron cargar las conversaciones.</p>
+        <Button variant="outline" size="sm" onClick={() => invalidate()}>
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
       {snapshot.source === "supabase" && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-1.5 text-xs text-emerald-700 sm:px-6">
           <span>

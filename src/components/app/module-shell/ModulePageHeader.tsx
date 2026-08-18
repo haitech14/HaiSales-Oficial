@@ -13,6 +13,7 @@ type ModulePageHeaderProps = {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   showDateNav?: boolean;
+  showSearchField?: boolean;
   onToggleResumen?: () => void;
   resumenOpen?: boolean;
 };
@@ -27,6 +28,7 @@ export function ModulePageHeader({
   onSearchChange,
   searchPlaceholder = "Buscar...",
   showDateNav = true,
+  showSearchField = false,
   onToggleResumen,
   resumenOpen = false,
 }: ModulePageHeaderProps) {
@@ -46,29 +48,34 @@ export function ModulePageHeader({
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 pt-1">
-          {canSearch && searchOpen ? (
-            <div className="relative mr-1 w-[min(72vw,240px)]">
+        <div className="flex shrink-0 items-center gap-2 pt-1">
+          {canSearch && (showSearchField || searchOpen) ? (
+            <div className={cn("relative mr-1", showSearchField ? "w-[min(72vw,200px)]" : "w-[min(72vw,220px)]")}>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={search}
                 onChange={(event) => onSearchChange?.(event.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-9 w-full rounded-full border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-700 outline-none ring-blue-500 focus:ring-2"
-                autoFocus
+                className={cn(
+                  "h-9 w-full rounded-full border border-slate-200 bg-white pl-9 text-sm text-slate-700 outline-none ring-blue-500 focus:ring-2",
+                  showSearchField ? "pr-4" : "pr-9",
+                )}
+                autoFocus={!showSearchField}
               />
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchOpen(false);
-                  onSearchChange?.("");
-                }}
-                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
-                aria-label="Cerrar búsqueda"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              {!showSearchField ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen(false);
+                    onSearchChange?.("");
+                  }}
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100"
+                  aria-label="Cerrar búsqueda"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -101,7 +108,7 @@ export function ModulePageHeader({
               <ChevronRight className="h-5 w-5" />
             </button>
           ) : null}
-          {canSearch && !searchOpen ? (
+          {canSearch && !searchOpen && !showSearchField ? (
             <button
               type="button"
               onClick={() => setSearchOpen(true)}

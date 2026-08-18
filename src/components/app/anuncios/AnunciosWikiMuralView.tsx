@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 type AnunciosWikiMuralViewProps = {
   columns: WikiMuralColumn[];
   onChange: (columns: WikiMuralColumn[]) => void;
+  className?: string;
 };
 
 const TOOLS: { type: WikiMuralBlockType; label: string; icon: typeof StickyNote }[] = [
@@ -237,7 +238,7 @@ function MuralCard({
   );
 }
 
-export function AnunciosWikiMuralView({ columns, onChange }: AnunciosWikiMuralViewProps) {
+export function AnunciosWikiMuralView({ columns, onChange, className }: AnunciosWikiMuralViewProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragMove | null>(null);
   const safeColumns = ensureCanvas(columns);
@@ -270,7 +271,7 @@ export function AnunciosWikiMuralView({ columns, onChange }: AnunciosWikiMuralVi
   };
 
   return (
-    <div className="flex min-h-[520px] gap-3">
+    <div className={cn("flex min-h-0 flex-1 gap-3", className)}>
       <aside className="flex w-14 shrink-0 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
         {TOOLS.map((tool) => {
           const Icon = tool.icon;
@@ -291,7 +292,7 @@ export function AnunciosWikiMuralView({ columns, onChange }: AnunciosWikiMuralVi
 
       <div
         ref={canvasRef}
-        className="relative min-h-[520px] min-w-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-[#eef1f5]"
+        className="relative min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-[#eef1f5]"
         onPointerMove={handlePointerMove}
         onPointerUp={() => setDrag(null)}
         onPointerLeave={() => setDrag(null)}

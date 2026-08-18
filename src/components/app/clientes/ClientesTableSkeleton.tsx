@@ -9,7 +9,7 @@ export function ClientesTableSkeleton({ rows = 8, className }: ClientesTableSkel
   return (
     <div className={cn("divide-y divide-slate-100", className)}>
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="flex items-center gap-4 px-4 py-3.5">
+        <div key={index} className="flex items-center gap-4 px-3 py-2">
           <div className="h-4 w-20 animate-pulse rounded bg-slate-100" />
           <div className="h-4 w-24 animate-pulse rounded bg-slate-100" />
           <div className="h-4 min-w-[180px] flex-1 animate-pulse rounded bg-slate-100" />

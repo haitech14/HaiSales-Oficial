@@ -5,8 +5,11 @@ import { HaiSalesLogo } from "@/components/landing/HaiSalesLogo";
 import { EmpresaSucursalSwitcher } from "@/components/layout/EmpresaSucursalSwitcher";
 import { SIDEBAR_BG, SIDEBAR_SECTION } from "@/components/layout/sidebar-theme";
 import {
+  sidebarEstadisticasTile,
+  sidebarMuralTile,
   sidebarNavSections,
   sidebarPrimaryTiles,
+  sidebarWikiTile,
   type SidebarNavEntry,
 } from "@/lib/app-navigation";
 import { filterSidebarNavSections } from "@/lib/auth/roles";
@@ -53,6 +56,14 @@ function prefetchModulePage(href: string) {
   }
   if (href === "/app/pipeline") {
     void import("@/pages/app/PipelinePage");
+    return;
+  }
+  if (href === "/app/wiki") {
+    void import("@/pages/app/AnunciosPage");
+    return;
+  }
+  if (href === "/app/mural") {
+    void import("@/pages/app/MuralPage");
   }
 }
 
@@ -93,12 +104,13 @@ function SidebarModuleTile({
     );
   }
 
-  if (entry.wide) {
+  if (entry.wide || entry.pill) {
     return (
       <div
         className={cn(
-          "relative col-span-2 rounded-xl shadow-sm transition hover:brightness-105",
-          tileRing,
+          "relative min-w-0 rounded-xl shadow-sm transition hover:brightness-105",
+          entry.wide && "col-span-2",
+          isActive && "ring-2 ring-white/80",
         )}
         style={{ backgroundColor: entry.color }}
       >
@@ -117,7 +129,7 @@ function SidebarModuleTile({
         <div className="relative z-10 flex min-h-[42px] w-full items-center gap-2 px-2.5 py-2 pointer-events-none">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-white">
             <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-            <span className="text-left text-[13px] font-bold leading-tight">{entry.label}</span>
+            <span className="min-w-0 truncate text-left text-[13px] font-bold leading-tight">{entry.label}</span>
           </div>
           {entry.quickAction ? (
             <Link
@@ -126,10 +138,10 @@ function SidebarModuleTile({
                 event.stopPropagation();
                 onNavigate?.();
               }}
-              className="pointer-events-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white transition hover:bg-white/35"
+              className="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white transition hover:bg-white/35"
             >
               {entry.quickAction.showPlus !== false ? (
-                <Plus className="h-2.5 w-2.5" strokeWidth={2.5} />
+                <Plus className="h-3 w-3" strokeWidth={2.5} />
               ) : null}
               {entry.quickAction.label}
             </Link>
@@ -160,7 +172,7 @@ function SidebarModuleTile({
         className="absolute inset-0 z-0 rounded-xl"
       />
       <div className="relative z-10 flex min-h-[80px] flex-col justify-end p-3 pointer-events-none">
-        <div className="relative mb-1.5 h-6">
+        <div className="relative mb-1.5 h-7">
           <Icon
             className="absolute left-0 top-0 h-[22px] w-[22px] text-white"
             strokeWidth={1.75}
@@ -172,10 +184,10 @@ function SidebarModuleTile({
                 event.stopPropagation();
                 onNavigate?.();
               }}
-              className="pointer-events-auto absolute right-0 top-0 inline-flex max-w-[calc(100%-28px)] items-center gap-0.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white transition hover:bg-white/35"
+              className="pointer-events-auto absolute right-0 top-0 inline-flex max-w-[calc(100%-28px)] items-center gap-1 rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white transition hover:bg-white/35"
             >
               {entry.quickAction.showPlus !== false ? (
-                <Plus className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />
+                <Plus className="h-3 w-3 shrink-0" strokeWidth={2.5} />
               ) : null}
               <span className="truncate">{entry.quickAction.label}</span>
             </Link>
@@ -238,7 +250,7 @@ export function AppSidebarContent({
         <EmpresaSucursalSwitcher collapsed={collapsed} className="mb-3 mt-1" />
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col px-3.5">
+      <div className="flex min-h-0 flex-1 flex-col px-3">
         <nav className="scrollbar-sidebar flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-3">
           {collapsed ? (
             <div className="grid grid-cols-2 gap-2">
@@ -254,16 +266,27 @@ export function AppSidebarContent({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2">
-                {sidebarPrimaryTiles.map((entry) => (
+              <div className="space-y-2">
+                <SidebarModuleTile
+                  entry={sidebarEstadisticasTile}
+                  isActive={isNavItemActive(sidebarEstadisticasTile.href, location.pathname, searchParams)}
+                  collapsed={false}
+                  onNavigate={onNavigate}
+                />
+                <div className="grid grid-cols-2 gap-2">
                   <SidebarModuleTile
-                    key={entry.href}
-                    entry={entry}
-                    isActive={isNavItemActive(entry.href, location.pathname, searchParams)}
+                    entry={sidebarWikiTile}
+                    isActive={isNavItemActive(sidebarWikiTile.href, location.pathname, searchParams)}
                     collapsed={false}
                     onNavigate={onNavigate}
                   />
-                ))}
+                  <SidebarModuleTile
+                    entry={sidebarMuralTile}
+                    isActive={isNavItemActive(sidebarMuralTile.href, location.pathname, searchParams)}
+                    collapsed={false}
+                    onNavigate={onNavigate}
+                  />
+                </div>
               </div>
 
               {navSections.map((section) => (

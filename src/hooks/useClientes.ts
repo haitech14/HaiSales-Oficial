@@ -8,7 +8,7 @@ import {
   fetchClientesEnrichment,
   fetchClientesList,
   mergeClientesEnrichment,
-  normalizeTipoClienteKey,
+  matchesClientesTipoTab,
   updateClienteField,
   type ClienteEditableField,
 } from "@/lib/clientes/clientes-service";
@@ -213,9 +213,7 @@ export function useClientes() {
     const query = search.trim().toLowerCase();
 
     const filtered = data.clients.filter((client) => {
-      const matchesTab =
-        activeTab === "todos" ||
-        normalizeTipoClienteKey(client.tipoCliente) === activeTab;
+      const matchesTab = matchesClientesTipoTab(client.tipoCliente, activeTab);
 
       const matchesColumns = COLUMN_KEYS.every((key) =>
         matchesColumnFilter(client, key, columnFilters[key]),

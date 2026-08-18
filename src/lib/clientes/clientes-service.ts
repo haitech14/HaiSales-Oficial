@@ -24,7 +24,7 @@ import {
   demoClienteRucs,
   emptyDebtByAge,
   formatTipoClienteLabel,
-  normalizeTipoClienteKey,
+  clientesTabIdForTipo,
   type ClientRecord,
   type ClientSegment,
   type ClientStatus,
@@ -169,13 +169,12 @@ function buildSnapshot(
     tecnico: 0,
     mayorista: 0,
     proveedor: 0,
-    gobierno: 0,
   };
 
   for (const client of clients) {
-    const key = normalizeTipoClienteKey(client.tipoCliente);
-    if (key in tabCounts && key !== "todos") {
-      tabCounts[key] = (tabCounts[key] ?? 0) + 1;
+    const tabKey = clientesTabIdForTipo(client.tipoCliente);
+    if (tabKey in tabCounts && tabKey !== "todos") {
+      tabCounts[tabKey] = (tabCounts[tabKey] ?? 0) + 1;
     }
   }
 
@@ -1176,4 +1175,11 @@ export async function searchClientesForPicker(
   return ordered.slice(0, limit);
 }
 
-export { clientesTabs, getClientStatusStyles, getSegmentStyles, getTipoClienteStyles, normalizeTipoClienteKey } from "@/lib/clientes-mock-data";
+export {
+  clientesTabs,
+  getClientStatusStyles,
+  getSegmentStyles,
+  getTipoClienteStyles,
+  matchesClientesTipoTab,
+  normalizeTipoClienteKey,
+} from "@/lib/clientes-mock-data";

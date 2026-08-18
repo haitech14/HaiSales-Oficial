@@ -72,8 +72,8 @@ export default function UsuariosPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <AppPageHeader
-        title="Usuarios/Planillas"
-        subtitle="Administra accesos, roles, permisos, sucursales, seguridad e historial de actividad."
+        title="Usuarios"
+        subtitle="Administra accesos, roles, permisos y sucursales del equipo."
         showPanelToggle
         panelHidden={!isPanelVisible}
         onTogglePanel={togglePanel}

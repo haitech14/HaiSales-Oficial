@@ -7,6 +7,7 @@ import {
 import { syncKapsoConversations } from "@/lib/inbox/whatsapp-connection-service";
 import { syncZernioConversations } from "@/lib/inbox/zernio-connection-service";
 import { syncZavuConversations } from "@/lib/inbox/zavu-connection-service";
+import { pickHumanContactName } from "@/lib/crm/contact-display-name";
 import { deleteEmptyConversations } from "@/lib/inbox/empty-conversations-cleanup";
 import { buildInboxSnapshot } from "@/lib/inbox/providers";
 import type {
@@ -46,7 +47,13 @@ function mapRowToConversation(row: InboxRow): InboxConversation {
     sourcePhoneLabel,
     externalId: row.external_id,
     contact: {
-      name: row.contact_name,
+      name:
+        pickHumanContactName(
+          typeof metadata.display_name === "string" ? metadata.display_name : "",
+          typeof metadata.profile_name === "string" ? metadata.profile_name : "",
+          typeof metadata.wa_username === "string" ? metadata.wa_username : "",
+          row.contact_name,
+        ) || row.contact_name,
       identifier: row.contact_identifier,
       avatarUrl: row.contact_avatar_url ?? undefined,
     },
@@ -83,8 +90,17 @@ export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDa
   if (MESSAGING_PROVIDERS.zavu) syncTasks.push(syncZavuConversations());
   if (MESSAGING_PROVIDERS.zernio) syncTasks.push(syncZernioConversations());
   if (MESSAGING_PROVIDERS.kapso) syncTasks.push(syncKapsoConversations());
-  await Promise.all(syncTasks);
-  await deleteEmptyConversations(userId);
+
+  const syncWithCleanup = Promise.all(syncTasks)
+    .then(() => deleteEmptyConversations(userId))
+    .catch((error) => {
+      console.warn("[inbox] Sync conversaciones:", error instanceof Error ? error.message : error);
+    });
+
+  await Promise.race([
+    syncWithCleanup,
+    new Promise((resolve) => setTimeout(resolve, 6000)),
+  ]);
 
   const { data, error } = await supabase
     .from("inbox_conversations")

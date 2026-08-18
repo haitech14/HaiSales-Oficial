@@ -46,7 +46,7 @@ export function useInbox(initialFilters?: Partial<InboxFilters>) {
 
 
 
-  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch, dataUpdatedAt } = useQuery({
 
     queryKey: [...INBOX_QUERY_KEY, user?.id ?? "guest"],
 
@@ -229,6 +229,8 @@ export function useInbox(initialFilters?: Partial<InboxFilters>) {
     isLoading,
 
     isFetching,
+
+    isError,
 
     refresh,
 

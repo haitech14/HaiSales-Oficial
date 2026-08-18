@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createWikiPage,
-  loadHomeBoard,
+  loadMuralApuntesBoard,
   loadWikiPages,
   saveHomeBoard,
   saveWikiPages,
@@ -30,9 +30,9 @@ function touch(page: WikiPage): WikiPage {
 
 export function useWikiStore() {
   const [pages, setPages] = useState<WikiPage[]>(() => loadWikiPages());
-  const [homeBoard, setHomeBoardState] = useState<WikiKanbanColumn[]>(() => loadHomeBoard());
+  const [homeBoard, setHomeBoardState] = useState<WikiKanbanColumn[]>(() => loadMuralApuntesBoard());
   const [activePageId, setActivePageId] = useState<string | null>(null);
-  const [activeSectionId, setActiveSectionId] = useState("general");
+  const [activeSectionId, setActiveSectionId] = useState("documentacion");
 
   useEffect(() => {
     saveWikiPages(pages);
@@ -67,7 +67,7 @@ export function useWikiStore() {
 
   const createPage = useCallback(
     (sectionId?: string) => {
-      const targetSection = sectionId || activeSectionId || "general";
+      const targetSection = sectionId || activeSectionId || "documentacion";
       const page = createWikiPage({
         sectionId: targetSection,
         title: "Nueva página",

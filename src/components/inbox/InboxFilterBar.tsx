@@ -1,7 +1,35 @@
-import { Inbox, SlidersHorizontal } from "lucide-react";
+import { Inbox, LayoutGrid, MailOpen, SlidersHorizontal, Users } from "lucide-react";
+import { ChannelIcon } from "@/components/inbox/ChannelIcon";
 import { inboxViewTabs } from "@/lib/inbox/channels";
-import type { InboxViewFilter } from "@/lib/inbox/types";
+import type { InboxChannel, InboxViewFilter } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
+
+const CHANNEL_FILTERS = new Set<InboxViewFilter>([
+  "whatsapp",
+  "instagram",
+  "facebook",
+  "messenger",
+  "tiktok",
+  "web",
+  "email",
+]);
+
+function FilterViewIcon({ view, isActive }: { view: InboxViewFilter; isActive: boolean }) {
+  if (CHANNEL_FILTERS.has(view)) {
+    return (
+      <ChannelIcon
+        channel={view as InboxChannel}
+        size="sm"
+        className="h-5 w-5 rounded-md ring-1 ring-black/5"
+      />
+    );
+  }
+
+  const iconClass = cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-slate-500");
+  if (view === "unread") return <MailOpen className={iconClass} strokeWidth={1.75} />;
+  if (view === "team-chat") return <Users className={iconClass} strokeWidth={1.75} />;
+  return <LayoutGrid className={iconClass} strokeWidth={1.75} />;
+}
 
 export type InboxFilterTab = {
   id: InboxViewFilter;
@@ -46,13 +74,14 @@ export function InboxFilterBar({ tabs = inboxViewTabs, activeView, onViewChange 
                     type="button"
                     onClick={() => onViewChange(tab.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm leading-snug transition",
+                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm leading-snug transition",
                       isActive
                         ? "bg-blue-600 font-semibold text-white"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                     )}
                   >
-                    <span className="truncate">{tab.label}</span>
+                    <FilterViewIcon view={tab.id} isActive={isActive} />
+                    <span className="min-w-0 flex-1 truncate text-left">{tab.label}</span>
                     {tab.count !== undefined && (
                       <FilterCountBadge count={tab.count} isActive={isActive} />
                     )}
@@ -89,6 +118,7 @@ export function InboxFilterBar({ tabs = inboxViewTabs, activeView, onViewChange 
                     : "border-transparent text-slate-500 hover:text-slate-700",
                 )}
               >
+                <FilterViewIcon view={tab.id} isActive={false} />
                 {tab.label}
                 {tab.count !== undefined && (
                   <span

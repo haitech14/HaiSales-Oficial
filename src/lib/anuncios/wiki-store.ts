@@ -1,10 +1,9 @@
-export const WIKI_STORAGE_KEY = "haisales-wiki-pages-v9";
+export const WIKI_STORAGE_KEY = "haisales-wiki-pages-v10";
 
 /** Secciones que abren en Wiki con panel de Pendientes a la derecha */
 export const WIKI_MURAL_SIDEBAR_SECTIONS = [
-  "comercial",
-  "administracion",
-  "soporte-tecnico",
+  "procesos",
+  "documentacion",
 ] as const;
 
 export type WikiViewType = "gallery" | "kanban" | "table" | "todos" | "mural" | "blocks";
@@ -367,138 +366,174 @@ type SeedDef = {
 
 const SEED_DEFS: SeedDef[] = [
   {
-    id: "wiki-empresa-docs",
-    sectionId: "general",
-    title: "Empresa y Documentos",
-    icon: "🏢",
-    tagLabel: "General",
-    tagClassName: "bg-slate-100 text-slate-700",
-    viewType: "kanban",
+    id: "wiki-mision-vision",
+    sectionId: "empresa",
+    title: "Misión, Visión y Valores",
+    icon: "🎯",
+    tagLabel: "Empresa",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "blocks",
   },
   {
     id: "wiki-organigrama",
-    sectionId: "general",
-    title: "Organigrama y Funciones",
+    sectionId: "empresa",
+    title: "Organigrama",
     icon: "👥",
-    tagLabel: "General",
-    tagClassName: "bg-slate-100 text-slate-700",
-    viewType: "kanban",
+    tagLabel: "Empresa",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "blocks",
   },
   {
-    id: "wiki-tareas",
-    sectionId: "general",
-    title: "Tareas",
-    icon: "📄",
-    tagLabel: "General",
-    tagClassName: "bg-slate-100 text-slate-700",
-    viewType: "kanban",
+    id: "wiki-politicas-corporativas",
+    sectionId: "empresa",
+    title: "Políticas Corporativas",
+    icon: "📋",
+    tagLabel: "Empresa",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "blocks",
   },
   {
-    id: "wiki-ventas",
-    sectionId: "comercial",
-    title: "Ventas",
-    icon: "💼",
-    tagLabel: "Comercial",
-    tagClassName: "bg-emerald-100 text-emerald-700",
-    viewType: "kanban",
+    id: "wiki-manual-ventas",
+    sectionId: "procesos",
+    title: "Manual de Ventas v2.1",
+    icon: "📘",
+    tagLabel: "Documento",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "blocks",
   },
   {
     id: "wiki-marketing",
-    sectionId: "comercial",
+    sectionId: "procesos",
     title: "Marketing",
     icon: "📢",
-    tagLabel: "Comercial",
-    tagClassName: "bg-emerald-100 text-emerald-700",
-    viewType: "kanban",
-  },
-  {
-    id: "wiki-alquiler",
-    sectionId: "comercial",
-    title: "Alquiler",
-    icon: "🖨️",
-    tagLabel: "Comercial",
-    tagClassName: "bg-emerald-100 text-emerald-700",
-    viewType: "kanban",
-  },
-  {
-    id: "wiki-planes-mantenimiento",
-    sectionId: "comercial",
-    title: "Planes de Mantenimiento",
-    icon: "🛠️",
-    tagLabel: "Comercial",
-    tagClassName: "bg-emerald-100 text-emerald-700",
+    tagLabel: "Proceso",
+    tagClassName: "bg-orange-100 text-orange-700",
     viewType: "kanban",
   },
   {
     id: "wiki-logistica",
-    sectionId: "administracion",
-    title: "Logística y Almacén",
+    sectionId: "procesos",
+    title: "Logística",
     icon: "📦",
-    tagLabel: "Administración",
+    tagLabel: "Proceso",
+    tagClassName: "bg-orange-100 text-orange-700",
+    viewType: "kanban",
+  },
+  {
+    id: "wiki-atencion-cliente",
+    sectionId: "procesos",
+    title: "Proceso de Atención al Cliente",
+    icon: "🎧",
+    tagLabel: "Proceso",
+    tagClassName: "bg-orange-100 text-orange-700",
+    viewType: "blocks",
+  },
+  {
+    id: "wiki-politica-descuentos",
+    sectionId: "documentacion",
+    title: "Política de Descuentos",
+    icon: "🛡️",
+    tagLabel: "Política",
+    tagClassName: "bg-emerald-100 text-emerald-700",
+    viewType: "blocks",
+  },
+  {
+    id: "wiki-formato-cotizacion",
+    sectionId: "documentacion",
+    title: "Formato de Cotización",
+    icon: "📊",
+    tagLabel: "Formato",
+    tagClassName: "bg-emerald-100 text-emerald-700",
+    viewType: "table",
+  },
+  {
+    id: "wiki-guia-registrar-venta",
+    sectionId: "documentacion",
+    title: "Guía Rápida: Cómo registrar una venta",
+    icon: "📖",
+    tagLabel: "Guía",
     tagClassName: "bg-violet-100 text-violet-700",
-    viewType: "kanban",
+    viewType: "blocks",
   },
   {
-    id: "wiki-contabilidad",
-    sectionId: "administracion",
-    title: "Contabilidad",
-    icon: "💰",
-    tagLabel: "Administración",
+    id: "wiki-codigo-etica",
+    sectionId: "documentacion",
+    title: "Código de Ética",
+    icon: "⚖️",
+    tagLabel: "Política",
+    tagClassName: "bg-emerald-100 text-emerald-700",
+    viewType: "blocks",
+  },
+  {
+    id: "wiki-onboarding",
+    sectionId: "documentacion",
+    title: "Proceso de Onboarding",
+    icon: "🚀",
+    tagLabel: "Proceso",
+    tagClassName: "bg-orange-100 text-orange-700",
+    viewType: "blocks",
+  },
+  {
+    id: "wiki-herramientas",
+    sectionId: "recursos",
+    title: "Herramientas",
+    icon: "🔧",
+    tagLabel: "Recursos",
     tagClassName: "bg-violet-100 text-violet-700",
-    viewType: "kanban",
+    viewType: "todos",
   },
   {
-    id: "wiki-soporte-tickets",
-    sectionId: "soporte-tecnico",
-    title: "Tickets y Soporte",
-    icon: "💻",
-    tagLabel: "Soporte Técnico",
-    tagClassName: "bg-blue-100 text-blue-800",
-    viewType: "kanban",
+    id: "wiki-plantillas",
+    sectionId: "recursos",
+    title: "Plantillas",
+    icon: "📁",
+    tagLabel: "Recursos",
+    tagClassName: "bg-violet-100 text-violet-700",
+    viewType: "gallery",
   },
   {
-    id: "wiki-soporte-manuales",
-    sectionId: "soporte-tecnico",
-    title: "Manuales técnicos",
-    icon: "📚",
-    tagLabel: "Soporte Técnico",
-    tagClassName: "bg-blue-100 text-blue-800",
-    viewType: "kanban",
+    id: "wiki-capacitaciones",
+    sectionId: "recursos",
+    title: "Capacitaciones",
+    icon: "🎓",
+    tagLabel: "Recursos",
+    tagClassName: "bg-violet-100 text-violet-700",
+    viewType: "blocks",
   },
 ];
 
 export const wikiNavSections: WikiNavSection[] = [
   {
-    id: "general",
-    title: "General",
-    items: SEED_DEFS.filter((d) => d.sectionId === "general").map((d) => ({
+    id: "empresa",
+    title: "01. Empresa",
+    items: SEED_DEFS.filter((d) => d.sectionId === "empresa").map((d) => ({
       id: d.id,
       label: d.title,
       icon: d.icon,
     })),
   },
   {
-    id: "comercial",
-    title: "Comercial",
-    items: SEED_DEFS.filter((d) => d.sectionId === "comercial").map((d) => ({
+    id: "procesos",
+    title: "02. Procesos",
+    items: SEED_DEFS.filter((d) => d.sectionId === "procesos").map((d) => ({
       id: d.id,
       label: d.title,
       icon: d.icon,
     })),
   },
   {
-    id: "administracion",
-    title: "Administración",
-    items: SEED_DEFS.filter((d) => d.sectionId === "administracion").map((d) => ({
+    id: "documentacion",
+    title: "03. Documentación",
+    items: SEED_DEFS.filter((d) => d.sectionId === "documentacion").map((d) => ({
       id: d.id,
       label: d.title,
       icon: d.icon,
     })),
   },
   {
-    id: "soporte-tecnico",
-    title: "Soporte Técnico",
-    items: SEED_DEFS.filter((d) => d.sectionId === "soporte-tecnico").map((d) => ({
+    id: "recursos",
+    title: "04. Recursos",
+    items: SEED_DEFS.filter((d) => d.sectionId === "recursos").map((d) => ({
       id: d.id,
       label: d.title,
       icon: d.icon,
@@ -638,30 +673,140 @@ function createVentasMockupKanban(): WikiKanbanColumn[] {
   return createMockupKanbanBoard();
 }
 
+function countBoardCards(columns: WikiKanbanColumn[]): number {
+  return columns.reduce((total, column) => total + column.cards.length, 0);
+}
+
+function normalizeKanbanColumns(parsed: unknown): WikiKanbanColumn[] | null {
+  if (!Array.isArray(parsed)) return null;
+
+  return parsed.map((column) => ({
+    ...column,
+    id: column.id || createWikiId("col"),
+    title: column.title || "Columna",
+    color: column.color || "border-t-slate-300",
+    countLabel: column.countLabel?.trim() ? column.countLabel : "tarjetas",
+    cards: Array.isArray(column.cards) ? column.cards : [],
+  }));
+}
+
+function homeCardsToKanbanBoard(cards: WikiHomeCard[]): WikiKanbanColumn[] {
+  return [
+    {
+      id: createWikiId("col"),
+      title: "Apuntes guardados",
+      color: "border-t-amber-400",
+      hideShell: true,
+      countLabel: "tarjetas",
+      cards: cards.map((card, index) => ({
+        id: card.id || createWikiId("kcard"),
+        title: card.title,
+        note: card.content,
+        independent: true,
+        x: 72 + (index % 3) * 320,
+        y: 72 + Math.floor(index / 3) * 200,
+        width: 300,
+        height: 180,
+      })),
+    },
+  ];
+}
+
+function muralBoardToKanbanBoard(muralColumns: WikiMuralColumn[]): WikiKanbanColumn[] {
+  const blocks = muralColumns.flatMap((column) => column.blocks ?? []);
+  if (blocks.length === 0) return [];
+
+  const labelByType: Record<WikiMuralBlockType, string> = {
+    note: "Nota",
+    link: "Enlace",
+    todo: "To-do",
+    table: "Tabla",
+    image: "Imagen",
+  };
+
+  return [
+    {
+      id: createWikiId("col"),
+      title: "Lienzo",
+      color: "border-t-violet-400",
+      hideShell: true,
+      countLabel: "tarjetas",
+      cards: blocks.map((block, index) => ({
+        id: block.id || createWikiId("kcard"),
+        title: labelByType[block.type] ?? "Nota",
+        note: block.content,
+        independent: true,
+        x: block.x ?? 72 + (index % 3) * 300,
+        y: block.y ?? 72 + Math.floor(index / 3) * 180,
+        width: block.w ?? 280,
+        height: 160,
+      })),
+    },
+  ];
+}
+
+function tryLoadKanbanFromStorage(key: string): WikiKanbanColumn[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const normalized = normalizeKanbanColumns(JSON.parse(raw));
+    if (!normalized || countBoardCards(normalized) === 0) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
+function tryLoadMuralBoardFromStorage(): WikiKanbanColumn[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("haisales-mural-apuntes-v1");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WikiMuralColumn[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const converted = muralBoardToKanbanBoard(
+      parsed.map((column) => ({
+        ...column,
+        blocks: (column.blocks ?? []).map((block, index) => normalizeMuralBlock(block, index)),
+      })),
+    );
+    return countBoardCards(converted) > 0 ? converted : null;
+  } catch {
+    return null;
+  }
+}
+
 export const WIKI_HOME_BOARD_KEY = "haisales-wiki-home-board-v1";
 
-export function loadHomeBoard(): WikiKanbanColumn[] {
+/** Restaura apuntes del mural desde todas las fuentes locales conocidas. */
+export function loadMuralApuntesBoard(): WikiKanbanColumn[] {
   if (typeof window === "undefined") return createMockupKanbanBoard();
-  try {
-    const raw = localStorage.getItem(WIKI_HOME_BOARD_KEY);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw) as WikiKanbanColumn[];
-      // [] es válido: el usuario vació el lienzo (no restaurar el mockup)
-      if (Array.isArray(parsed)) {
-        return parsed.map((column) => ({
-          ...column,
-          id: column.id || createWikiId("col"),
-          title: column.title || "Columna",
-          color: column.color || "border-t-slate-300",
-          countLabel: column.countLabel?.trim() ? column.countLabel : "tarjetas",
-          cards: Array.isArray(column.cards) ? column.cards : [],
-        }));
-      }
-    }
-    return createMockupKanbanBoard();
-  } catch {
-    return createMockupKanbanBoard();
+
+  const fromHomeBoard = tryLoadKanbanFromStorage(WIKI_HOME_BOARD_KEY);
+  if (fromHomeBoard) return fromHomeBoard;
+
+  const fromLegacyHomeBoard = tryLoadKanbanFromStorage("haisales-wiki-home-board");
+  if (fromLegacyHomeBoard) return fromLegacyHomeBoard;
+
+  const fromMuralBoard = tryLoadMuralBoardFromStorage();
+  if (fromMuralBoard) return fromMuralBoard;
+
+  const homeCards = loadHomeCards();
+  const defaultSeedTitles = new Set(createSeedHomeCards().map((card) => card.title));
+  const hasCustomHomeCards = homeCards.some((card) => !defaultSeedTitles.has(card.title));
+  if (homeCards.length > 0 && (hasCustomHomeCards || homeCards.some((card) => card.content.trim()))) {
+    const converted = homeCardsToKanbanBoard(homeCards);
+    if (countBoardCards(converted) > 0) return converted;
   }
+
+  const seed = createMockupKanbanBoard();
+  saveHomeBoard(seed);
+  return seed;
+}
+
+export function loadHomeBoard(): WikiKanbanColumn[] {
+  return loadMuralApuntesBoard();
 }
 
 export function saveHomeBoard(columns: WikiKanbanColumn[]) {
@@ -669,11 +814,53 @@ export function saveHomeBoard(columns: WikiKanbanColumn[]) {
   localStorage.setItem(WIKI_HOME_BOARD_KEY, JSON.stringify(columns));
 }
 
+export const MURAL_BOARD_KEY = "haisales-mural-apuntes-v1";
+
+export function createEmptyMuralBoard(): WikiMuralColumn[] {
+  return [
+    {
+      id: "mural-canvas",
+      title: "Canvas",
+      blocks: [
+        {
+          id: createWikiId("mblock"),
+          type: "note",
+          content: "👋 *Mural de Apuntes*\nArrastra notas, enlaces y pendientes sobre el lienzo.",
+          x: 48,
+          y: 48,
+          w: 280,
+        },
+      ],
+    },
+  ];
+}
+
+export function loadMuralBoard(): WikiMuralColumn[] {
+  if (typeof window === "undefined") return createEmptyMuralBoard();
+  try {
+    const raw = localStorage.getItem(MURAL_BOARD_KEY);
+    if (!raw) return createEmptyMuralBoard();
+    const parsed = JSON.parse(raw) as WikiMuralColumn[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return createEmptyMuralBoard();
+    return parsed.map((column) => ({
+      ...column,
+      blocks: (column.blocks ?? []).map((block, index) => normalizeMuralBlock(block, index)),
+    }));
+  } catch {
+    return createEmptyMuralBoard();
+  }
+}
+
+export function saveMuralBoard(columns: WikiMuralColumn[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(MURAL_BOARD_KEY, JSON.stringify(columns));
+}
+
 export function createSeedWikiPages(): WikiPage[] {
   return SEED_DEFS.map((def, index) => {
     const gradient = GRADIENTS[index % GRADIENTS.length];
     const content = emptyPageContent(def.title, def.icon, gradient, def.tagLabel, def.tagClassName);
-    if (def.id === "wiki-ventas") {
+    if (def.id === "wiki-manual-ventas") {
       content.kanbanColumns = createVentasMockupKanban();
     }
     return {
@@ -700,13 +887,13 @@ export function createWikiPage(input: {
   const section = wikiNavSections.find((s) => s.id === input.sectionId);
   const tagLabel = section?.title ?? "General";
   const tagClassName =
-    input.sectionId === "comercial"
-      ? "bg-emerald-100 text-emerald-700"
-      : input.sectionId === "administracion"
-        ? "bg-violet-100 text-violet-700"
-        : input.sectionId === "soporte-tecnico"
-          ? "bg-blue-100 text-blue-800"
-          : "bg-slate-100 text-slate-700";
+    input.sectionId === "procesos"
+      ? "bg-orange-100 text-orange-700"
+      : input.sectionId === "documentacion"
+        ? "bg-emerald-100 text-emerald-700"
+        : input.sectionId === "recursos"
+          ? "bg-violet-100 text-violet-700"
+          : "bg-blue-100 text-blue-700";
   const gradient = GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)];
   const content = emptyPageContent(input.title, icon, gradient, tagLabel, tagClassName);
 

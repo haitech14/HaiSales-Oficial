@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { leadCodigoFromConversation } from "@/lib/crm/whatsapp-prospeccion-sync";
+import { socialLeadBadgeFromCodigo } from "@/lib/crm/whatsapp-prospeccion-sync";
 
 const CLEANUP_TTL_MS = 60_000;
 let lastCleanupAt = 0;
@@ -53,6 +53,7 @@ function isEmptyConversation(
 ): boolean {
   const messageCount = messageCountByConversation.get(conversation.id) ?? 0;
   if (messageCount > 0) return false;
+  if (conversation.contact_identifier?.trim()) return false;
   return isGenericLastMessage(conversation.last_message);
 }
 
@@ -116,21 +117,6 @@ export async function deleteEmptyConversations(
         }
       }
 
-      const linkedCodigos = emptyConversations
-        .map((row) =>
-          leadCodigoFromConversation({
-            channel: row.channel,
-            contact_name: null,
-            contact_identifier: row.contact_identifier,
-            external_id: row.external_id,
-            last_message: row.last_message,
-            last_message_at: null,
-            created_at: null,
-            metadata: null,
-          }),
-        )
-        .filter((codigo): codigo is string => Boolean(codigo));
-
       const { data: opportunities, error: oppError } = await supabase
         .from("oportunidades")
         .select("codigo, cliente_nombre, subtitulo, titulo, valor, etapa")
@@ -142,19 +128,16 @@ export async function deleteEmptyConversations(
         return { conversations: emptyIds.length, opportunities: 0 };
       }
 
-      const codigosToDelete = new Set<string>(linkedCodigos);
-      for (const opp of (opportunities ?? []) as OportunidadRow[]) {
-        if (isPlaceholderOportunidad(opp)) {
-          codigosToDelete.add(opp.codigo);
-        }
-      }
+      const placeholderCodigos = ((opportunities ?? []) as OportunidadRow[])
+        .filter((opp) => isPlaceholderOportunidad(opp) && !socialLeadBadgeFromCodigo(opp.codigo, opp.titulo))
+        .map((opp) => opp.codigo);
 
-      if (codigosToDelete.size > 0) {
+      if (placeholderCodigos.length > 0) {
         const { error: deleteOppError } = await supabase
           .from("oportunidades")
           .delete()
           .eq("user_id", userId)
-          .in("codigo", [...codigosToDelete]);
+          .in("codigo", placeholderCodigos);
 
         if (deleteOppError) {
           console.warn("[inbox] Eliminar oportunidades vacías:", deleteOppError.message);
@@ -164,7 +147,7 @@ export async function deleteEmptyConversations(
       lastCleanupAt = Date.now();
       return {
         conversations: emptyIds.length,
-        opportunities: codigosToDelete.size,
+        opportunities: placeholderCodigos.length,
       };
     } catch (error) {
       console.warn(

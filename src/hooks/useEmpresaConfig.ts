@@ -18,7 +18,6 @@ export function useEmpresaConfig() {
     queryKey: empresaConfigQueryKey(userId),
     queryFn: () => (userId ? fetchEmpresaConfig(userId) : Promise.resolve(defaultEmpresaConfig)),
     enabled: Boolean(userId),
-    placeholderData: defaultEmpresaConfig,
     staleTime: 60_000,
   });
 }
@@ -37,11 +36,15 @@ export function useInvalidateEmpresaConfig() {
 export function useEmpresaSetupStatus() {
   const query = useEmpresaConfig();
   const config = query.data ?? defaultEmpresaConfig;
+  const isResolving = query.isPending || query.isPlaceholderData;
+  const isSetupComplete = config.setupCompleted || hasEmpresaRegistrada(config);
 
   return {
     ...query,
     config,
-    isSetupComplete: config.setupCompleted || hasEmpresaRegistrada(config),
+    isLoading: isResolving,
+    isSetupComplete,
+    shouldShowSetup: !isResolving && !query.isError && !isSetupComplete,
   };
 }
 

@@ -1,5 +1,6 @@
-import { isGenericLastMessage } from "@/lib/inbox/empty-conversations-cleanup";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { pickHumanContactName } from "@/lib/crm/contact-display-name";
 
 type OportunidadInsert = Database["public"]["Tables"]["oportunidades"]["Insert"];
 
@@ -42,10 +43,11 @@ function channelLabel(channel: string): SocialLeadBadge {
 export function leadCodigoFromConversation(conv: InboxConversationRow): string | null {
   const channel = conv.channel;
   if (channel === "whatsapp") {
-    const digits = (conv.contact_identifier || conv.external_id).replace(/\D/g, "");
-    if (!digits) return null;
-    const codigo = `WA-${digits.slice(0, 20)}`;
-    return codigo === "WA-" ? null : codigo;
+    const digits = (conv.contact_identifier || "").replace(/\D/g, "");
+    if (digits.length >= 6) return `WA-${digits.slice(0, 20)}`;
+    const raw = (conv.external_id || conv.contact_identifier || "").replace(/[^A-Za-z0-9]/g, "");
+    if (!raw) return null;
+    return `WA-${raw.slice(0, 20)}`;
   }
 
   const raw = (conv.contact_identifier || conv.external_id).replace(/[^A-Za-z0-9]/g, "");
@@ -58,20 +60,30 @@ function buildSocialOportunidadRow(
   userId: string,
   codigo: string,
   conv: InboxConversationRow,
+  responsableNombre: string,
 ): OportunidadInsert {
   const metadata = (conv.metadata ?? {}) as Record<string, unknown>;
   const label = channelLabel(conv.channel);
-  const responsable =
-    typeof metadata.source_phone_label === "string" && metadata.source_phone_label.trim()
-      ? metadata.source_phone_label.trim()
-      : label;
+  const responsable = responsableNombre.trim() || "Usuario";
   const initials =
-    responsable.replace(/[^A-Za-zÁÉÍÓÚáéíóú]/g, "").slice(0, 2).toUpperCase() || label.slice(0, 2);
+    responsable
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "US";
+  const displayName = typeof metadata.display_name === "string" ? metadata.display_name : "";
+  const profileName = typeof metadata.profile_name === "string" ? metadata.profile_name : "";
+  const waUsername = typeof metadata.wa_username === "string" ? metadata.wa_username : "";
+  const clienteNombre =
+    pickHumanContactName(displayName, profileName, waUsername, conv.contact_name) ||
+    conv.contact_name?.trim() ||
+    `Contacto ${label}`;
 
   return {
     user_id: userId,
     codigo,
-    cliente_nombre: conv.contact_name?.trim() || `Contacto ${label}`,
+    cliente_nombre: clienteNombre,
     cliente_ruc: conv.contact_identifier?.trim() || null,
     titulo: `Lead ${label}`,
     subtitulo: (conv.last_message?.trim() || `Conversación ${label}`).slice(0, 160),
@@ -85,7 +97,10 @@ function buildSocialOportunidadRow(
 }
 
 /** Sincroniza conversaciones WhatsApp, Facebook e Instagram del Inbox a Prospectos. */
-export async function syncWhatsAppLeadsToProspeccion(userId: string): Promise<number> {
+export async function syncWhatsAppLeadsToProspeccion(
+  userId: string,
+  options?: { insertOnly?: boolean; responsableNombre?: string },
+): Promise<number> {
   const { data: conversations, error } = await supabase
     .from("inbox_conversations")
     .select(
@@ -104,7 +119,6 @@ export async function syncWhatsAppLeadsToProspeccion(userId: string): Promise<nu
 
   const latestByCodigo = new Map<string, InboxConversationRow>();
   for (const conv of conversations) {
-    if (isGenericLastMessage(conv.last_message)) continue;
     const codigo = leadCodigoFromConversation(conv);
     if (!codigo || latestByCodigo.has(codigo)) continue;
     latestByCodigo.set(codigo, conv);
@@ -115,7 +129,7 @@ export async function syncWhatsAppLeadsToProspeccion(userId: string): Promise<nu
 
   const { data: existing, error: existingError } = await supabase
     .from("oportunidades")
-    .select("codigo, etapa")
+    .select("codigo, etapa, cliente_nombre")
     .eq("user_id", userId)
     .in("codigo", codigos);
 
@@ -124,18 +138,29 @@ export async function syncWhatsAppLeadsToProspeccion(userId: string): Promise<nu
     return 0;
   }
 
-  const existingMap = new Map((existing ?? []).map((row) => [row.codigo, row.etapa]));
+  const existingMap = new Map((existing ?? []).map((row) => [row.codigo, row]));
   const inserts: OportunidadInsert[] = [];
   const updates: OportunidadInsert[] = [];
 
   for (const [codigo, conv] of latestByCodigo) {
-    const row = buildSocialOportunidadRow(userId, codigo, conv);
-    const etapa = existingMap.get(codigo);
+    const row = buildSocialOportunidadRow(
+      userId,
+      codigo,
+      conv,
+      options?.responsableNombre || "Usuario",
+    );
+    const current = existingMap.get(codigo);
 
-    if (!etapa) {
+    if (!current) {
       inserts.push(row);
-    } else if (etapa === "Prospectos") {
-      updates.push(row);
+      continue;
+    }
+    if (current.etapa !== "Prospectos") continue;
+
+    const nextName = pickHumanContactName(row.cliente_nombre, current.cliente_nombre) || row.cliente_nombre;
+    const nameImproved = nextName !== current.cliente_nombre && Boolean(pickHumanContactName(nextName));
+    if (!options?.insertOnly || nameImproved) {
+      updates.push({ ...row, cliente_nombre: nextName });
     }
   }
 
@@ -150,20 +175,27 @@ export async function syncWhatsAppLeadsToProspeccion(userId: string): Promise<nu
     }
   }
 
-  for (const row of updates) {
-    const { error: updateError } = await supabase
-      .from("oportunidades")
-      .update({
-        cliente_nombre: row.cliente_nombre,
-        cliente_ruc: row.cliente_ruc,
-        subtitulo: row.subtitulo,
-        fecha_oportunidad: row.fecha_oportunidad,
-      })
-      .eq("user_id", userId)
-      .eq("codigo", row.codigo!)
-      .eq("etapa", "Prospectos");
-
-    if (!updateError) synced += 1;
+  if (updates.length > 0) {
+    const chunkSize = 8;
+    for (let index = 0; index < updates.length; index += chunkSize) {
+      const chunk = updates.slice(index, index + chunkSize);
+      const results = await Promise.all(
+        chunk.map((row) =>
+          supabase
+            .from("oportunidades")
+            .update({
+              cliente_nombre: row.cliente_nombre,
+              cliente_ruc: row.cliente_ruc,
+              subtitulo: row.subtitulo,
+              fecha_oportunidad: row.fecha_oportunidad,
+            })
+            .eq("user_id", userId)
+            .eq("codigo", row.codigo!)
+            .eq("etapa", "Prospectos"),
+        ),
+      );
+      synced += results.filter((result) => !result.error).length;
+    }
   }
 
   return synced;
