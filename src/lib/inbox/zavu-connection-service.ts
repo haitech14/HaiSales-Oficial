@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const SYNC_TTL_MS = 2 * 60_000;
+const SYNC_TTL_MS = 12_000;
 let lastSyncAt = 0;
 let syncInFlight: Promise<number> | null = null;
 

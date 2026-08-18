@@ -179,9 +179,50 @@ Deno.serve(async (req) => {
       name: string;
       phoneNumber?: string;
       channels?: string[];
+      webhook?: { url?: string | null; active?: boolean };
     }> = [];
     for await (const sender of zavu.senders.list()) {
       senders.push(sender);
+    }
+
+    const webhookUrl = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/zavu-webhook`;
+    const webhookEvents = ["conversation.new", "message.inbound", "message.sent"];
+    const webhookSecrets = new Map<string, string>();
+    for (const sender of senders) {
+      const alreadyConfigured =
+        sender.webhook?.active && sender.webhook.url === webhookUrl;
+      if (alreadyConfigured) continue;
+      try {
+        const response = await fetch(`https://api.zavu.dev/v1/senders/${sender.id}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            webhookUrl,
+            webhookEvents,
+            webhookActive: true,
+          }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          webhook?: { secret?: string; url?: string };
+          error?: string;
+        };
+        if (!response.ok) {
+          console.warn("[zavu-sync] webhook:", sender.id, payload.error || response.status);
+          continue;
+        }
+        if (payload.webhook?.secret) {
+          webhookSecrets.set(sender.id, payload.webhook.secret);
+        }
+      } catch (error) {
+        console.warn(
+          "[zavu-sync] webhook:",
+          sender.id,
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
 
     for (const sender of senders) {
@@ -314,11 +355,15 @@ Deno.serve(async (req) => {
               status: "connected",
               error_message: null,
               last_sync_at: now,
+              ...(webhookSecrets.has(sender.id)
+                ? { webhook_secret: webhookSecrets.get(sender.id) }
+                : {}),
               config: {
                 provider: "zavu",
                 sender_id: sender.id,
                 phone_number: sender.phoneNumber ?? null,
                 project_id: projectId,
+                webhook_url: webhookUrl,
               },
             },
             { onConflict: "user_id,channel,external_account_id" },
@@ -334,6 +379,23 @@ Deno.serve(async (req) => {
           });
         }
       }
+    }
+
+    const { data: existingInbox } = await admin
+      .from("inbox_conversations")
+      .select("external_id, channel, contact_identifier, status")
+      .eq("user_id", user.id);
+
+    const existingByContact = new Map<string, string>();
+    const hiddenExternalIds = new Set<string>();
+    for (const row of existingInbox ?? []) {
+      if (row.status === "cerrada") {
+        hiddenExternalIds.add(row.external_id);
+        continue;
+      }
+      const digits = digitsOnly(row.contact_identifier);
+      if (!digits && !row.contact_identifier) continue;
+      existingByContact.set(`${row.channel}:${digits || row.contact_identifier}`, row.external_id);
     }
 
     const inboxRows: Record<string, unknown>[] = [];
@@ -356,7 +418,11 @@ Deno.serve(async (req) => {
       const contactName = resolveContactName(conv, contact);
       const lastMessage =
         conv.lastMessage?.text?.trim() || `Conversación ${channelLabel(channel)}`;
-      const externalId = `zavu:${channel}:${conv.id}`;
+      const contactKey = `${channel}:${digitsOnly(conv.contactIdentifier) || conv.contactIdentifier}`;
+      const externalId = existingByContact.get(contactKey) || `zavu:${channel}:${conv.id}`;
+      if (hiddenExternalIds.has(externalId) || hiddenExternalIds.has(`zavu:${channel}:${conv.id}`)) {
+        continue;
+      }
       if (seenInbox.has(externalId)) continue;
       seenInbox.add(externalId);
 

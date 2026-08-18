@@ -25,7 +25,13 @@ export function EstadisticasPageHeader({ scope, onScopeChange }: EstadisticasPag
   return (
     <header className="border-b border-slate-200/80 bg-[#f3f4f6] px-6 py-5 sm:px-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Estadísticas</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Estadísticas</h1>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            En vivo
+          </span>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 lg:justify-center">
           <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">

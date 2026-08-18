@@ -11,7 +11,7 @@ import {
   Smile,
   Star,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChannelIcon } from "@/components/inbox/ChannelIcon";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,7 +21,7 @@ import { useInboxMessages } from "@/hooks/useInboxMessages";
 import { inboxChannelMeta } from "@/lib/inbox/channels";
 import { canSendConversation } from "@/lib/inbox/messaging-providers";
 import { sendInboxMessage } from "@/lib/inbox/inbox-service";
-import type { InboxConversation } from "@/lib/inbox/types";
+import type { InboxConversation, InboxMessage } from "@/lib/inbox/types";
 import { cn } from "@/lib/utils";
 
 type InboxConversationThreadProps = {
@@ -72,32 +72,57 @@ export function InboxConversationThread({
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
 
+  const [pending, setPending] = useState<InboxMessage[]>([]);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
   const liveMessages = useInboxMessages(conversation.id);
-  const messages = liveMessages.data ?? [];
-  const isLoadingMessages = liveMessages.isLoading;
+  const messages = [...(liveMessages.data ?? []), ...pending];
+  const isLoadingMessages = liveMessages.isLoading && !liveMessages.data;
+  const canSend =
+    canSendLive ||
+    canSendConversation(conversation.provider, conversation.channel, conversation.externalId);
 
   const channelMeta = inboxChannelMeta[conversation.channel];
   const dateDivider = messages[0] ? formatDateDivider(messages[0].sentAt) : "Hoy";
+
+  useEffect(() => {
+    setPending([]);
+  }, [conversation.id]);
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, [messages.length, conversation.id]);
 
   const handleSend = async () => {
     const body = draft.trim();
     if (!body || composerTab !== "reply") return;
 
-    const sendable =
-      canSendLive && canSendConversation(conversation.provider, conversation.channel);
-
-    if (!sendable) {
-      toast.message("Conecta Zavu en Integraciones para enviar mensajes reales.");
+    if (!canSend) {
+      toast.message("Conecta Zernio en Integraciones para enviar mensajes reales.");
       return;
     }
 
+    const optimistic: InboxMessage = {
+      id: `pending:${Date.now()}`,
+      conversationId: conversation.id,
+      direction: "outbound",
+      body,
+      sentAt: new Date().toISOString(),
+    };
+
     setIsSending(true);
+    setPending((current) => [...current, optimistic]);
+    setDraft("");
     try {
       await sendInboxMessage(conversation.id, body);
-      setDraft("");
+      setPending((current) => current.filter((item) => item.id !== optimistic.id));
       await liveMessages.refetch();
       onMessageSent?.();
     } catch (error) {
+      setPending((current) => current.filter((item) => item.id !== optimistic.id));
+      setDraft(body);
       toast.error(error instanceof Error ? error.message : "No se pudo enviar el mensaje");
     } finally {
       setIsSending(false);
@@ -105,8 +130,8 @@ export function InboxConversationThread({
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#f0f2f5]">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <div className="flex h-full min-h-0 flex-col bg-[#f0f2f5]">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar className="h-10 w-10">
             <AvatarFallback className="bg-slate-200 text-xs font-semibold text-slate-700">
@@ -150,7 +175,7 @@ export function InboxConversationThread({
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div ref={scrollerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         <div className="flex justify-center">
           <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
             {dateDivider}
@@ -201,7 +226,7 @@ export function InboxConversationThread({
         )}
       </div>
 
-      <div className="border-t border-slate-200 bg-white">
+      <div className="shrink-0 border-t border-slate-200 bg-white">
         <div className="flex border-b border-slate-100">
           <button
             type="button"

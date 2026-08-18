@@ -11,13 +11,22 @@ import {
 import { useEstadisticas } from "@/hooks/useEstadisticas";
 
 export function EstadisticasView() {
-  const { data, isLoading } = useEstadisticas();
+  const { data, isLoading, isError, error } = useEstadisticas();
 
   if (isLoading && !data) {
     return (
       <div className="flex min-h-[420px] items-center justify-center text-sm text-slate-500">
         <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
         Cargando estadísticas del periodo...
+      </div>
+    );
+  }
+
+  if (isError && !data) {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-800">
+        No se pudieron cargar las estadísticas.
+        {error instanceof Error ? ` ${error.message}` : ""}
       </div>
     );
   }

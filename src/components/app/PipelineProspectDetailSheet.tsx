@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { fetchProspectDetail, formatPipelineCurrency } from "@/lib/crm/crm-service";
 import {
   buildOwnerInitials,
@@ -241,7 +242,10 @@ export function PipelineProspectDetailSheet({
     });
   }, [open, codigo, userId]);
 
-  const title = detail?.titulo || preview?.title || "—";
+  const rawTitle = (detail?.titulo || preview?.title || "").trim();
+  const title = /^oportunidad(\s|$|[—\-:])/i.test(rawTitle)
+    ? detail?.clienteNombre || preview?.contactName || preview?.company || "—"
+    : rawTitle || "—";
   const phone =
     formatContactPhone(preview?.contactPhone) ||
     formatContactPhone(detail?.cliente?.telefono) ||
@@ -253,9 +257,7 @@ export function PipelineProspectDetailSheet({
   const stage = detail?.pipelineStage || "Prospección";
   const probability = detail?.probabilidad ?? 10;
   const value = detail?.valor ?? preview?.value ?? 0;
-  const createdAt = detail
-    ? `${detail.fechaOportunidad} ${detail.horaOportunidad}`
-    : preview?.lastContactAt || preview?.dueDate || "—";
+  const createdAt = detail?.fechaOportunidad || preview?.dueDate || "—";
   const closeDate = detail?.fechaCierreEstimada ?? "—";
   const description = detail?.subtitulo?.trim() || preview?.lastMessage || "—";
   const recentMessages = detail?.recentMessages ?? [];
@@ -282,7 +284,9 @@ export function PipelineProspectDetailSheet({
           </DialogTitle>
           <DialogDescription className="mt-2.5 flex flex-wrap items-center gap-2 text-left">
             <ChannelBadge badge={channelBadge} />
-            <span className="text-[13px] text-slate-500">Oportunidad {codigo}</span>
+            {codigo ? (
+              <span className="text-[13px] text-slate-500">Código {codigo}</span>
+            ) : null}
           </DialogDescription>
         </div>
 
@@ -297,7 +301,7 @@ export function PipelineProspectDetailSheet({
               <div className="space-y-4">
                 <SectionCard title="Información general" icon={ClipboardList} iconClassName="bg-blue-500">
                   <dl className="space-y-3">
-                    <Field label="Nombre de la oportunidad" value={title} />
+                    <Field label="Nombre" value={title} />
                     <Field label="Número" value={<WhatsAppLink phone={phone} />} />
                     <Field label="Fuente" value={source} />
                     <div className="grid grid-cols-2 gap-3">

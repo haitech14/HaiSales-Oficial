@@ -12,9 +12,10 @@ export function useInboxMessages(conversationId: string | null) {
 
   const query = useQuery<InboxMessage[]>({
     queryKey: conversationId ? messagesQueryKey(conversationId) : ["inbox", "messages", "none"],
-    queryFn: () => fetchInboxMessages(conversationId!),
+    queryFn: () => fetchInboxMessages(conversationId!, { syncRemote: true }),
     enabled: Boolean(conversationId),
-    staleTime: 15_000,
+    staleTime: 1_500,
+    refetchInterval: conversationId ? 4_000 : false,
   });
 
   useEffect(() => {
@@ -30,7 +31,29 @@ export function useInboxMessages(conversationId: string | null) {
           table: "inbox_messages",
           filter: `conversation_id=eq.${conversationId}`,
         },
-        () => {
+        (payload) => {
+          const row = payload.new as {
+            id?: string;
+            conversation_id?: string;
+            direction?: string;
+            body?: string;
+            sent_at?: string;
+          };
+          if (row?.id && row.body) {
+            queryClient.setQueryData<InboxMessage[]>(messagesQueryKey(conversationId), (current) => {
+              if ((current ?? []).some((item) => item.id === row.id)) return current;
+              return [
+                ...(current ?? []),
+                {
+                  id: row.id,
+                  conversationId: row.conversation_id || conversationId,
+                  direction: row.direction === "outbound" ? "outbound" : "inbound",
+                  body: row.body,
+                  sentAt: row.sent_at || new Date().toISOString(),
+                },
+              ];
+            });
+          }
           void queryClient.invalidateQueries({ queryKey: messagesQueryKey(conversationId) });
         },
       )

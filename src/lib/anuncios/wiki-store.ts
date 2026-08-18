@@ -1,4 +1,4 @@
-export const WIKI_STORAGE_KEY = "haisales-wiki-pages-v10";
+export const WIKI_STORAGE_KEY = "haisales-wiki-pages-v11";
 
 /** Secciones que abren en Wiki con panel de Pendientes a la derecha */
 export const WIKI_MURAL_SIDEBAR_SECTIONS = [
@@ -6,7 +6,7 @@ export const WIKI_MURAL_SIDEBAR_SECTIONS = [
   "documentacion",
 ] as const;
 
-export type WikiViewType = "gallery" | "kanban" | "table" | "todos" | "mural" | "blocks";
+export type WikiViewType = "gallery" | "kanban" | "table" | "todos" | "mural" | "blocks" | "proceso";
 
 export type WikiDocBlockType = "paragraph" | "heading" | "todo" | "bullet" | "divider";
 
@@ -362,9 +362,55 @@ type SeedDef = {
   tagLabel: string;
   tagClassName: string;
   viewType?: WikiViewType;
+  intro?: string[];
 };
 
+function seedIntroBlocks(def: SeedDef): WikiDocBlock[] {
+  const lines = def.intro ?? [`Página del módulo *${def.title}*. Completa esta sección con la información del área.`];
+  return [
+    { id: `dblock-${def.id}-h`, type: "heading", content: def.title },
+    ...lines.map((line, index) => {
+      if (line.startsWith("☐ ")) {
+        return {
+          id: `dblock-${def.id}-${index}`,
+          type: "todo" as const,
+          content: line.slice(2),
+          done: false,
+        };
+      }
+      if (line.startsWith("• ")) {
+        return {
+          id: `dblock-${def.id}-${index}`,
+          type: "bullet" as const,
+          content: line.slice(2),
+        };
+      }
+      return {
+        id: `dblock-${def.id}-${index}`,
+        type: "paragraph" as const,
+        content: line,
+      };
+    }),
+  ];
+}
+
 const SEED_DEFS: SeedDef[] = [
+  {
+    id: "wiki-hub-empresa",
+    sectionId: "empresa",
+    title: "Empresa",
+    icon: "🏢",
+    tagLabel: "Módulo",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "blocks",
+    intro: [
+      "Centro de identidad y gobierno de HaiSales. Aquí vive lo que define a la compañía.",
+      "• Misión, visión y valores",
+      "• Organigrama y roles",
+      "• Políticas corporativas",
+      "☐ Mantener este módulo alineado con la dirección actual",
+    ],
+  },
   {
     id: "wiki-mision-vision",
     sectionId: "empresa",
@@ -373,6 +419,13 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Empresa",
     tagClassName: "bg-blue-100 text-blue-700",
     viewType: "blocks",
+    intro: [
+      "*Misión:* facilitar la gestión comercial y operativa de cada establecimiento en un solo lugar.",
+      "*Visión:* ser el sistema de trabajo diario de equipos de ventas en Perú.",
+      "• Integridad con los datos del cliente",
+      "• Rapidez para emitir y atender",
+      "• Colaboración entre áreas",
+    ],
   },
   {
     id: "wiki-organigrama",
@@ -382,6 +435,13 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Empresa",
     tagClassName: "bg-blue-100 text-blue-700",
     viewType: "blocks",
+    intro: [
+      "Estructura de cargos y reporte. Actualiza cada vez que cambie un responsable.",
+      "• Gerencia general",
+      "• Comercial y ventas",
+      "• Operaciones y logística",
+      "• Administración y soporte",
+    ],
   },
   {
     id: "wiki-politicas-corporativas",
@@ -391,6 +451,43 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Empresa",
     tagClassName: "bg-blue-100 text-blue-700",
     viewType: "blocks",
+    intro: [
+      "Normas internas de conducta, seguridad de la información y uso de HaiSales.",
+      "• Accesos por rol",
+      "• Conservación de comprobantes",
+      "• Escalamiento de incidencias",
+    ],
+  },
+  {
+    id: "wiki-hub-procesos",
+    sectionId: "procesos",
+    title: "Procesos",
+    icon: "⚙️",
+    tagLabel: "Módulo",
+    tagClassName: "bg-orange-100 text-orange-700",
+    viewType: "blocks",
+    intro: [
+      "Mapa operativo de HaiSales. Cada proceso tiene su propia página y tablero.",
+      "• Ventas",
+      "• Marketing",
+      "• Logística",
+      "• Atención al cliente",
+    ],
+  },
+  {
+    id: "wiki-ventas",
+    sectionId: "ventas",
+    title: "Proceso de Ventas",
+    icon: "📈",
+    tagLabel: "Ventas",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "proceso",
+    intro: [
+      "Aquí encontrarás guías, procedimientos y mejores prácticas para gestionar ventas efectivas.",
+      "• Atención de llamadas",
+      "• Levantamiento de necesidad",
+      "• Cierre y seguimiento comercial",
+    ],
   },
   {
     id: "wiki-manual-ventas",
@@ -400,6 +497,12 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Documento",
     tagClassName: "bg-blue-100 text-blue-700",
     viewType: "blocks",
+    intro: [
+      "Manual operativo del equipo comercial. No confundir con el módulo de Ventas.",
+      "• Cómo calificar un lead",
+      "• Cuándo emitir proforma vs. factura",
+      "• Descuentos autorizados por rol",
+    ],
   },
   {
     id: "wiki-marketing",
@@ -409,6 +512,12 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Proceso",
     tagClassName: "bg-orange-100 text-orange-700",
     viewType: "kanban",
+    intro: [
+      "Campañas, contenidos y captación. El tablero sigue piezas en curso.",
+      "• Campañas WhatsApp",
+      "• Piezas para redes",
+      "• Medición de leads",
+    ],
   },
   {
     id: "wiki-logistica",
@@ -418,15 +527,59 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Proceso",
     tagClassName: "bg-orange-100 text-orange-700",
     viewType: "kanban",
+    intro: [
+      "Guías, almacén y tránsito. Cada envío debe quedar trazable.",
+      "• Guía de remisión",
+      "• Recepción de mercadería",
+      "• Incidencias de entrega",
+    ],
   },
   {
     id: "wiki-atencion-cliente",
     sectionId: "procesos",
-    title: "Proceso de Atención al Cliente",
+    title: "Atención al Cliente",
     icon: "🎧",
     tagLabel: "Proceso",
     tagClassName: "bg-orange-100 text-orange-700",
     viewType: "blocks",
+    intro: [
+      "Protocolo de Inbox y postventa. Responder en el mismo hilo del cliente.",
+      "• Saludo y validación del pedido",
+      "• Escalamiento a supervisor",
+      "• Cierre y encuesta",
+      "☐ Actualizar macros de respuesta",
+    ],
+  },
+  {
+    id: "wiki-hub-documentacion",
+    sectionId: "documentacion",
+    title: "Documentación",
+    icon: "📚",
+    tagLabel: "Módulo",
+    tagClassName: "bg-emerald-100 text-emerald-700",
+    viewType: "blocks",
+    intro: [
+      "Biblioteca de manuales, formatos, guías y políticas. Cada tipo tiene su página.",
+      "• Manuales",
+      "• Formatos",
+      "• Guías rápidas",
+      "• Políticas",
+    ],
+  },
+  {
+    id: "wiki-manuales",
+    sectionId: "documentacion",
+    title: "Manuales",
+    icon: "📗",
+    tagLabel: "Documento",
+    tagClassName: "bg-blue-100 text-blue-700",
+    viewType: "gallery",
+    intro: [
+      "Índice de manuales vigentes. Cada manual es un documento independiente.",
+      "• Manual de Ventas v2.1",
+      "• Manual de onboarding",
+      "• Manual de tesorería",
+    ],
   },
   {
     id: "wiki-politica-descuentos",
@@ -436,24 +589,40 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Política",
     tagClassName: "bg-emerald-100 text-emerald-700",
     viewType: "blocks",
+    intro: [
+      "Tope de descuento por tipo de cliente y aprobación requerida.",
+      "• Público: hasta 5% con vendedor",
+      "• Técnico: hasta 12% con supervisor",
+      "• Mayor: según convenio escrito",
+    ],
   },
   {
     id: "wiki-formato-cotizacion",
     sectionId: "documentacion",
-    title: "Formato de Cotización",
+    title: "Formatos",
     icon: "📊",
     tagLabel: "Formato",
     tagClassName: "bg-emerald-100 text-emerald-700",
     viewType: "table",
+    intro: [
+      "Plantillas descargables y campos obligatorios de cada formato.",
+    ],
   },
   {
     id: "wiki-guia-registrar-venta",
     sectionId: "documentacion",
-    title: "Guía Rápida: Cómo registrar una venta",
+    title: "Guías Rápidas",
     icon: "📖",
     tagLabel: "Guía",
     tagClassName: "bg-violet-100 text-violet-700",
     viewType: "blocks",
+    intro: [
+      "Pasos cortos para tareas frecuentes. Empieza por registrar una venta.",
+      "• Elige cliente y tipo de comprobante",
+      "• Agrega productos e IGV",
+      "• Confirma y descarga el PDF",
+      "☐ Enlazar esta guía en onboarding",
+    ],
   },
   {
     id: "wiki-codigo-etica",
@@ -463,6 +632,9 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Política",
     tagClassName: "bg-emerald-100 text-emerald-700",
     viewType: "blocks",
+    intro: [
+      "Principios de trato al cliente, datos personales y conflictos de interés.",
+    ],
   },
   {
     id: "wiki-onboarding",
@@ -472,6 +644,27 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Proceso",
     tagClassName: "bg-orange-100 text-orange-700",
     viewType: "blocks",
+    intro: [
+      "Checklist de los primeros 15 días de un colaborador nuevo.",
+      "☐ Crear usuario y rol",
+      "☐ Recorrer Pipeline e Inbox",
+      "☐ Emitir una venta de prueba",
+    ],
+  },
+  {
+    id: "wiki-hub-recursos",
+    sectionId: "recursos",
+    title: "Recursos",
+    icon: "🧰",
+    tagLabel: "Módulo",
+    tagClassName: "bg-violet-100 text-violet-700",
+    viewType: "blocks",
+    intro: [
+      "Herramientas, plantillas y capacitaciones de apoyo al equipo.",
+      "• Herramientas",
+      "• Plantillas",
+      "• Capacitaciones",
+    ],
   },
   {
     id: "wiki-herramientas",
@@ -481,6 +674,9 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Recursos",
     tagClassName: "bg-violet-100 text-violet-700",
     viewType: "todos",
+    intro: [
+      "Apps y accesos que el equipo usa junto a HaiSales.",
+    ],
   },
   {
     id: "wiki-plantillas",
@@ -490,6 +686,9 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Recursos",
     tagClassName: "bg-violet-100 text-violet-700",
     viewType: "gallery",
+    intro: [
+      "Archivos reutilizables: cotización, orden de compra y reporte semanal.",
+    ],
   },
   {
     id: "wiki-capacitaciones",
@@ -499,6 +698,27 @@ const SEED_DEFS: SeedDef[] = [
     tagLabel: "Recursos",
     tagClassName: "bg-violet-100 text-violet-700",
     viewType: "blocks",
+    intro: [
+      "Sesiones internas y material de entrenamiento por módulo.",
+      "• Ventas y facturación",
+      "• Inbox y WhatsApp",
+      "• Inventario y almacén",
+    ],
+  },
+  {
+    id: "wiki-soporte",
+    sectionId: "recursos",
+    title: "Soporte",
+    icon: "🛟",
+    tagLabel: "Soporte",
+    tagClassName: "bg-sky-100 text-sky-700",
+    viewType: "blocks",
+    intro: [
+      "Canal de ayuda interna: incidencias de HaiSales, accesos y dudas de proceso.",
+      "• Reportar un error",
+      "• Solicitar un usuario",
+      "• Horario de atención: lun–vie 9:00–18:00",
+    ],
   },
 ];
 
@@ -540,6 +760,117 @@ export const wikiNavSections: WikiNavSection[] = [
     })),
   },
 ];
+
+export function createProcesoVentasApuntes(): WikiKanbanColumn[] {
+  const card = (title: string, note: string, id: string): WikiKanbanCard => ({
+    id,
+    title,
+    note,
+  });
+
+  return [
+    {
+      id: "wiki-apuntes-ventas",
+      title: "Ventas",
+      color: "border-t-blue-500",
+      countLabel: "tarjetas",
+      cards: [
+        card(
+          "Saludo comercial",
+          [
+            "¡Buenos dias! 👏 Soy *Nicolas Aliaga* 🙋‍♂️, Asesor Comercial de *NBN Tecnologia Total SAC*, distribuidor autorizado de *RICOH DEL PERU* tengo el producto solicitado en stock",
+          ].join("\n"),
+          "wiki-apunte-v1",
+        ),
+        card(
+          "Presentación WhatsApp",
+          [
+            "👋 Hola, soy *Nicolas Aliaga*",
+            "Asesor Comercial — *NBN Tecnologia Total SAC*",
+            "",
+            "✅ Distribuidor autorizado *RICOH DEL PERU*",
+            "✅ Cotizaciones y stock al instante",
+            "",
+            "📱 Escríbeme por WhatsApp para ayudarte",
+          ].join("\n"),
+          "wiki-apunte-v2",
+        ),
+      ],
+    },
+    {
+      id: "wiki-apuntes-productos",
+      title: "Productos",
+      color: "border-t-emerald-500",
+      countLabel: "tarjetas",
+      cards: [
+        card(
+          "RICOH IM 430F",
+          [
+            "🖨️ *NUEVA RICOH IM 430F (A4)* — *$889 o S/ 4000*",
+            "",
+            "✅ Copia, Imprime, Escanea",
+            "✅ Pantalla Tablet Android",
+            "✅ Dúplex automático",
+            "✅ Red / WiFi",
+            "",
+            "🎁 Toner de inicio incluido",
+            "📌 Precio especial por contado",
+          ].join("\n"),
+          "wiki-apunte-p1",
+        ),
+        card(
+          "RICOH IM C3000",
+          [
+            "🖨️ *NUEVA RICOH IM C3000* — *$3,890 o S/ 14,450*",
+            "",
+            "✅ Color A3",
+            "✅ Escáner + Finisher",
+            "✅ 30 ppm",
+            "",
+            "🎁 Toner de inicio",
+            "📌 Incluye instalación",
+          ].join("\n"),
+          "wiki-apunte-p2",
+        ),
+      ],
+    },
+    {
+      id: "wiki-apuntes-equipos",
+      title: "Equipos",
+      color: "border-t-violet-500",
+      countLabel: "tarjetas",
+      cards: [
+        card(
+          "Laptop DELL i3",
+          [
+            "💻 *NUEVA LAPTOP DELL i3 11va Gen*",
+            "",
+            "✅ RAM 8 GB / SSD M.2 256 GB",
+            "✅ Pantalla 15.6\" FHD",
+            "✅ Garantía 12 meses",
+            "",
+            "🎁 Programas incluidos",
+            "💰 *$580 o S/ 2,150*",
+          ].join("\n"),
+          "wiki-apunte-e1",
+        ),
+        card(
+          "PC Escritorio i5",
+          [
+            "💻 *PC ESCRITORIO i5*",
+            "",
+            "✅ RAM 16 GB / SSD 512 GB",
+            "✅ Ideal oficina / diseño",
+            "",
+            "🎁 Suite oficina incluida",
+            "💰 *$720 o S/ 2,680*",
+          ].join("\n"),
+          "wiki-apunte-e2",
+        ),
+      ],
+    },
+  ];
+}
 
 export function createMockupKanbanBoard(): WikiKanbanColumn[] {
   const col = (title: string, cards: Array<{ title: string; note: string }>): WikiKanbanColumn => ({
@@ -860,8 +1191,9 @@ export function createSeedWikiPages(): WikiPage[] {
   return SEED_DEFS.map((def, index) => {
     const gradient = GRADIENTS[index % GRADIENTS.length];
     const content = emptyPageContent(def.title, def.icon, gradient, def.tagLabel, def.tagClassName);
-    if (def.id === "wiki-manual-ventas") {
-      content.kanbanColumns = createVentasMockupKanban();
+    content.blocks = seedIntroBlocks(def);
+    if (def.id === "wiki-ventas") {
+      content.kanbanColumns = createProcesoVentasApuntes();
     }
     return {
       id: def.id,
@@ -874,9 +1206,24 @@ export function createSeedWikiPages(): WikiPage[] {
       tagLabel: def.tagLabel,
       tagClassName: def.tagClassName,
       ...content,
+      blocks: content.blocks,
     };
   });
 }
+
+export function getWikiSeedPage(pageId: string): WikiPage | undefined {
+  return createSeedWikiPages().find((page) => page.id === pageId);
+}
+
+export const WIKI_SECTION_HUB_PAGE_ID: Record<string, string> = {
+  empresa: "wiki-hub-empresa",
+  ventas: "wiki-ventas",
+  productos: "wiki-manuales",
+  procesos: "wiki-hub-procesos",
+  documentacion: "wiki-hub-documentacion",
+  recursos: "wiki-hub-recursos",
+  soporte: "wiki-atencion-cliente",
+};
 
 export function createWikiPage(input: {
   sectionId: string;
@@ -921,7 +1268,7 @@ function normalizeMuralBlock(block: WikiMuralBlock, index: number): WikiMuralBlo
 }
 
 function normalizePage(page: WikiPage): WikiPage {
-  const validViews: WikiViewType[] = ["gallery", "kanban", "table", "todos", "mural", "blocks"];
+  const validViews: WikiViewType[] = ["gallery", "kanban", "table", "todos", "mural", "blocks", "proceso"];
   const muralColumns = Array.isArray(page.muralColumns)
     ? page.muralColumns.map((column) => ({
         ...column,
@@ -957,15 +1304,36 @@ function normalizePage(page: WikiPage): WikiPage {
 }
 
 export function loadWikiPages(): WikiPage[] {
-  if (typeof window === "undefined") return createSeedWikiPages();
+  const seeds = createSeedWikiPages();
+  if (typeof window === "undefined") return seeds;
   try {
     const raw = localStorage.getItem(WIKI_STORAGE_KEY);
-    if (!raw) return createSeedWikiPages();
+    if (!raw) return seeds;
     const parsed = JSON.parse(raw) as WikiPage[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return createSeedWikiPages();
-    return parsed.map(normalizePage);
+    if (!Array.isArray(parsed) || parsed.length === 0) return seeds;
+    const existing = parsed.map(normalizePage).map((page) => {
+      if (page.id !== "wiki-ventas") return page;
+      const seed = seeds.find((entry) => entry.id === "wiki-ventas");
+      if (!seed) return page;
+      return {
+        ...page,
+        title: seed.title,
+        sectionId: seed.sectionId,
+        icon: seed.icon,
+        tagLabel: seed.tagLabel,
+        tagClassName: seed.tagClassName,
+        viewType: seed.viewType,
+        blocks: seed.blocks,
+        kanbanColumns: seed.kanbanColumns,
+      };
+    });
+    const byId = new Set(existing.map((page) => page.id));
+    for (const seed of seeds) {
+      if (!byId.has(seed.id)) existing.push(seed);
+    }
+    return existing;
   } catch {
-    return createSeedWikiPages();
+    return seeds;
   }
 }
 

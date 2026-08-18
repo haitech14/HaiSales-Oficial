@@ -2,9 +2,14 @@
 import { RefreshCw, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { inboxChannelMeta, INBOX_CHANNEL_ORDER } from "@/lib/inbox/channels";
-import { MESSAGING_PROVIDERS } from "@/lib/inbox/messaging-providers";
+import {
+  activeMessagingProviderLabel,
+  hasLiveMessagingConnection,
+  MESSAGING_PROVIDERS,
+} from "@/lib/inbox/messaging-providers";
 import type { ChannelConnection } from "@/lib/inbox/types";
 import { syncZavuConnection } from "@/lib/inbox/zavu-connection-service";
+import { syncZernioConnection } from "@/lib/inbox/zernio-connection-service";
 import { ChannelIcon } from "@/components/inbox/ChannelIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +21,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+
+const LIVE_CHANNELS = new Set(["whatsapp", "instagram", "facebook", "messenger"]);
 
 export function InboxChannelIntegrations({
   open,
@@ -33,32 +40,39 @@ export function InboxChannelIntegrations({
   onConnectionsChange?: () => void;
 }) {
   const [isSyncing, setIsSyncing] = useState(false);
-  const zavuConnected = connections.some(
-    (item) => item.channel === "zavu" && item.status === "connected",
-  );
-  const whatsAppConnected =
-    MESSAGING_PROVIDERS.zavu &&
-    (zavuConnected || whatsappConnections.some((item) => item.status === "connected"));
+  const providerLabel = activeMessagingProviderLabel();
+  const messagingConnected = hasLiveMessagingConnection([...connections, ...whatsappConnections]);
+  const canUseZernio = MESSAGING_PROVIDERS.zernio;
+  const canUseZavu = MESSAGING_PROVIDERS.zavu;
 
-  const handleSyncZavu = async () => {
+  const handleSync = async () => {
     if (!userId) {
-      toast.error("Inicia sesión para sincronizar Zavu");
+      toast.error(`Inicia sesión para sincronizar ${providerLabel}`);
       return;
     }
 
     setIsSyncing(true);
     try {
-      const result = await syncZavuConnection();
-      const label = [result.teamName, result.projectName].filter(Boolean).join(" · ");
-      const synced = result.conversationsSynced ?? 0;
-      toast.success(
-        label
-          ? `Zavu sincronizado (${label}${synced ? ` · ${synced} conversaciones` : ""})`
-          : "Zavu sincronizado correctamente",
-      );
+      if (canUseZernio) {
+        const result = await syncZernioConnection();
+        toast.success(
+          `Zernio sincronizado (${result.accounts} cuentas · ${result.conversationsSynced} conversaciones)`,
+        );
+      } else if (canUseZavu) {
+        const result = await syncZavuConnection();
+        const label = [result.teamName, result.projectName].filter(Boolean).join(" · ");
+        const synced = result.conversationsSynced ?? 0;
+        toast.success(
+          label
+            ? `Zavu sincronizado (${label}${synced ? ` · ${synced} conversaciones` : ""})`
+            : "Zavu sincronizado correctamente",
+        );
+      }
       onConnectionsChange?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo sincronizar Zavu");
+      toast.error(
+        error instanceof Error ? error.message : `No se pudo sincronizar ${providerLabel}`,
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -70,8 +84,8 @@ export function InboxChannelIntegrations({
         <SheetHeader>
           <SheetTitle>Integraciones del Inbox</SheetTitle>
           <SheetDescription>
-            Mensajería activa vía Zavu (WhatsApp, Facebook e Instagram). Kapso está desactivado
-            temporalmente.
+            Mensajería activa vía {providerLabel} (WhatsApp, Facebook e Instagram). Kapso está
+            desactivado temporalmente.
           </SheetDescription>
         </SheetHeader>
 
@@ -79,9 +93,11 @@ export function InboxChannelIntegrations({
           {INBOX_CHANNEL_ORDER.map((channel) => {
             const meta = inboxChannelMeta[channel];
             const connection = connections.find((item) => item.channel === channel);
+            const isLiveChannel = LIVE_CHANNELS.has(channel);
             const isConnected =
               channel === "whatsapp"
-                ? whatsAppConnected
+                ? whatsappConnections.some((item) => item.status === "connected") ||
+                  connections.some((item) => item.channel === "whatsapp" && item.status === "connected")
                 : connection?.status === "connected";
 
             return (
@@ -118,38 +134,48 @@ export function InboxChannelIntegrations({
                       </ul>
                     )}
 
-                    {channel === "whatsapp" && MESSAGING_PROVIDERS.zavu ? (
+                    {channel === "whatsapp" && (canUseZernio || canUseZavu) ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs"
                           disabled={isSyncing}
-                          onClick={() => void handleSyncZavu()}
+                          onClick={() => void handleSync()}
                         >
                           <RefreshCw
                             className={cn("mr-1.5 h-3.5 w-3.5", isSyncing && "animate-spin")}
                           />
-                          {isSyncing ? "Sincronizando..." : "Sincronizar Zavu"}
+                          {isSyncing ? "Sincronizando..." : `Sincronizar ${providerLabel}`}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs"
                           disabled={isSyncing}
-                          onClick={() => void handleSyncZavu()}
+                          onClick={() => void handleSync()}
                         >
                           <Smartphone className="mr-1.5 h-3.5 w-3.5" />
-                          {whatsAppConnected ? "Reconectar Zavu" : "Conectar Zavu"}
+                          {messagingConnected ? `Reconectar ${providerLabel}` : `Conectar ${providerLabel}`}
                         </Button>
                       </div>
-                    ) : channel === "whatsapp" && !MESSAGING_PROVIDERS.zavu ? (
+                    ) : channel === "whatsapp" && !canUseZernio && !canUseZavu ? (
                       <p className="mt-2 text-xs text-slate-500">
                         No hay proveedor de WhatsApp activo.
                       </p>
+                    ) : isLiveChannel ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 h-8 text-xs"
+                        disabled={isSyncing}
+                        onClick={() => void handleSync()}
+                      >
+                        {isConnected ? `Vía ${providerLabel}` : `Conectar ${providerLabel}`}
+                      </Button>
                     ) : (
                       <Button variant="outline" size="sm" className="mt-3 h-8 text-xs" disabled>
-                        {isConnected ? "Vía Zavu" : "Requiere Zavu"}
+                        Próximamente
                       </Button>
                     )}
                   </div>

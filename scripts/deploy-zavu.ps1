@@ -27,4 +27,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 npx supabase functions deploy zavu-send --project-ref $ProjectRef --use-api --yes
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+npx supabase functions deploy zavu-webhook --project-ref $ProjectRef --use-api --no-verify-jwt --yes
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "Deploy Zavu completado." -ForegroundColor Green

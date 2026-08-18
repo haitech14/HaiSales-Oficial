@@ -32,7 +32,7 @@ export function AppPeriodProvider({ children }: { children: ReactNode }) {
     queryKey: ["ventas", "available-months", user?.id ?? "guest"],
     queryFn: () => fetchAvailableVentaMonths(user!.id),
     enabled: Boolean(user?.id),
-    staleTime: 60_000,
+    staleTime: 5_000,
   });
 
   const salesMonthOptions = useMemo(

@@ -1,17 +1,15 @@
-import { useMemo, useState } from "react";
-import { Loader2, Plug } from "lucide-react";
-import { InboxChannelIntegrations } from "@/components/inbox/InboxChannelIntegrations";
+import { useMemo } from "react";
+import { Loader2 } from "lucide-react";
 import { InboxFilterBar } from "@/components/inbox/InboxFilterBar";
 import { InboxMessengerView } from "@/components/inbox/InboxMessengerView";
 import { WhatsAppNumberSelector } from "@/components/inbox/WhatsAppNumberSelector";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
 import { useInbox } from "@/hooks/useInbox";
 import { inboxViewTabs } from "@/lib/inbox/channels";
+import { hasLiveMessagingConnection } from "@/lib/inbox/messaging-providers";
 import type { InboxViewFilter } from "@/lib/inbox/types";
 
 export function PipelineInboxView() {
-  const { user } = useAuth();
   const {
     snapshot,
     filteredConversations,
@@ -25,9 +23,6 @@ export function PipelineInboxView() {
     isError,
     invalidate,
   } = useInbox();
-
-  const [contactPanelHidden, setContactPanelHidden] = useState(false);
-  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   const filterTabs = useMemo(() => {
     const conversations = snapshot?.conversations ?? [];
@@ -51,9 +46,10 @@ export function PipelineInboxView() {
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
-  const hasMessagingConnected =
-    channelConnections.some((item) => item.channel === "zavu" && item.status === "connected") ||
-    whatsappConnections.some((item) => item.status === "connected");
+  const hasMessagingConnected = hasLiveMessagingConnection([
+    ...channelConnections,
+    ...whatsappConnections,
+  ]);
   const showWhatsAppSelector =
     hasMessagingConnected &&
     (filters.view === "all" || filters.view === "whatsapp" || filters.view === "unread");
@@ -80,24 +76,6 @@ export function PipelineInboxView() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
-      {snapshot.source === "supabase" && (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50 px-4 py-1.5 text-xs text-emerald-700 sm:px-6">
-          <span>
-            {snapshot.conversations.length} conversaciones
-            {hasMessagingConnected ? " · Zavu conectado" : " · Conecta Zavu en Integraciones"}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 border-emerald-200 bg-white text-[11px] text-emerald-800"
-            onClick={() => setIntegrationsOpen(true)}
-          >
-            <Plug className="mr-1.5 h-3.5 w-3.5" />
-            Integraciones
-          </Button>
-        </div>
-      )}
-
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <InboxFilterBar
           tabs={filterTabs}
@@ -120,7 +98,7 @@ export function PipelineInboxView() {
               search={filters.search}
               onSearchChange={(search) => updateFilter("search", search)}
               activeView={filters.view}
-              contactPanelHidden={contactPanelHidden}
+              contactPanelHidden={false}
               useLiveMessaging={hasMessagingConnected}
               showSourcePhoneBadge={whatsappConnectionFilter === "all" && hasMessagingConnected}
               onMessageSent={invalidate}
@@ -128,15 +106,6 @@ export function PipelineInboxView() {
           </div>
         </div>
       </div>
-
-      <InboxChannelIntegrations
-        open={integrationsOpen}
-        onOpenChange={setIntegrationsOpen}
-        connections={channelConnections}
-        whatsappConnections={whatsappConnections}
-        userId={user?.id}
-        onConnectionsChange={invalidate}
-      />
     </div>
   );
 }

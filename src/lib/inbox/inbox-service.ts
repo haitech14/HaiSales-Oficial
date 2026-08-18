@@ -81,31 +81,37 @@ function buildSnapshotWithSource(
   };
 }
 
-export async function fetchInboxSnapshot(userId: string | null): Promise<InboxDataSnapshot> {
+export async function fetchInboxSnapshot(
+  userId: string | null,
+  options?: { syncRemote?: boolean },
+): Promise<InboxDataSnapshot> {
   if (!userId) {
     return buildSnapshotWithSource([], "supabase");
   }
 
-  const syncTasks: Promise<unknown>[] = [];
-  if (MESSAGING_PROVIDERS.zavu) syncTasks.push(syncZavuConversations());
-  if (MESSAGING_PROVIDERS.zernio) syncTasks.push(syncZernioConversations());
-  if (MESSAGING_PROVIDERS.kapso) syncTasks.push(syncKapsoConversations());
+  if (options?.syncRemote !== false) {
+    const syncTasks: Promise<unknown>[] = [];
+    if (MESSAGING_PROVIDERS.zavu) syncTasks.push(syncZavuConversations());
+    if (MESSAGING_PROVIDERS.zernio) syncTasks.push(syncZernioConversations());
+    if (MESSAGING_PROVIDERS.kapso) syncTasks.push(syncKapsoConversations());
 
-  const syncWithCleanup = Promise.all(syncTasks)
-    .then(() => deleteEmptyConversations(userId))
-    .catch((error) => {
-      console.warn("[inbox] Sync conversaciones:", error instanceof Error ? error.message : error);
-    });
+    const syncWithCleanup = Promise.all(syncTasks)
+      .then(() => deleteEmptyConversations(userId))
+      .catch((error) => {
+        console.warn("[inbox] Sync conversaciones:", error instanceof Error ? error.message : error);
+      });
 
-  await Promise.race([
-    syncWithCleanup,
-    new Promise((resolve) => setTimeout(resolve, 6000)),
-  ]);
+    await Promise.race([
+      syncWithCleanup,
+      new Promise((resolve) => setTimeout(resolve, 6000)),
+    ]);
+  }
 
   const { data, error } = await supabase
     .from("inbox_conversations")
     .select("*")
     .eq("user_id", userId)
+    .neq("status", "cerrada")
     .order("last_message_at", { ascending: false });
 
   if (error) {
@@ -159,14 +165,18 @@ function mapRowToMessage(row: MessageRow): InboxMessage {
 
 const messageSyncInFlight = new Map<string, Promise<void>>();
 const messageSyncedAt = new Map<string, number>();
-const MESSAGE_SYNC_TTL_MS = 30_000;
+const MESSAGE_SYNC_TTL_MS = 3_000;
 
-async function syncInboxConversationMessages(conversationId: string): Promise<void> {
+async function syncInboxConversationMessages(conversationId: string): Promise<boolean> {
   const last = messageSyncedAt.get(conversationId) ?? 0;
-  if (Date.now() - last < MESSAGE_SYNC_TTL_MS) return;
+  if (Date.now() - last < MESSAGE_SYNC_TTL_MS) return false;
   const pending = messageSyncInFlight.get(conversationId);
-  if (pending) return pending;
+  if (pending) {
+    await pending;
+    return false;
+  }
 
+  let didSync = false;
   const task = (async () => {
     try {
       const { data, error } = await supabase.functions.invoke("inbox-messages-sync", {
@@ -181,6 +191,7 @@ async function syncInboxConversationMessages(conversationId: string): Promise<vo
         return;
       }
       messageSyncedAt.set(conversationId, Date.now());
+      didSync = true;
     } catch (error) {
       console.warn("[inbox] Sync mensajes:", error instanceof Error ? error.message : error);
     } finally {
@@ -189,11 +200,22 @@ async function syncInboxConversationMessages(conversationId: string): Promise<vo
   })();
 
   messageSyncInFlight.set(conversationId, task);
-  return task;
+  await task;
+  return didSync;
 }
 
-export async function fetchInboxMessages(conversationId: string): Promise<InboxMessage[]> {
-  await syncInboxConversationMessages(conversationId);
+export function invalidateInboxMessageSync(conversationId: string) {
+  messageSyncedAt.delete(conversationId);
+}
+
+export async function fetchInboxMessages(
+  conversationId: string,
+  options?: { syncRemote?: boolean },
+): Promise<InboxMessage[]> {
+  let didSync = false;
+  if (options?.syncRemote !== false) {
+    didSync = await syncInboxConversationMessages(conversationId);
+  }
 
   const { data, error } = await supabase
     .from("inbox_messages")
@@ -206,7 +228,33 @@ export async function fetchInboxMessages(conversationId: string): Promise<InboxM
     return [];
   }
 
-  return (data ?? []).map(mapRowToMessage);
+  const messages = (data ?? []).map(mapRowToMessage);
+  if (didSync) {
+    void touchConversationPreview(conversationId, messages);
+  }
+  return messages;
+}
+
+async function touchConversationPreview(conversationId: string, messages: InboxMessage[]) {
+  const last = messages[messages.length - 1];
+  if (!last?.body) return;
+
+  const preview = last.body.slice(0, 500);
+  const { data: current } = await supabase
+    .from("inbox_conversations")
+    .select("last_message, last_message_at")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (current?.last_message === preview && current.last_message_at === last.sentAt) return;
+
+  await supabase
+    .from("inbox_conversations")
+    .update({
+      last_message: preview,
+      last_message_at: last.sentAt,
+    })
+    .eq("id", conversationId);
 }
 
 export async function markConversationRead(conversationId: string): Promise<void> {
@@ -220,23 +268,44 @@ export async function markConversationRead(conversationId: string): Promise<void
   }
 }
 
-export async function sendInboxMessage(conversationId: string, body: string): Promise<void> {
+export async function sendInboxMessage(conversationId: string, body: string): Promise<InboxMessage> {
   const { data: conversation } = await supabase
     .from("inbox_conversations")
-    .select("contact_identifier, channel, metadata")
+    .select("id, user_id, contact_identifier, channel, metadata, external_id")
     .eq("id", conversationId)
     .maybeSingle();
 
-  const metadata = (conversation?.metadata ?? {}) as Record<string, unknown>;
-  const provider =
-    typeof metadata.provider === "string" ? metadata.provider : undefined;
+  if (!conversation) {
+    throw new Error("Conversación no encontrada");
+  }
 
-  if (provider === "zavu" && MESSAGING_PROVIDERS.zavu) {
+  const metadata = (conversation.metadata ?? {}) as Record<string, unknown>;
+  const provider =
+    (typeof metadata.provider === "string" ? metadata.provider : undefined) ||
+    inferProviderFromExternalId(conversation.external_id) ||
+    (MESSAGING_PROVIDERS.zernio ? "zernio" : MESSAGING_PROVIDERS.zavu ? "zavu" : undefined);
+  const sentAt = new Date().toISOString();
+  let remoteId: string | null = null;
+
+  if (provider === "zernio" && MESSAGING_PROVIDERS.zernio) {
+    const { data, error } = await supabase.functions.invoke("zernio-send", {
+      body: {
+        conversationId: typeof metadata.conversation_id === "string" ? metadata.conversation_id : undefined,
+        accountId: typeof metadata.account_id === "string" ? metadata.account_id : undefined,
+        text: body,
+        inboxConversationId: conversationId,
+      },
+    });
+
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(String(data.error));
+    remoteId = extractRemoteMessageId(data);
+  } else if (provider === "zavu" && MESSAGING_PROVIDERS.zavu) {
     const { data, error } = await supabase.functions.invoke("zavu-send", {
       body: {
-        to: conversation?.contact_identifier,
+        to: conversation.contact_identifier,
         text: body,
-        channel: conversation?.channel === "facebook" ? "messenger" : conversation?.channel,
+        channel: conversation.channel === "facebook" ? "messenger" : conversation.channel,
         senderId: typeof metadata.sender_id === "string" ? metadata.sender_id : undefined,
         conversationId,
       },
@@ -244,24 +313,93 @@ export async function sendInboxMessage(conversationId: string, body: string): Pr
 
     if (error) throw new Error(error.message);
     if (data?.error) throw new Error(String(data.error));
-    return;
-  }
-
-  if (provider === "kapso" && MESSAGING_PROVIDERS.kapso) {
+    remoteId = extractRemoteMessageId(data);
+  } else if (provider === "kapso" && MESSAGING_PROVIDERS.kapso) {
     const { data, error } = await supabase.functions.invoke("whatsapp-send", {
       body: { conversationId, body },
     });
 
     if (error) throw new Error(error.message);
     if (data?.error) throw new Error(String(data.error));
-    return;
+    remoteId = extractRemoteMessageId(data);
+  } else {
+    throw new Error(
+      provider === "kapso"
+        ? "Kapso está desactivado temporalmente. Sincroniza conversaciones desde Zernio."
+        : "Esta conversación no admite envío. Conecta Zernio en Integraciones.",
+    );
   }
 
-  throw new Error(
-    provider === "kapso"
-      ? "Kapso está desactivado temporalmente. Sincroniza conversaciones desde Zavu."
-      : "Esta conversación no admite envío. Conecta Zavu en Integraciones.",
-  );
+  const localId = remoteId ?? crypto.randomUUID();
+  const { data: inserted, error: insertError } = await supabase
+    .from("inbox_messages")
+    .insert({
+      conversation_id: conversationId,
+      user_id: conversation.user_id,
+      external_id:
+        provider === "zernio" ? `zernio:${localId}` : provider === "zavu" ? `zavu:${localId}` : localId,
+      direction: "outbound",
+      body,
+      sent_at: sentAt,
+      metadata: { provider, source: "haisales" },
+    })
+    .select("*")
+    .maybeSingle();
+
+  if (insertError) {
+    console.warn("[inbox] No se pudo guardar el mensaje local:", insertError.message);
+  }
+
+  await supabase
+    .from("inbox_conversations")
+    .update({
+      last_message: body.slice(0, 500),
+      last_message_at: sentAt,
+      is_read: true,
+    })
+    .eq("id", conversationId);
+
+  invalidateInboxMessageSync(conversationId);
+
+  return inserted
+    ? mapRowToMessage(inserted)
+    : {
+        id: localId,
+        conversationId,
+        direction: "outbound",
+        body,
+        sentAt,
+      };
+}
+
+function extractRemoteMessageId(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const payload = data as {
+    message?: { id?: string; messageId?: string };
+    id?: string;
+    data?: { messageId?: string; id?: string };
+  };
+  if (typeof payload.data?.messageId === "string" && payload.data.messageId.trim()) {
+    return payload.data.messageId;
+  }
+  if (typeof payload.data?.id === "string" && payload.data.id.trim()) return payload.data.id;
+  if (typeof payload.message?.messageId === "string" && payload.message.messageId.trim()) {
+    return payload.message.messageId;
+  }
+  if (typeof payload.message?.id === "string" && payload.message.id.trim()) return payload.message.id;
+  if (typeof payload.id === "string" && payload.id.trim()) return payload.id;
+  return null;
+}
+
+export async function hideInboxConversation(conversationId: string): Promise<void> {
+  const { error } = await supabase
+    .from("inbox_conversations")
+    .update({ status: "cerrada", is_read: true })
+    .eq("id", conversationId);
+
+  if (error) {
+    throw new Error(error.message || "No se pudo eliminar la conversación");
+  }
 }
 
 export async function persistInboxConversations(

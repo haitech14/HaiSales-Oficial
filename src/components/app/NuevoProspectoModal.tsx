@@ -218,7 +218,7 @@ export function NuevoProspectoModal({
             <p className="text-[13px] font-semibold text-blue-600">Información general</p>
 
             <div>
-              <FieldLabel required>Nombre de la oportunidad</FieldLabel>
+              <FieldLabel required>Nombre</FieldLabel>
               <input
                 value={form.titulo}
                 onChange={(event) => updateField("titulo", event.target.value)}

@@ -2,12 +2,13 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  Download,
   Folder,
   Plus,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { wikiIndexTree } from "@/lib/anuncios/wiki-dashboard-data";
+import { WIKI_SECTION_HUB_PAGE_ID } from "@/lib/anuncios/wiki-store";
 import { cn } from "@/lib/utils";
 
 type AnunciosWikiSidebarProps = {
@@ -29,9 +30,10 @@ export function AnunciosWikiSidebar({
 }: AnunciosWikiSidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     empresa: true,
-    procesos: true,
-    documentacion: true,
+    ventas: true,
+    productos: false,
     recursos: false,
+    soporte: false,
   });
 
   const toggleFolder = (folderId: string) => {
@@ -46,7 +48,7 @@ export function AnunciosWikiSidebar({
       )}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
-        <h2 className="text-sm font-semibold text-slate-800">Índice</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Navegación</h2>
         <button
           type="button"
           onClick={onNewPage}
@@ -61,28 +63,39 @@ export function AnunciosWikiSidebar({
         <ul className="space-y-1">
           {wikiIndexTree.map((folder) => {
             const isOpen = expanded[folder.id] ?? false;
-            const isSectionActive = activeSectionId === folder.id && !activePageId;
+            const isSectionActive =
+              activePageId === WIKI_SECTION_HUB_PAGE_ID[folder.id] ||
+              (activeSectionId === folder.id && !activePageId);
 
             return (
               <li key={folder.id}>
                 <button
                   type="button"
                   onClick={() => {
-                    toggleFolder(folder.id);
+                    if (!isOpen) toggleFolder(folder.id);
                     onSelectSection(folder.id);
                   }}
                   className={cn(
                     "flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] font-medium transition",
                     isSectionActive
-                      ? "bg-slate-100 text-slate-900"
+                      ? "bg-blue-50 text-blue-800"
                       : "text-slate-700 hover:bg-slate-50",
                   )}
                 >
-                  {isOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  )}
+                  <span
+                    role="presentation"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleFolder(folder.id);
+                    }}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-slate-200/70"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    )}
+                  </span>
                   <Folder className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                   <span className="truncate">
                     {folder.number}. {folder.label}
@@ -131,8 +144,8 @@ export function AnunciosWikiSidebar({
           size="sm"
           className="h-8 w-full justify-start gap-2 border-slate-200 text-xs text-slate-600"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-          Papelera
+          <Download className="h-3.5 w-3.5" />
+          Centro de Descargas
         </Button>
       </div>
     </aside>

@@ -17,9 +17,29 @@ function formatEdgeFunctionError(error: { message?: string } | null): string {
     message.includes("FunctionsFetchError") ||
     message.includes("404")
   ) {
-    return 'La función "zernio-inbox-sync" no está desplegada. Ejecuta el deploy de Zernio.';
+    return 'La función "zernio-inbox-sync" no está desplegada. Ejecuta scripts/deploy-zernio.ps1.';
   }
   return message;
+}
+
+export async function syncZernioConnection(): Promise<ZernioSyncResult> {
+  const { data, error } = await supabase.functions.invoke("zernio-inbox-sync", {
+    body: {},
+  });
+
+  if (error) {
+    throw new Error(formatEdgeFunctionError(error));
+  }
+  if (data?.error) {
+    throw new Error(String(data.error));
+  }
+
+  lastSyncAt = Date.now();
+  return {
+    accounts: typeof data?.accounts === "number" ? data.accounts : 0,
+    conversationsSynced: typeof data?.conversationsSynced === "number" ? data.conversationsSynced : 0,
+    opportunitiesSynced: typeof data?.opportunitiesSynced === "number" ? data.opportunitiesSynced : 0,
+  };
 }
 
 /** Importa conversaciones WhatsApp, Facebook e Instagram desde Zernio. */
@@ -29,21 +49,8 @@ export async function syncZernioConversations(options?: { force?: boolean }): Pr
 
   syncInFlight = (async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("zernio-inbox-sync", {
-        body: {},
-      });
-
-      if (error) {
-        console.warn("[zernio] Sync conversaciones:", formatEdgeFunctionError(error));
-        return 0;
-      }
-      if (data?.error) {
-        console.warn("[zernio] Sync conversaciones:", data.error);
-        return 0;
-      }
-
-      lastSyncAt = Date.now();
-      return typeof data?.conversationsSynced === "number" ? data.conversationsSynced : 0;
+      const result = await syncZernioConnection();
+      return result.conversationsSynced;
     } catch (error) {
       console.warn("[zernio] Sync conversaciones:", error instanceof Error ? error.message : error);
       return 0;

@@ -24,7 +24,7 @@ export type EstadisticasDistribucionSlice = {
 };
 
 export type EstadisticasCurrencySummary = {
-  id: "pen" | "usd" | "eur";
+  id: "pen" | "usd" | "cobranza_pen" | "cobranza_usd";
   label: string;
   symbol: string;
   amount: number;

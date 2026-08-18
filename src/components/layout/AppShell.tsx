@@ -32,7 +32,7 @@ export function AppShell() {
             <ErrorBoundary fallbackTitle="Error en el módulo">
               <AppPeriodProvider>
                 <GlobalSearchProvider>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     <Outlet />
                   </div>
                 </GlobalSearchProvider>

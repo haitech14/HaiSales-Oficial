@@ -10,7 +10,6 @@ import {
   type MuralToolbarTool,
 } from "@/components/app/mural/MuralApuntesHeader";
 import { MuralApuntesCanvasControls } from "@/components/app/mural/MuralApuntesCanvasControls";
-import { MuralApuntesSideToolbar } from "@/components/app/mural/MuralApuntesSideToolbar";
 import { useWikiBoardHistory } from "@/hooks/useWikiBoardHistory";
 import {
   createWikiId,
@@ -346,7 +345,12 @@ export function MuralApuntesEditor({ columns, onChange, className }: MuralApunte
 
   return (
     <div ref={canvasRef} className={cn("relative min-h-0 flex-1 overflow-hidden", className)}>
-      <MuralApuntesFloatingToolbar activeTool={activeTool} onTool={handleToolbar} />
+      <MuralApuntesFloatingToolbar
+        activeTool={activeTool}
+        onTool={handleToolbar}
+        onAddNote={addNote}
+        containerRef={canvasRef}
+      />
       <MuralApuntesCanvasControls
         onUndo={() => {
           undo();
@@ -360,7 +364,6 @@ export function MuralApuntesEditor({ columns, onChange, className }: MuralApunte
         canRedo={canRedo}
         onFullscreen={handleFullscreen}
       />
-      <MuralApuntesSideToolbar onAddNote={addNote} />
 
       <div
         className={cn(
@@ -388,6 +391,7 @@ export function MuralApuntesEditor({ columns, onChange, className }: MuralApunte
           hideChrome
           zoomSlotId="mural-zoom-slot"
           transparentCanvas
+          panMode={panMode}
         />
       </div>
     </div>

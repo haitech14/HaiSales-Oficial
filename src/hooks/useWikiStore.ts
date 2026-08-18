@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createWikiPage,
+  getWikiSeedPage,
   loadMuralApuntesBoard,
   loadWikiPages,
   saveHomeBoard,
@@ -54,11 +55,21 @@ export function useWikiStore() {
   }, []);
 
   const selectPage = useCallback((pageId: string | null) => {
-    setActivePageId(pageId);
-    if (pageId) {
-      const page = pages.find((item) => item.id === pageId);
-      if (page) setActiveSectionId(page.sectionId);
+    if (!pageId) {
+      setActivePageId(null);
+      return;
     }
+
+    setPages((current) => {
+      if (current.some((page) => page.id === pageId)) return current;
+      const seed = getWikiSeedPage(pageId);
+      return seed ? [...current, seed] : current;
+    });
+
+    setActivePageId(pageId);
+    const known =
+      pages.find((item) => item.id === pageId) ?? getWikiSeedPage(pageId);
+    if (known) setActiveSectionId(known.sectionId);
   }, [pages]);
 
   const goHome = useCallback(() => {

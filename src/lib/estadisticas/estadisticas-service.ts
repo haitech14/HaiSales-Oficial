@@ -46,6 +46,20 @@ const DOCUMENTO_TIPOS: Array<{ id: string; label: string; color: string }> = [
 
 const DISTRIBUCION_COLORS = ["#3b82f6", "#22c55e", "#f97316", "#8b5cf6", "#ec4899", "#a3e635", "#84cc16"];
 
+let ordenesTableAvailable = true;
+
+function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("does not exist") ||
+    message.includes("could not find the table")
+  );
+}
+
 function categorizeDocumento(row: VentaRow): string {
   const codigo = (row.codigo_comprobante ?? row.numero ?? "").toUpperCase();
   const notas = (row.notas ?? "").toLowerCase();
@@ -215,55 +229,176 @@ function sumByCurrency(rows: VentaRow[]): { pen: number; usd: number; eur: numbe
   );
 }
 
-function formatCurrencyAmount(currency: "pen" | "usd" | "eur", amount: number): string {
+function formatMoney(symbol: "S/" | "$", amount: number): string {
   const value = amount.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (currency === "usd") return `$ ${value}`;
-  if (currency === "eur") return `€ ${value}`;
-  return `S/ ${value}`;
+  return `${symbol} ${value}`;
 }
 
-function buildCurrencySummaries(
-  current: { pen: number; usd: number; eur: number },
-  previous: { pen: number; usd: number; eur: number },
+function isCreditSale(row: VentaRow): boolean {
+  const notas = (row.notas ?? "").toUpperCase();
+  return notas.includes("FORMA DE PAGO: CREDITO") || notas.includes("FORMA DE PAGO: CRÉDITO");
+}
+
+function parseTipoCambio(notas: string | null): number {
+  const match = (notas ?? "").match(/T\.C:\s*([\d.]+)/i);
+  const value = match ? Number(match[1]) : 0;
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function isUsdOrigin(row: VentaRow): boolean {
+  if (resolveCurrency(row.moneda) === "usd") return true;
+  return /moneda origen:\s*usd/i.test(row.notas ?? "");
+}
+
+function cobradoAmountByCurrency(row: VentaRow): { pen: number; usd: number } {
+  if (row.estado === "anulada" || isCreditSale(row)) {
+    return { pen: 0, usd: 0 };
+  }
+
+  const total = Number(row.total) || 0;
+  if (total <= 0) return { pen: 0, usd: 0 };
+
+  if (isUsdOrigin(row)) {
+    if (resolveCurrency(row.moneda) === "usd") {
+      return { pen: 0, usd: total };
+    }
+    const tipoCambio = parseTipoCambio(row.notas);
+    return { pen: 0, usd: tipoCambio > 0 ? total / tipoCambio : total };
+  }
+
+  return { pen: total, usd: 0 };
+}
+
+function sumCobranzas(rows: VentaRow[]): { pen: number; usd: number } {
+  return rows.reduce(
+    (acc, row) => {
+      const cobrado = cobradoAmountByCurrency(row);
+      acc.pen += cobrado.pen;
+      acc.usd += cobrado.usd;
+      return acc;
+    },
+    { pen: 0, usd: 0 },
+  );
+}
+
+function buildCurrencyCard(
+  def: Omit<EstadisticasCurrencySummary, "amount" | "formatted" | "changeLabel">,
+  amount: number,
+  previousAmount: number,
+  previousLabel: string,
+  symbol: "S/" | "$",
+): EstadisticasCurrencySummary {
+  const change = buildChangeLabel(amount, previousAmount, previousLabel);
+  return {
+    ...def,
+    amount,
+    formatted: formatMoney(symbol, amount),
+    changeLabel: change.label,
+  };
+}
+
+function buildVentasCurrencySummaries(
+  current: { pen: number; usd: number },
+  previous: { pen: number; usd: number },
+  cobranzas: { pen: number; usd: number },
+  previousCobranzas: { pen: number; usd: number },
   previousLabel: string,
 ): EstadisticasCurrencySummary[] {
-  const defs: Array<Omit<EstadisticasCurrencySummary, "amount" | "formatted" | "changeLabel">> = [
-    {
-      id: "pen",
-      label: "Soles",
-      symbol: "S/",
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
-      lineColor: "#22c55e",
-    },
-    {
-      id: "usd",
-      label: "Dólares",
-      symbol: "$",
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-600",
-      lineColor: "#3b82f6",
-    },
-    {
-      id: "eur",
-      label: "Euros",
-      symbol: "€",
-      iconBg: "bg-orange-50",
-      iconColor: "text-orange-500",
-      lineColor: "#f97316",
-    },
+  return [
+    buildCurrencyCard(
+      {
+        id: "pen",
+        label: "Soles",
+        symbol: "S/",
+        iconBg: "bg-emerald-50",
+        iconColor: "text-emerald-600",
+        lineColor: "#22c55e",
+      },
+      current.pen,
+      previous.pen,
+      previousLabel,
+      "S/",
+    ),
+    buildCurrencyCard(
+      {
+        id: "usd",
+        label: "Dólares",
+        symbol: "$",
+        iconBg: "bg-blue-50",
+        iconColor: "text-blue-600",
+        lineColor: "#3b82f6",
+      },
+      current.usd,
+      previous.usd,
+      previousLabel,
+      "$",
+    ),
+    buildCurrencyCard(
+      {
+        id: "cobranza_pen",
+        label: "Cobranzas soles",
+        symbol: "S/",
+        iconBg: "bg-violet-50",
+        iconColor: "text-violet-600",
+        lineColor: "#7c3aed",
+      },
+      cobranzas.pen,
+      previousCobranzas.pen,
+      previousLabel,
+      "S/",
+    ),
+    buildCurrencyCard(
+      {
+        id: "cobranza_usd",
+        label: "Cobranzas dólares",
+        symbol: "$",
+        iconBg: "bg-orange-50",
+        iconColor: "text-orange-500",
+        lineColor: "#f97316",
+      },
+      cobranzas.usd,
+      previousCobranzas.usd,
+      previousLabel,
+      "$",
+    ),
   ];
+}
 
-  return defs.map((def) => {
-    const amount = current[def.id];
-    const change = buildChangeLabel(amount, previous[def.id], previousLabel);
-    return {
-      ...def,
-      amount,
-      formatted: formatCurrencyAmount(def.id, amount),
-      changeLabel: change.label,
-    };
-  });
+function buildComprasCurrencySummaries(
+  current: { pen: number; usd: number },
+  previous: { pen: number; usd: number },
+  previousLabel: string,
+): EstadisticasCurrencySummary[] {
+  return [
+    buildCurrencyCard(
+      {
+        id: "pen",
+        label: "Soles",
+        symbol: "S/",
+        iconBg: "bg-emerald-50",
+        iconColor: "text-emerald-600",
+        lineColor: "#22c55e",
+      },
+      current.pen,
+      previous.pen,
+      previousLabel,
+      "S/",
+    ),
+    buildCurrencyCard(
+      {
+        id: "usd",
+        label: "Dólares",
+        symbol: "$",
+        iconBg: "bg-blue-50",
+        iconColor: "text-blue-600",
+        lineColor: "#3b82f6",
+      },
+      current.usd,
+      previous.usd,
+      previousLabel,
+      "$",
+    ),
+  ];
 }
 
 function buildDailyTrend(rows: VentaRow[], range: PeriodRange, filter?: "ventas" | "proformas"): EstadisticasDailyPoint[] {
@@ -331,16 +466,14 @@ function buildComprasCurrency(ordenes: OrdenRow[], range: PeriodRange, previousR
   const current = {
     pen: currentRows.reduce((sum, row) => sum + Number(row.importe), 0),
     usd: 0,
-    eur: 0,
   };
   const previous = {
     pen: previousRows.reduce((sum, row) => sum + Number(row.importe), 0),
     usd: 0,
-    eur: 0,
   };
 
   return {
-    summaries: buildCurrencySummaries(current, previous, previousLabel),
+    summaries: buildComprasCurrencySummaries(current, previous, previousLabel),
     dailyTrend: buildComprasDailyTrend(currentRows, range),
   };
 }
@@ -379,7 +512,13 @@ function emptyEstadisticas(range: PeriodRange): EstadisticasData {
     documentosPorTipo: buildDocumentosPorTipo(emptyCounts),
     distribucion: [{ name: "Sin emisiones", value: 100, color: "#e2e8f0" }],
     distribucionTotalLabel: "0%",
-    ventasCurrency: buildCurrencySummaries({ pen: 0, usd: 0, eur: 0 }, { pen: 0, usd: 0, eur: 0 }, previousLabel),
+    ventasCurrency: buildVentasCurrencySummaries(
+      { pen: 0, usd: 0 },
+      { pen: 0, usd: 0 },
+      { pen: 0, usd: 0 },
+      { pen: 0, usd: 0 },
+      previousLabel,
+    ),
     ventasDailyTrend: buildDailyTrend([], range, "ventas"),
     proformasDailyTrend: buildDailyTrend([], range, "proformas"),
     ventasDocumentSummary: [
@@ -393,7 +532,7 @@ function emptyEstadisticas(range: PeriodRange): EstadisticasData {
         operations: 0,
       },
     ],
-    comprasCurrency: buildCurrencySummaries({ pen: 0, usd: 0, eur: 0 }, { pen: 0, usd: 0, eur: 0 }, previousLabel),
+    comprasCurrency: buildComprasCurrencySummaries({ pen: 0, usd: 0 }, { pen: 0, usd: 0 }, previousLabel),
     comprasDailyTrend: buildComprasDailyTrend([], range),
     previousPeriodLabel: previousLabel,
     source: "empty",
@@ -435,7 +574,13 @@ export function buildEstadisticas(input: {
     documentosPorTipo: buildDocumentosPorTipo(currentCounts),
     distribucion,
     distribucionTotalLabel,
-    ventasCurrency: buildCurrencySummaries(currentCurrency, previousCurrency, previousLabel),
+    ventasCurrency: buildVentasCurrencySummaries(
+      { pen: currentCurrency.pen, usd: currentCurrency.usd },
+      { pen: previousCurrency.pen, usd: previousCurrency.usd },
+      sumCobranzas(periodVentas),
+      sumCobranzas(prevVentas),
+      previousLabel,
+    ),
     ventasDailyTrend: buildDailyTrend(periodVentas, range, "ventas"),
     proformasDailyTrend: buildDailyTrend(periodVentas, range, "proformas"),
     ventasDocumentSummary: documentSummary.some((row) => row.operations > 0)
@@ -455,14 +600,28 @@ export async function fetchEstadisticas(userId: string | null, range: PeriodRang
 
   scheduleVentasLegacyImport(userId);
 
-  const [ventasRes, ordenesRes] = await Promise.all([
-    supabase
-      .from("ventas")
-      .select("id, fecha, total, moneda, tipo_comprobante, codigo_comprobante, numero, notas, estado")
-      .eq("user_id", userId)
-      .neq("estado", "anulada"),
-    supabase.from("ordenes_compra").select("importe, created_at").eq("user_id", userId),
-  ]);
+  const ventasQuery = supabase
+    .from("ventas")
+    .select("id, fecha, total, moneda, tipo_comprobante, codigo_comprobante, numero, notas, estado")
+    .eq("user_id", userId)
+    .neq("estado", "anulada");
+
+  const ordenesQuery = ordenesTableAvailable
+    ? supabase.from("ordenes_compra").select("importe, created_at").eq("user_id", userId)
+    : Promise.resolve({ data: [] as OrdenRow[], error: null });
+
+  const [ventasRes, ordenesRes] = await Promise.all([ventasQuery, ordenesQuery]);
+
+  if (ventasRes.error) {
+    throw new Error(ventasRes.error.message);
+  }
+  if (ordenesRes.error) {
+    if (isMissingRelationError(ordenesRes.error)) {
+      ordenesTableAvailable = false;
+    } else {
+      throw new Error(ordenesRes.error.message);
+    }
+  }
 
   return buildEstadisticas({
     range,

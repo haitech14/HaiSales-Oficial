@@ -180,18 +180,24 @@ const PIPELINE_COLUMN_META: Record<
 
 function formatDateParts(iso: string) {
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return { date: "", time: "" };
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
   return {
-    date: date.toLocaleDateString("es-PE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }),
-    time: date.toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }),
+    date: `${day}/${month}`,
+    time: `${hours}:${minutes}`,
   };
+}
+
+function cleanOportunidadTitulo(titulo: string, fallback: string) {
+  const trimmed = titulo.trim();
+  if (!trimmed) return fallback;
+  if (/^oportunidad(\s|$|[—\-:])/i.test(trimmed)) return fallback;
+  if (/^lead\s+(whatsapp|facebook|instagram)$/i.test(trimmed)) return fallback;
+  if (/^(WA|FB|IG)-\S+$/i.test(trimmed)) return fallback;
+  return trimmed;
 }
 
 function mapRowToOpportunity(row: OportunidadRow): Opportunity {
@@ -202,7 +208,7 @@ function mapRowToOpportunity(row: OportunidadRow): Opportunity {
     time,
     client: row.cliente_nombre,
     ruc: row.cliente_ruc ?? "—",
-    title: row.titulo,
+    title: cleanOportunidadTitulo(row.titulo, row.cliente_nombre),
     subtitle: row.subtitulo ?? "",
     value: Number(row.valor),
     stage: ETAPA_FROM_DB[row.etapa] ?? "Prospectos",
@@ -956,7 +962,7 @@ export async function createOportunidad(
       .join("") ||
     "SA";
 
-  const titulo = input.titulo?.trim() || `Oportunidad — ${clienteNombre}`;
+  const titulo = input.titulo?.trim() || clienteNombre;
   const fuente = input.fuente?.trim();
   const notas = input.notas?.trim();
   const subtitulo =
@@ -1181,7 +1187,7 @@ export async function updateOportunidad(
   const clienteNombre = input.clienteNombre.trim();
   if (!clienteNombre) throw new Error("El nombre del prospecto es obligatorio");
 
-  const titulo = input.titulo?.trim() || `Oportunidad — ${clienteNombre}`;
+  const titulo = input.titulo?.trim() || clienteNombre;
   const notas = input.notas?.trim();
   const fuente = input.fuente?.trim();
   const subtitulo =

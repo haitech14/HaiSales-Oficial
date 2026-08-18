@@ -41,6 +41,7 @@ FILES = [
     ("Abril2025.xlsx", "2026-04"),
     ("Reporte_de_Ventas_2026070253736502.xlsx", "2026-05"),
     ("Reporte_de_Ventas_2026070253617363.xlsx", "2026-06"),
+    ("Reporte_de_Ventas_2026081812330795.xlsx", "2026-08"),
 ]
 
 DOC_TYPES = {"FACTURA", "BOLETA DE VENTA", "NOTA DE CREDITO", "ORDEN"}

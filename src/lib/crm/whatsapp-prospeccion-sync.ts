@@ -85,7 +85,7 @@ function buildSocialOportunidadRow(
     codigo,
     cliente_nombre: clienteNombre,
     cliente_ruc: conv.contact_identifier?.trim() || null,
-    titulo: `Lead ${label}`,
+    titulo: clienteNombre,
     subtitulo: (conv.last_message?.trim() || `Conversación ${label}`).slice(0, 160),
     valor: 0,
     etapa: "Prospectos",

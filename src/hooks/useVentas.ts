@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppPeriod } from "@/hooks/useAppPeriod";
+import { ESTADISTICAS_QUERY_KEY } from "@/hooks/useEstadisticas";
 import type { NuevaVentaFormData } from "@/lib/nueva-venta-types";
 import { isIsoDateInRange, isPeriodMonthInRange } from "@/lib/period-filter";
 import {
@@ -81,6 +82,9 @@ export function useVentas() {
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: VENTAS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ESTADISTICAS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ["ventas", "available-months"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] });
   }, [queryClient]);
 
   const createMutation = useMutation({

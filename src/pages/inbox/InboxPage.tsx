@@ -13,6 +13,10 @@ import { useEmpresaSetupStatus } from "@/hooks/useEmpresaConfig";
 import { useInbox } from "@/hooks/useInbox";
 import { useTeamChat } from "@/hooks/useTeamChat";
 import { inboxViewTabs } from "@/lib/inbox/channels";
+import {
+  activeMessagingProviderLabel,
+  hasLiveMessagingConnection,
+} from "@/lib/inbox/messaging-providers";
 import type { TeamChatChannel } from "@/lib/inbox/team-chat-data";
 import type { InboxViewFilter } from "@/lib/inbox/types";
 
@@ -68,9 +72,11 @@ export default function InboxPage() {
   };
 
   const isSupabaseLive = Boolean(snapshot && "source" in snapshot && snapshot.source === "supabase");
-  const hasMessagingConnected =
-    channelConnections.some((item) => item.channel === "zavu" && item.status === "connected") ||
-    whatsappConnections.some((item) => item.status === "connected");
+  const providerLabel = activeMessagingProviderLabel();
+  const hasMessagingConnected = hasLiveMessagingConnection([
+    ...channelConnections,
+    ...whatsappConnections,
+  ]);
   const isTeamChatView = filters.view === "team-chat";
   const showWhatsAppSelector =
     !isTeamChatView &&
@@ -91,7 +97,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
       <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -155,7 +161,9 @@ export default function InboxPage() {
       {isSupabaseLive && (
         <div className="shrink-0 border-b border-emerald-100 bg-emerald-50 px-6 py-1.5 text-xs text-emerald-700">
           Conectado a Supabase · {snapshot.conversations.length} conversaciones sincronizadas
-          {hasMessagingConnected ? " · Zavu activo" : " · Conecta Zavu en Integraciones"}
+          {hasMessagingConnected
+            ? ` · ${providerLabel} activo`
+            : ` · Conecta ${providerLabel} en Integraciones`}
         </div>
       )}
 

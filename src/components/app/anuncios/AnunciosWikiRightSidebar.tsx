@@ -38,7 +38,7 @@ export function AnunciosWikiRightSidebar({
               <button
                 key={category.id}
                 type="button"
-                onClick={() => onSelectCategory(category.sectionId)}
+                onClick={() => onSelectPage(category.pageId)}
                 className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50/50 px-2 py-3 text-center transition hover:border-slate-200 hover:bg-white"
               >
                 <span

@@ -117,6 +117,7 @@ export function useLogistica(options?: UseLogisticaOptions) {
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: LOGISTICA_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: ALMACENES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: ["estadisticas"] });
   }, [queryClient]);
 
   const importGuiasMutation = useMutation({

@@ -12,6 +12,7 @@ type ConversationRow = {
   id: string;
   user_id: string;
   contact_identifier: string;
+  external_id?: string | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -28,6 +29,9 @@ type ZavuMessage = {
   id: string;
   text?: string | null;
   status?: string;
+  direction?: string;
+  from?: string;
+  to?: string;
   messageType?: string;
   createdAt?: string;
   content?: { mediaUrl?: string; filename?: string };
@@ -71,8 +75,35 @@ function mapZernioDirection(direction?: string): "inbound" | "outbound" {
   return direction === "outgoing" || direction === "outbound" ? "outbound" : "inbound";
 }
 
-function mapZavuDirection(status?: string): "inbound" | "outbound" {
-  return status === "received" ? "inbound" : "outbound";
+function zavuRemoteIdFromExternal(externalId?: string | null): string {
+  const match = /^(?:zavu:(?:whatsapp|facebook|instagram|messenger):)(.+)$/.exec(externalId ?? "");
+  return match?.[1] ?? "";
+}
+
+function mapZavuDirection(
+  message: ZavuMessage,
+  contactIdentifier?: string,
+): "inbound" | "outbound" {
+  const direction = (message.direction ?? "").toLowerCase();
+  if (direction === "inbound" || direction === "incoming" || direction === "in") return "inbound";
+  if (direction === "outbound" || direction === "outgoing" || direction === "out") return "outbound";
+
+  const status = (message.status ?? "").toLowerCase();
+  if (status === "received" || status === "inbound") return "inbound";
+  if (status === "sent" || status === "delivered" || status === "read" || status === "queued") {
+    return "outbound";
+  }
+
+  const fromDigits = (message.from ?? "").replace(/\D/g, "");
+  const contactDigits = (contactIdentifier ?? "").replace(/\D/g, "");
+  if (fromDigits.length >= 6 && contactDigits.length >= 6) {
+    if (fromDigits.endsWith(contactDigits.slice(-9)) || contactDigits.endsWith(fromDigits.slice(-9))) {
+      return "inbound";
+    }
+  }
+  if (message.from && contactIdentifier && message.from === contactIdentifier) return "inbound";
+
+  return "outbound";
 }
 
 async function fetchZernioMessages(conversationId: string, accountId: string): Promise<ZernioMessage[]> {
@@ -209,7 +240,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRole);
     const { data: conversation, error: convError } = await admin
       .from("inbox_conversations")
-      .select("id, user_id, contact_identifier, metadata")
+      .select("id, user_id, contact_identifier, external_id, metadata")
       .eq("id", conversationId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -222,7 +253,8 @@ Deno.serve(async (req) => {
     const metadata = (row.metadata ?? {}) as Record<string, unknown>;
     const provider = typeof metadata.provider === "string" ? metadata.provider : "";
     const remoteConversationId =
-      typeof metadata.conversation_id === "string" ? metadata.conversation_id : "";
+      (typeof metadata.conversation_id === "string" ? metadata.conversation_id : "") ||
+      zavuRemoteIdFromExternal(row.external_id);
     const accountId = typeof metadata.account_id === "string" ? metadata.account_id : "";
     const kapsoConversationId =
       typeof metadata.kapso_conversation_id === "string" ? metadata.kapso_conversation_id : "";
@@ -274,7 +306,7 @@ Deno.serve(async (req) => {
           },
         });
       }
-    } else if (provider === "zavu" && remoteConversationId) {
+    } else if ((provider === "zavu" || row.external_id?.startsWith("zavu:")) && remoteConversationId) {
       const messages = await fetchZavuMessages(remoteConversationId);
       for (const message of messages) {
         const bodyText =
@@ -284,7 +316,7 @@ Deno.serve(async (req) => {
           conversation_id: row.id,
           user_id: user.id,
           external_id: `zavu:${message.id}`,
-          direction: mapZavuDirection(message.status),
+          direction: mapZavuDirection(message, row.contact_identifier),
           body: bodyText.slice(0, 4000),
           sent_at: message.createdAt || new Date().toISOString(),
           metadata: {
@@ -318,6 +350,19 @@ Deno.serve(async (req) => {
       const { error: insertError } = await admin.from("inbox_messages").insert(fresh);
       if (insertError) {
         return jsonResponse({ error: insertError.message }, 500);
+      }
+
+      const latest = [...inserts].sort((a, b) =>
+        String(a.sent_at).localeCompare(String(b.sent_at)),
+      ).at(-1);
+      if (latest) {
+        await admin
+          .from("inbox_conversations")
+          .update({
+            last_message: String(latest.body).slice(0, 500),
+            last_message_at: latest.sent_at,
+          })
+          .eq("id", row.id);
       }
     }
 

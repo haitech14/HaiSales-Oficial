@@ -70,7 +70,8 @@ function isGenericChannelText(value?: string) {
   const text = value?.trim() ?? "";
   if (!text) return true;
   return /^(lead|contacto|conversaci[oó]n)(\s+(whatsapp|facebook|instagram))?$/i.test(text)
-    || /^(whatsapp|facebook|instagram)$/i.test(text);
+    || /^(whatsapp|facebook|instagram)$/i.test(text)
+    || /^oportunidad(\s|$|[—\-:])/i.test(text);
 }
 
 function cardDisplayTitle(card: PipelineCard) {
@@ -243,7 +244,7 @@ function formatLastContact(iso?: string, fallback?: string) {
     if (Number.isNaN(date.getTime())) return fallback || "";
     if (isToday(date)) return format(date, "HH:mm", { locale: es });
     if (isYesterday(date)) return `Ayer ${format(date, "HH:mm", { locale: es })}`;
-    return format(date, "dd/MM/yyyy HH:mm", { locale: es });
+    return format(date, "dd/MM", { locale: es });
   } catch {
     return fallback || "";
   }

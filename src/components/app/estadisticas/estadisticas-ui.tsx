@@ -203,8 +203,15 @@ export function EstadisticasDistribucionCard({
 }
 
 export function EstadisticasCurrencyGrid({ items }: { items: EstadisticasCurrencySummary[] }) {
+  const gridClass =
+    items.length >= 4
+      ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      : items.length === 2
+        ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+        : "grid grid-cols-1 gap-4 md:grid-cols-3";
+
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className={gridClass}>
       {items.map((item) => (
         <EstadisticasCard key={item.id} className="p-4 sm:p-5">
           <div className="flex items-start gap-3">

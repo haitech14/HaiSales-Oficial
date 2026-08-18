@@ -50,6 +50,7 @@ import { useSearchQueryParam } from "@/hooks/useSearchQueryParam";
 import type { Opportunity } from "@/lib/crm-mock-data";
 import { pickHumanContactName } from "@/lib/crm/contact-display-name";
 import {
+  formatCurrency,
   getProbabilityStyles,
   getStageStyles,
   pipelineTabs,
@@ -192,7 +193,7 @@ export default function PipelinePage() {
     (codigo: string) => {
       const opportunity = findOpportunity(codigo);
       if (!opportunity) {
-        toast.error("No se encontrù la oportunidad");
+        toast.error("No se encontrÛ la oportunidad");
         return;
       }
       setEditingOpportunity(opportunity);
@@ -369,7 +370,7 @@ export default function PipelinePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar oportunidad</AlertDialogTitle>
             <AlertDialogDescription>
-              ùEliminar {pendingDelete?.title}? Esta acciùn no se puede deshacer.
+              øEliminar {pendingDelete?.title}? Esta acciÛn no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -502,7 +503,7 @@ export default function PipelinePage() {
                       </button>
                       <button type="button" className="app-toolbar-link">
                         <Filter className="h-3.5 w-3.5" />
-                        Mùs filtros
+                        M·s filtros
                       </button>
                     </>
                   )}
@@ -557,20 +558,19 @@ export default function PipelinePage() {
                       <thead>
                         <tr className="app-table-head-row">
                           <th className="px-4 py-2.5">Fecha</th>
-                          <th className="px-4 py-2.5">ID</th>
+                          <th className="px-4 py-2.5">CÛdigo</th>
                           <th className="px-4 py-2.5">Cliente</th>
-                          <th className="px-4 py-2.5">Oportunidad</th>
                           <th className="px-4 py-2.5">Valor</th>
                           <th className="px-4 py-2.5">Etapa</th>
                           <th className="px-4 py-2.5">Probabilidad</th>
                           <th className="px-4 py-2.5">Responsable</th>
-                          <th className="px-4 py-2.5 text-right">Acciùn</th>
+                          <th className="px-4 py-2.5 text-right">AcciÛn</th>
                         </tr>
                       </thead>
                       <tbody>
                         {isLoading ? (
                           <tr>
-                            <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                            <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                               <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
                               Cargando oportunidades...
                             </td>
@@ -584,7 +584,6 @@ export default function PipelinePage() {
                             >
                               <td className="app-table-cell">
                                 <p className="font-medium text-slate-800">{item.date}</p>
-                                <p className="text-xs text-slate-400">{item.time}</p>
                               </td>
                               <td className="app-table-cell">
                                 <span className="font-semibold text-blue-600">{item.id}</span>
@@ -592,10 +591,6 @@ export default function PipelinePage() {
                               <td className="app-table-cell">
                                 <p className="font-medium text-slate-800">{item.client}</p>
                                 <p className="text-xs text-slate-400">RUC {item.ruc}</p>
-                              </td>
-                              <td className="app-table-cell">
-                                <p className="font-medium text-slate-800">{item.title}</p>
-                                <p className="text-xs text-slate-400">{item.subtitle}</p>
                               </td>
                               <td className="app-table-cell font-semibold text-slate-900">
                                 {formatCurrency(item.value)}
@@ -637,7 +632,7 @@ export default function PipelinePage() {
                                       type="button"
                                       onClick={(event) => event.stopPropagation()}
                                       className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                      aria-label="Mùs acciones"
+                                      aria-label="M·s acciones"
                                     >
                                       <MoreHorizontal className="h-4 w-4" />
                                     </button>

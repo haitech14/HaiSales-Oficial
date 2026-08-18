@@ -315,6 +315,7 @@ export const VENTAS_REPORTE_LEGACY_FILES = [
   { label: "Abril 2026", path: "/Abril2025.xlsx" },
   { label: "Mayo 2026", path: "/Reporte_de_Ventas_2026070253736502.xlsx" },
   { label: "Junio 2026", path: "/Reporte_de_Ventas_2026070253617363.xlsx" },
+  { label: "Agosto 2026", path: "/Reporte_de_Ventas_2026081812330795.xlsx" },
 ] as const;
 
 type LegacyBundleRow = {

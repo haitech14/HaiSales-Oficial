@@ -97,6 +97,15 @@ const COLUMN_PAD_TOP = 20;
 const COLUMN_HEADER_H = 48;
 const CARD_STACK_GAP = 12;
 const CANVAS_PAD = 20;
+const CANVAS_VIEW_MARGIN = 720;
+
+type CanvasPanState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startScrollLeft: number;
+  startScrollTop: number;
+};
 
 type AnunciosWikiKanbanViewProps = {
   columns: WikiKanbanColumn[];
@@ -121,6 +130,8 @@ type AnunciosWikiKanbanViewProps = {
   zoomSlotId?: string;
   /** Fondo transparente para mostrar patrón del lienzo padre. */
   transparentCanvas?: boolean;
+  /** Herramienta mano: arrastrar desplaza el lienzo. */
+  panMode?: boolean;
 };
 
 type CardRect = { x: number; y: number; w: number; h: number };
@@ -824,6 +835,7 @@ function MockupCard({
   connectMode,
   connectSelected,
   connectHover,
+  panMode,
   onConnectPick,
   onConnectDragStart,
   onUpdate,
@@ -844,6 +856,7 @@ function MockupCard({
   connectMode?: boolean;
   connectSelected?: boolean;
   connectHover?: boolean;
+  panMode?: boolean;
   onConnectPick?: () => void;
   onConnectDragStart?: (
     event: ReactPointerEvent<HTMLButtonElement>,
@@ -978,6 +991,10 @@ function MockupCard({
         onContextMenu(event);
       }}
       onPointerDown={(event) => {
+        if (panMode || event.button === 1) {
+          onFreeDragStart(event);
+          return;
+        }
         if (connectMode) {
           event.preventDefault();
           event.stopPropagation();
@@ -999,9 +1016,11 @@ function MockupCard({
           : "overflow-hidden rounded-sm border border-slate-300 bg-white shadow-sm",
         connectMode
           ? "cursor-crosshair"
-          : card.locked
-            ? "cursor-default ring-1 ring-amber-300/70"
-            : "cursor-grab active:cursor-grabbing",
+          : panMode
+            ? "cursor-grab active:cursor-grabbing"
+            : card.locked
+              ? "cursor-default ring-1 ring-amber-300/70"
+              : "cursor-grab active:cursor-grabbing",
         isDragging && !isShape && !isText && "shadow-lg ring-2 ring-slate-400/50",
         isDragging && (isShape || isText) && "ring-2 ring-blue-400/40",
         (connectSelected || connectHover) && "ring-2 ring-blue-500 ring-offset-2",
@@ -1139,7 +1158,7 @@ function MockupCard({
         <div
           data-card-scroll
           className={cn(
-            "min-h-0 flex-1 px-1 py-1",
+            "scrollbar-minimal min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1 py-1",
             editing ? "flex flex-col" : "",
           )}
           draggable={false}
@@ -1271,6 +1290,7 @@ export function AnunciosWikiKanbanView({
   onCancelConnect,
   zoomSlotId = "wiki-zoom-slot",
   transparentCanvas = false,
+  panMode = false,
 }: AnunciosWikiKanbanViewProps) {
   const [zoom, setZoom] = useState(1);
   const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
@@ -1301,6 +1321,89 @@ export function AnunciosWikiKanbanView({
   historyBatchStartRef.current = onHistoryBatchStart;
   const historyBatchEndRef = useRef(onHistoryBatchEnd);
   historyBatchEndRef.current = onHistoryBatchEnd;
+  const panRef = useRef<CanvasPanState | null>(null);
+  const panModeRef = useRef(panMode);
+  panModeRef.current = panMode;
+  const spaceHeldRef = useRef(false);
+  const connectModeRef = useRef(connectMode);
+  connectModeRef.current = connectMode;
+  const [spacePan, setSpacePan] = useState(false);
+  const [panning, setPanning] = useState(false);
+  const isPanTool = panMode || spacePan;
+
+  const wantsCanvasPan = (event: { button: number }) => {
+    if (event.button === 1) return true;
+    if (event.button !== 0) return false;
+    return panModeRef.current || spaceHeldRef.current;
+  };
+
+  const beginCanvasPan = (
+    event: {
+      pointerId: number;
+      clientX: number;
+      clientY: number;
+      button?: number;
+      preventDefault: () => void;
+      stopPropagation: () => void;
+    },
+    force = false,
+  ) => {
+    const el = scrollRef.current;
+    if (!el) return false;
+    if (!force && !wantsCanvasPan({ button: event.button ?? 0 })) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    panRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startScrollLeft: el.scrollLeft,
+      startScrollTop: el.scrollTop,
+    };
+    setPanning(true);
+    try {
+      el.setPointerCapture(event.pointerId);
+    } catch {
+      // El captura no está disponible en todos los destinos.
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return Boolean(target.closest("textarea, input, [contenteditable='true']"));
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) return;
+      if (isTypingTarget(event.target)) return;
+      event.preventDefault();
+      spaceHeldRef.current = true;
+      setSpacePan(true);
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== "Space") return;
+      spaceHeldRef.current = false;
+      setSpacePan(false);
+    };
+
+    const clearSpace = () => {
+      spaceHeldRef.current = false;
+      setSpacePan(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", clearSpace);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", clearSpace);
+    };
+  }, []);
 
   useEffect(() => {
     if (!placeTool) {
@@ -1344,7 +1447,14 @@ export function AnunciosWikiKanbanView({
   };
 
   const beginPlaceDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!placeTool || connectMode) return;
+    if (beginCanvasPan(event)) return;
+    if (!placeTool || connectMode) {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-wiki-block], [data-wa-format-toolbar]")) {
+        beginCanvasPan(event, true);
+      }
+      return;
+    }
     const target = event.target as HTMLElement;
     if (target.closest("[data-wiki-block], [data-wa-format-toolbar]")) return;
 
@@ -1453,19 +1563,27 @@ export function AnunciosWikiKanbanView({
         return;
       }
 
-      // Rueda sobre un bloque → scroll interno del bloque
+      // Rueda sobre un bloque → scroll interno; al llegar al límite, desplaza el lienzo
       const scroller = findCardScroller(event.target);
       if (scroller) {
-        event.preventDefault();
-        event.stopPropagation();
         const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
         if (maxScroll > 0) {
-          scroller.scrollTop = Math.min(
-            maxScroll,
-            Math.max(0, scroller.scrollTop + event.deltaY),
-          );
+          const atTop = scroller.scrollTop <= 0;
+          const atBottom = scroller.scrollTop >= maxScroll - 1;
+          const scrollingDown = event.deltaY > 0;
+          const scrollingUp = event.deltaY < 0;
+
+          if ((scrollingDown && !atBottom) || (scrollingUp && !atTop)) {
+            event.preventDefault();
+            event.stopPropagation();
+            scroller.scrollTop = Math.min(
+              maxScroll,
+              Math.max(0, scroller.scrollTop + event.deltaY),
+            );
+            return;
+          }
         }
-        return;
+        // Sin overflow interno o en el borde → continúa al lienzo
       }
 
       // Rueda normal → desplazamiento del lienzo (Shift = horizontal)
@@ -1485,6 +1603,16 @@ export function AnunciosWikiKanbanView({
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
+      const pan = panRef.current;
+      if (pan && event.pointerId === pan.pointerId) {
+        const el = scrollRef.current;
+        if (!el) return;
+        event.preventDefault();
+        el.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
+        el.scrollTop = pan.startScrollTop - (event.clientY - pan.startY);
+        return;
+      }
+
       const drag = freeDragRef.current;
       if (!drag || event.pointerId !== drag.pointerId) return;
       const dx = (event.clientX - drag.startClientX) / zoomRef.current;
@@ -1617,6 +1745,13 @@ export function AnunciosWikiKanbanView({
     };
 
     const onUp = (event: PointerEvent) => {
+      const pan = panRef.current;
+      if (pan && event.pointerId === pan.pointerId) {
+        panRef.current = null;
+        setPanning(false);
+        return;
+      }
+
       const drag = freeDragRef.current;
       if (!drag || event.pointerId !== drag.pointerId) return;
 
@@ -2068,6 +2203,7 @@ export function AnunciosWikiKanbanView({
     columnId: string,
     card: WikiKanbanCard,
   ) => {
+    if (beginCanvasPan(event)) return;
     if (event.button !== 0 || card.locked) return;
     event.preventDefault();
     event.stopPropagation();
@@ -2089,6 +2225,7 @@ export function AnunciosWikiKanbanView({
     event: ReactPointerEvent<HTMLElement>,
     column: WikiKanbanColumn,
   ) => {
+    if (beginCanvasPan(event)) return;
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -2384,7 +2521,7 @@ export function AnunciosWikiKanbanView({
       }),
     ),
     800,
-  );
+  ) + CANVAS_VIEW_MARGIN;
 
   const canvasHeight = Math.max(
     640,
@@ -2399,7 +2536,7 @@ export function AnunciosWikiKanbanView({
         return pos.y + cardHeight(card) + CANVAS_PAD + 64;
       }),
     ),
-  );
+  ) + CANVAS_VIEW_MARGIN;
 
   const placePreview = placeDraft && placeTool ? normalizePlaceRect(placeDraft) : null;
   const placePreviewShape = placeTool ? shapeFromPlaceTool(placeTool) : null;
@@ -2612,6 +2749,7 @@ export function AnunciosWikiKanbanView({
               connectMode={connectMode}
               connectSelected={connectFromId === card.id}
               connectHover={connectDrag?.hoverCardId === card.id}
+              panMode={isPanTool}
               onConnectPick={() => handleConnectPick(card.id)}
               onConnectDragStart={(event, anchor, ax, ay) =>
                 beginConnectDrag(event, card.id, anchor, ax, ay)
@@ -2729,9 +2867,15 @@ export function AnunciosWikiKanbanView({
         ref={scrollRef}
         className={cn(
           "scrollbar-minimal min-h-0 flex-1 overflow-auto overscroll-contain",
-          (placeTool || connectMode || connectDrag) && "cursor-crosshair",
+          (isPanTool || panning) && "cursor-grab active:cursor-grabbing",
+          panning && "cursor-grabbing",
+          !isPanTool && !panning && (placeTool || connectMode || connectDrag) && "cursor-crosshair",
         )}
+        style={{ touchAction: isPanTool || panning ? "none" : undefined }}
         aria-label="Lienzo del tablero"
+        onPointerDown={(event) => {
+          if (beginCanvasPan(event)) return;
+        }}
         onContextMenu={(event) => {
           // Evita el menú nativo del navegador en el lienzo
           if ((event.target as HTMLElement).closest("[data-card-scroll], .group")) return;

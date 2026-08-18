@@ -9,7 +9,7 @@ import { AnunciosWikiSidebar } from "@/components/app/anuncios/AnunciosWikiSideb
 import { Button } from "@/components/ui/button";
 import { useWikiStore } from "@/hooks/useWikiStore";
 import { wikiRecentPagesSeed } from "@/lib/anuncios/wiki-dashboard-data";
-import { WIKI_MURAL_SIDEBAR_SECTIONS } from "@/lib/anuncios/wiki-store";
+import { WIKI_MURAL_SIDEBAR_SECTIONS, WIKI_SECTION_HUB_PAGE_ID } from "@/lib/anuncios/wiki-store";
 import { cn } from "@/lib/utils";
 
 export default function AnunciosPage() {
@@ -49,11 +49,18 @@ export default function AnunciosPage() {
   const handleSelectSection = (sectionId: string) => {
     setActiveSectionId(sectionId);
     setPendientesOpen(false);
+    const hubPageId = WIKI_SECTION_HUB_PAGE_ID[sectionId];
+    if (hubPageId) {
+      selectPage(hubPageId);
+      return;
+    }
     goHome();
   };
 
+  const isProcesoPage = activePage?.viewType === "proceso";
   const canShowPendientes =
     !!activePage &&
+    !isProcesoPage &&
     (WIKI_MURAL_SIDEBAR_SECTIONS as readonly string[]).includes(activePage.sectionId);
   const showPendientesSidebar = canShowPendientes && pendientesOpen;
 
@@ -115,21 +122,23 @@ export default function AnunciosPage() {
             </div>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="flex shrink-0 items-center justify-end gap-2 border-b border-slate-100 bg-white px-4 py-2 sm:px-6">
-                {canShowPendientes && (
-                  <Button
-                    type="button"
-                    variant={pendientesOpen ? "default" : "outline"}
-                    size="sm"
-                    className="h-8 gap-1.5"
-                    onClick={() => setPendientesOpen((open) => !open)}
-                  >
-                    <ListTodo className="h-3.5 w-3.5" />
-                    Pendientes
-                  </Button>
-                )}
-                <div id="wiki-zoom-slot" className="flex items-center" />
-              </div>
+              {!isProcesoPage && (
+                <div className="flex shrink-0 items-center justify-end gap-2 border-b border-slate-100 bg-white px-4 py-2 sm:px-6">
+                  {canShowPendientes && (
+                    <Button
+                      type="button"
+                      variant={pendientesOpen ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 gap-1.5"
+                      onClick={() => setPendientesOpen((open) => !open)}
+                    >
+                      <ListTodo className="h-3.5 w-3.5" />
+                      Pendientes
+                    </Button>
+                  )}
+                  <div id="wiki-zoom-slot" className="flex items-center" />
+                </div>
+              )}
 
               <div className="flex min-h-0 min-w-0 flex-1">
                 <div
@@ -142,7 +151,7 @@ export default function AnunciosPage() {
                     page={activePage}
                     onTitleChange={(title) => setPageTitle(activePage.id, title)}
                     onViewTypeChange={(viewType) => setPageViewType(activePage.id, viewType)}
-                    onAddKanbanColumn={() => addKanbanColumn(activePage.id, "Nueva columna")}
+                    onAddKanbanColumn={() => addKanbanColumn(activePage.id, "Nueva sección")}
                     onAddKanbanCard={(columnId) =>
                       addKanbanCard(activePage.id, columnId, "Nueva tarjeta")
                     }
@@ -152,6 +161,10 @@ export default function AnunciosPage() {
                     onLinksChange={(links) => setLinks(activePage.id, links)}
                     onMuralChange={(columns) => setMuralColumns(activePage.id, columns)}
                     onBlocksChange={(blocks) => setBlocks(activePage.id, blocks)}
+                    onGoHome={() => {
+                      setPendientesOpen(false);
+                      goHome();
+                    }}
                   />
                 </div>
                 {showPendientesSidebar && (
