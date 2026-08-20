@@ -14,6 +14,7 @@ export type Database = {
           id: string;
           user_id: string;
           razon_social: string;
+          nombre_comercial: string | null;
           ruc: string | null;
           direccion: string | null;
           telefono: string | null;
@@ -31,6 +32,7 @@ export type Database = {
           ejecutivo_nombre: string | null;
           ejecutivo_iniciales: string | null;
           distrito: string | null;
+          pais: string | null;
           cumpleanos: string | null;
           modelos_interes: string | null;
           produccion_mensual: string | null;
@@ -43,6 +45,7 @@ export type Database = {
           id?: string;
           user_id: string;
           razon_social: string;
+          nombre_comercial?: string | null;
           ruc?: string | null;
           direccion?: string | null;
           telefono?: string | null;
@@ -60,6 +63,7 @@ export type Database = {
           ejecutivo_nombre?: string | null;
           ejecutivo_iniciales?: string | null;
           distrito?: string | null;
+          pais?: string | null;
           cumpleanos?: string | null;
           modelos_interes?: string | null;
           produccion_mensual?: string | null;
@@ -72,6 +76,7 @@ export type Database = {
           id?: string;
           user_id?: string;
           razon_social?: string;
+          nombre_comercial?: string | null;
           ruc?: string | null;
           direccion?: string | null;
           telefono?: string | null;
@@ -89,6 +94,7 @@ export type Database = {
           ejecutivo_nombre?: string | null;
           ejecutivo_iniciales?: string | null;
           distrito?: string | null;
+          pais?: string | null;
           cumpleanos?: string | null;
           modelos_interes?: string | null;
           produccion_mensual?: string | null;

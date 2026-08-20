@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { syncZavuConnection } from "@/lib/inbox/zavu-connection-service";
+import { formatHaitechSyncSummary, syncHaitechStore } from "@/lib/integraciones/haitech-sync-service";
 import type { IntegracionItem } from "@/lib/integraciones-mock-data";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,24 @@ export function ConectarIntegracionModal({
       return;
     }
 
+    if (integracion.id === "haitech_store") {
+      setIsConnecting(true);
+      try {
+        const result = await syncHaitechStore({ mode: "full" });
+        toast.success(`HaiStore + HaiSupport sincronizado · ${formatHaitechSyncSummary(result)}`);
+        if (result.errors.length) {
+          toast.warning(result.errors.slice(0, 2).join(" · "));
+        }
+        onConnected?.();
+        handleClose();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo sincronizar HaiStore + HaiSupport");
+      } finally {
+        setIsConnecting(false);
+      }
+      return;
+    }
+
     if (!apiKey.trim()) {
       toast.error("Ingresa la API Key o token de acceso");
       return;
@@ -69,6 +88,8 @@ export function ConectarIntegracionModal({
 
   const Icon = integracion.icon;
   const isZavu = integracion.id === "zavu";
+  const isHaitechStore = integracion.id === "haitech_store";
+  const isServerManaged = isZavu || isHaitechStore;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,7 +113,9 @@ export function ConectarIntegracionModal({
                 <DialogDescription className="mt-1 text-sm text-slate-500">
                   {isZavu
                     ? "Usa la API key de Zavu ya configurada en el servidor (ZAVUDEV_API_KEY)."
-                    : "Ingresa las credenciales de API para sincronizar datos con HaiSales."}
+                    : isHaitechStore
+                      ? "Sincronización bidireccional con haitech.pe y soporte.haitech.pe (secrets en Supabase)."
+                      : "Ingresa las credenciales de API para sincronizar datos con HaiSales."}
                 </DialogDescription>
               </div>
             </div>
@@ -108,7 +131,7 @@ export function ConectarIntegracionModal({
         </div>
 
         <div className="space-y-4 px-6 py-5">
-          {!isZavu && (
+          {!isServerManaged && (
             <>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -147,7 +170,9 @@ export function ConectarIntegracionModal({
           <div className="rounded-xl bg-blue-50/70 px-4 py-3 text-xs text-slate-600">
             {isZavu
               ? "La clave se guarda solo en secrets de Supabase (nunca en el frontend)."
-              : `Las credenciales se almacenan cifradas. HaiSales solo solicita los permisos necesarios para ${integracion.categoria.toLowerCase()}.`}
+              : isHaitechStore
+                ? "Importa productos de HaiStore y clientes de Soporte; exporta cambios de HaiSales automáticamente."
+                : `Las credenciales se almacenan cifradas. HaiSales solo solicita los permisos necesarios para ${integracion.categoria.toLowerCase()}.`}
           </div>
         </div>
 

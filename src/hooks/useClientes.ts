@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,9 +13,11 @@ import {
   type ClienteEditableField,
 } from "@/lib/clientes/clientes-service";
 import type { ClientRecord } from "@/lib/clientes-mock-data";
+import { extractDniDocumento, isDniDocumento } from "@/lib/clientes/contacto-from-ruc";
 
 const CLIENTES_QUERY_KEY = ["clientes"] as const;
-const PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 
 function clientesQueryKey(userId: string | undefined, segment: "list" | "enrich") {
   return [...CLIENTES_QUERY_KEY, userId ?? "guest", segment] as const;
@@ -25,8 +27,10 @@ export type ClienteColumnKey = keyof Pick<
   ClientRecord,
   | "fechaAlta"
   | "ruc"
+  | "dni"
   | "razonSocial"
   | "tipoCliente"
+  | "estado"
   | "equipoInteres"
   | "produccionMensual"
   | "fechaToner"
@@ -37,6 +41,7 @@ export type ClienteColumnKey = keyof Pick<
   | "ciudad"
   | "provincia"
   | "distrito"
+  | "pais"
   | "correo"
   | "cumpleanos"
   | "ultimaCompra"
@@ -54,23 +59,26 @@ const COLUMN_KEYS: ClienteColumnKey[] = [
   "fechaAlta",
   "ruc",
   "razonSocial",
-  "tipoCliente",
-  "equipoInteres",
-  "produccionMensual",
-  "fechaToner",
-  "segmento",
   "contacto",
+  "dni",
   "telefono",
+  "tipoCliente",
+  "estado",
+  "segmento",
   "direccion",
+  "distrito",
   "ciudad",
   "provincia",
-  "distrito",
+  "pais",
   "correo",
+  "equipoInteres",
+  "modelosInteres",
+  "fechaToner",
+  "produccionMensual",
   "cumpleanos",
   "ultimaCompra",
   "frecuenciaCompra",
   "ticketCompra",
-  "modelosInteres",
   "observaciones",
 ];
 
@@ -106,6 +114,18 @@ function buildColumnFilterOptions(clients: ClientRecord[]) {
         return options;
       }
 
+      if (key === "ruc") {
+        options[key] = uniqueSorted(
+          clients.map((client) => (isDniDocumento(client.ruc) ? "—" : client.ruc)),
+        );
+        return options;
+      }
+
+      if (key === "dni") {
+        options[key] = uniqueSorted(clients.map((client) => client.dni || "—"));
+        return options;
+      }
+
       options[key] = uniqueSorted(clients.map((client) => client[key]));
       return options;
     },
@@ -128,6 +148,15 @@ function matchesColumnFilter(client: ClientRecord, key: ClienteColumnKey, filter
     );
   }
 
+  if (key === "ruc") {
+    const displayRuc = isDniDocumento(client.ruc) ? "—" : client.ruc;
+    return displayRuc === filterValue;
+  }
+
+  if (key === "dni") {
+    return (client.dni || "—") === filterValue;
+  }
+
   return cellValue === filterValue;
 }
 
@@ -142,6 +171,23 @@ function parseDisplayDate(value: string) {
   const [day, month, year] = parts.map(Number);
   if (!day || !month || !year) return 0;
   return new Date(year, month - 1, day).getTime();
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function endOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+}
+
+function matchesDateRange(displayDate: string, from: Date | null, to: Date | null) {
+  if (!from && !to) return true;
+  const ts = parseDisplayDate(displayDate);
+  if (!ts) return false;
+  if (from && ts < startOfDay(from)) return false;
+  if (to && ts > endOfDay(to)) return false;
+  return true;
 }
 
 function parseTicket(value: string) {
@@ -166,7 +212,10 @@ export function useClientes() {
   const [activeTab, setActiveTab] = useState("todos");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(DEFAULT_PAGE_SIZE);
   const [columnFilters, setColumnFilters] = useState<ClientesColumnFilters>(createDefaultColumnFilters);
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
   const [sortField, setSortField] = useState<ClienteColumnKey | null>(null);
   const [sortDirection, setSortDirection] = useState<ClienteSortDirection>(null);
 
@@ -197,20 +246,26 @@ export function useClientes() {
   const isEnriching = enrichQuery.isFetching && !enrichQuery.isLoading;
   const dataUpdatedAt = enrichQuery.dataUpdatedAt || listQuery.dataUpdatedAt;
 
-  const columnFilterOptions = useMemo(() => {
-    const clients = data?.clients ?? [];
-    return buildColumnFilterOptions(clients);
-  }, [data?.clients]);
+  const deferredClients = useDeferredValue(data?.clients ?? []);
+
+  const columnFilterOptions = useMemo(() => buildColumnFilterOptions(deferredClients), [deferredClients]);
+
+  const deferredSearch = useDeferredValue(search);
 
   const hasActiveFilters = useMemo(() => {
     const hasColumnFilters = COLUMN_KEYS.some((key) => columnFilters[key] !== "todos");
-    return activeTab !== "todos" || search.trim().length > 0 || hasColumnFilters;
-  }, [activeTab, columnFilters, search]);
+    return (
+      activeTab !== "todos" ||
+      search.trim().length > 0 ||
+      hasColumnFilters ||
+      Boolean(dateFrom || dateTo)
+    );
+  }, [activeTab, columnFilters, dateFrom, dateTo, search]);
 
   const filteredClients = useMemo(() => {
     if (!data) return [] as ClientRecord[];
 
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
 
     const filtered = data.clients.filter((client) => {
       const matchesTab = matchesClientesTipoTab(client.tipoCliente, activeTab);
@@ -219,10 +274,14 @@ export function useClientes() {
         matchesColumnFilter(client, key, columnFilters[key]),
       );
 
+      const matchesDates = matchesDateRange(client.fechaAlta, dateFrom, dateTo);
+
       const matchesSearch =
         !query ||
         fieldIncludesQuery(client.razonSocial, query) ||
+        fieldIncludesQuery(client.nombreComercial, query) ||
         fieldIncludesQuery(client.ruc, query) ||
+        fieldIncludesQuery(client.dni, query) ||
         fieldIncludesQuery(client.contacto, query) ||
         fieldIncludesQuery(client.correo, query) ||
         fieldIncludesQuery(client.telefono, query) ||
@@ -230,6 +289,7 @@ export function useClientes() {
         fieldIncludesQuery(client.ciudad, query) ||
         fieldIncludesQuery(client.provincia, query) ||
         fieldIncludesQuery(client.distrito, query) ||
+        fieldIncludesQuery(client.pais, query) ||
         fieldIncludesQuery(client.tipoCliente, query) ||
         fieldIncludesQuery(client.equipoInteres, query) ||
         fieldIncludesQuery(client.produccionMensual, query) ||
@@ -242,7 +302,7 @@ export function useClientes() {
         fieldIncludesQuery(client.modelosInteres, query) ||
         fieldIncludesQuery(client.observaciones, query);
 
-      return matchesTab && matchesColumns && matchesSearch;
+      return matchesTab && matchesColumns && matchesDates && matchesSearch;
     });
 
     if (!sortField || !sortDirection) {
@@ -260,15 +320,20 @@ export function useClientes() {
 
       return String(leftValue).localeCompare(String(rightValue), "es") * direction;
     });
-  }, [activeTab, columnFilters, data, search, sortDirection, sortField]);
+  }, [activeTab, columnFilters, data, dateFrom, dateTo, deferredSearch, sortDirection, sortField]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / pageSize));
 
   const paginatedClients = useMemo(() => {
     const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredClients.slice(start, start + PAGE_SIZE);
-  }, [filteredClients, page, totalPages]);
+    const start = (safePage - 1) * pageSize;
+    return filteredClients.slice(start, start + pageSize);
+  }, [filteredClients, page, pageSize, totalPages]);
+
+  const setPageSize = useCallback((size: number) => {
+    setPageSizeState(PAGE_SIZE_OPTIONS.includes(size as (typeof PAGE_SIZE_OPTIONS)[number]) ? size : DEFAULT_PAGE_SIZE);
+    setPage(1);
+  }, []);
 
   const setActiveTabWithReset = useCallback((tab: string) => {
     setActiveTab(tab);
@@ -281,6 +346,8 @@ export function useClientes() {
     setSearch("");
     setPage(1);
     setColumnFilters(createDefaultColumnFilters());
+    setDateFrom(null);
+    setDateTo(null);
     setSortField(null);
     setSortDirection(null);
   }, []);
@@ -292,6 +359,13 @@ export function useClientes() {
 
   const setColumnFilter = useCallback((key: ClienteColumnKey, value: string) => {
     setColumnFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  }, []);
+
+  const setDateRange = useCallback((from: Date | null, to: Date | null) => {
+    setDateFrom(from);
+    setDateTo(to);
+    setPage(1);
   }, []);
 
   const handleSort = useCallback((field: ClienteColumnKey, direction: ClienteSortDirection) => {
@@ -330,7 +404,7 @@ export function useClientes() {
       clientId: string;
       field: ClienteEditableField;
       value: string;
-      currentClient?: Pick<ClientRecord, "ciudad" | "provincia" | "distrito">;
+      currentClient?: Pick<ClientRecord, "ciudad" | "provincia" | "distrito" | "contacto" | "dni" | "ruc">;
     }) => {
       if (!user?.id) throw new Error("Debes iniciar sesión para editar clientes");
       return updateClienteField(user.id, clientId, field, value, currentClient);
@@ -352,6 +426,17 @@ export function useClientes() {
                 distrito: field === "distrito" ? value : currentClient?.distrito ?? client.distrito,
               };
               return { ...client, ...next };
+            }
+
+            if (field === "ruc") {
+              return { ...client, ruc: value, dni: extractDniDocumento(value) || client.dni };
+            }
+
+            if (field === "dni") {
+              if (isDniDocumento(client.ruc)) {
+                return { ...client, ruc: value, dni: value };
+              }
+              return { ...client, dni: value };
             }
 
             return { ...client, [field]: value };
@@ -393,11 +478,16 @@ export function useClientes() {
     page,
     setPage,
     totalPages,
-    pageSize: PAGE_SIZE,
+    pageSize,
+    setPageSize,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
     hasActiveFilters,
     columnFilterOptions,
     columnFilters,
     setColumnFilter,
+    dateFrom,
+    dateTo,
+    setDateRange,
     sortField,
     sortDirection,
     handleSort,

@@ -37,21 +37,28 @@ export function ClientesToolbarFilter({
           variant="outline"
           size="sm"
           className={cn(
-            "h-9 gap-2 border-slate-200 text-slate-600",
-            isActive && "border-blue-300 bg-blue-50 text-blue-700",
+            "h-8 gap-1.5 px-2.5 text-xs border-slate-200 text-slate-600 hover:border-emerald-600 hover:bg-[#43a047] hover:text-white",
+            isActive && "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-50 hover:text-blue-700",
             className,
           )}
         >
           {label}: {displayValue}
-          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          <ChevronDown className="h-3 w-3 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
-        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+      <DropdownMenuContent align="start" className="max-h-72 min-w-[12rem] overflow-y-auto p-1 shadow-lg">
+        <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {label}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => onChange("todos")}
-          className={cn(!isActive && "bg-blue-50 text-blue-700")}
+          className={cn(
+            "cursor-pointer rounded-md text-xs",
+            !isActive && "text-slate-700",
+            !isActive && "hover:bg-slate-50",
+            isActive && "bg-blue-50 font-semibold text-blue-700",
+          )}
         >
           {allLabel}
         </DropdownMenuItem>
@@ -59,7 +66,10 @@ export function ClientesToolbarFilter({
           <DropdownMenuItem
             key={option}
             onClick={() => onChange(option)}
-            className={cn(value === option && "bg-blue-50 text-blue-700")}
+            className={cn(
+              "cursor-pointer rounded-md text-xs",
+              value === option && "bg-blue-50 font-semibold text-blue-700",
+            )}
           >
             {option}
           </DropdownMenuItem>

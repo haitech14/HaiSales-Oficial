@@ -5,10 +5,19 @@ export const clienteTipos = [
 ];
 
 export const clienteSegmentos = [
-  { value: "corporativo", label: "Corporativo" },
-  { value: "pyme", label: "PYME" },
-  { value: "minorista", label: "Minorista" },
-  { value: "prospecto", label: "Prospecto" },
+  { value: "medicina", label: "Medicina" },
+  { value: "educacion", label: "Educación" },
+  { value: "construccion", label: "Construcción" },
+  { value: "ingenieria", label: "Ingeniería" },
+  { value: "gobierno", label: "Gobierno" },
+  { value: "legal", label: "Legal" },
+  { value: "banca-y-finanzas", label: "Banca y finanzas" },
+  { value: "mineria", label: "Minería" },
+  { value: "industria", label: "Industria" },
+  { value: "comercio", label: "Comercio" },
+  { value: "logistica", label: "Logística" },
+  { value: "tecnologia", label: "Tecnología" },
+  { value: "servicios", label: "Servicios" },
   { value: "otros", label: "Otros" },
 ];
 

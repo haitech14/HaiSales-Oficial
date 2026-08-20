@@ -120,7 +120,7 @@ function ClienteContextSummary({
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="min-w-0">
+            <div className="min-w-0">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
             Contacto
           </p>
@@ -132,7 +132,7 @@ function ClienteContextSummary({
             placeholder="Nombre del contacto"
             className={fieldControlClass}
           />
-        </div>
+            </div>
         <div className="min-w-0">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
             Celular
@@ -145,7 +145,7 @@ function ClienteContextSummary({
             placeholder="Ej. 987 654 321"
             className={fieldControlClass}
           />
-        </div>
+          </div>
         <div className="min-w-0 sm:col-span-2 lg:col-span-1">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
             Dirección
@@ -158,7 +158,7 @@ function ClienteContextSummary({
             placeholder="Dirección fiscal o de entrega"
             className={fieldControlClass}
           />
-        </div>
+          </div>
         <div className="min-w-0">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
             Tipo de cliente
@@ -168,7 +168,7 @@ function ClienteContextSummary({
             onChange={onTipoClienteChange}
             options={tipoOptions}
           />
-        </div>
+          </div>
       </div>
     </div>
   );
@@ -201,7 +201,7 @@ function SelectField({
           return (
             <option key={optionValue} value={optionValue}>
               {optionLabel}
-            </option>
+          </option>
           );
         })}
       </select>
@@ -340,12 +340,12 @@ export function NuevaVentaModal({
       const recentIds = readRecentClienteIds(user?.id);
       const rows = await searchClientesForPicker(user?.id ?? null, query, recentIds, 12);
       return rows.map((client) => ({
-        value: client.razonSocial,
-        label: client.razonSocial,
+          value: client.razonSocial,
+          label: client.razonSocial,
         hint: client.hint || undefined,
         searchText: client.searchText,
-        meta: {
-          type: "cliente",
+          meta: {
+            type: "cliente",
           id: client.id,
           ruc: client.ruc,
           contacto: client.contacto,
@@ -776,7 +776,7 @@ export function NuevaVentaModal({
           });
           payload.clienteId = clienteId;
           void queryClient.invalidateQueries({ queryKey: ["clientes"] });
-        } else {
+      } else {
           toast.warning("Venta sin ficha de cliente vinculada: no se actualizó Contacto/Celular/Tipo");
         }
       }
@@ -998,10 +998,10 @@ export function NuevaVentaModal({
           onNuevoVendedorNombreChange={setNuevoVendedorNombre}
           onAddVendedor={handleAddVendedor}
           clienteContextSummary={
-            <ClienteContextSummary
-              cliente={form.cliente}
-              clienteRuc={form.clienteRuc}
-              contacto={form.contacto}
+                  <ClienteContextSummary
+                    cliente={form.cliente}
+                    clienteRuc={form.clienteRuc}
+                    contacto={form.contacto}
               celular={form.celular}
               direccion={form.direccion}
               tipoCliente={form.tipoCliente}
@@ -1012,11 +1012,11 @@ export function NuevaVentaModal({
               onPersistCliente={() => {
                 void persistClienteFields();
               }}
-              onClear={clearClienteContext}
-            />
+                    onClear={clearClienteContext}
+                  />
           }
         />
-      </Dialog>
+    </Dialog>
 
       <NuevoClienteModal
         open={nuevoClienteOpen}

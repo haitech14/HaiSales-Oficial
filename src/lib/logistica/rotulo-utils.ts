@@ -38,15 +38,18 @@ export function extractContactFromObservacion(observacion: string | null | undef
   const dniMatch =
     observacion.match(/(?:\/\/\s*DNI\s*:?\s*|(?:\s+con\s+)?DNI\s*:?\s*)([\d\s]{8,11})/i);
   const dniDigits = dniMatch?.[1]?.replace(/\s+/g, "") ?? "";
-  const dni = dniDigits.length >= 8 ? dniDigits : "—";
+  const dni = dniDigits.length >= 8 ? dniDigits.slice(0, 8) : "—";
 
   let contacto = "—";
   const atencionMatch = observacion.match(
-    /Atenci[oó]n(?:\s+a)?\s*:?\s*(.+?)(?:\/\/\s*DNI|\s+con\s+DNI|\s*CEL\b|\s*CEL\s*:|$)/i,
+    /Atenci[oó]n(?:\s+a)?\s*:?\s*(.+?)(?:\/\/\s*DNI|\s+con\s+DNI|\s+dni\b|\s*CEL(?:ULAR)?\b|\s*whats?app\b|$)/i,
   );
 
   if (atencionMatch?.[1]) {
-    contacto = atencionMatch[1].replace(/\s*\/\/\s*$/g, "").trim();
+    contacto = atencionMatch[1]
+      .replace(/\s*\/\/\s*$/g, "")
+      .replace(/\s+dni\s*:?\s*[\d\s]{8,11}\s*$/i, "")
+      .trim();
   } else {
     const beforeDni = observacion.split(/\/\/\s*DNI/i)[0];
     if (beforeDni && beforeDni !== observacion) {
@@ -75,9 +78,15 @@ export function extractContactFromObservacion(observacion: string | null | undef
 
 function extractTelefono(observacion: string): string {
   const celMatch =
-    observacion.match(/CEL\s*:?\s*([\d\s-]+)/i) ??
-    observacion.match(/cel\.?\s*:?\s*([\d\s-]+)/i);
-  return celMatch?.[1]?.replace(/\s+/g, " ").trim() || "—";
+    observacion.match(/CEL(?:ULAR)?\s*:?\s*([\d\s-]+)/i) ??
+    observacion.match(/whats?app\s*:?\s*([\d\s-]+)/i);
+  if (celMatch?.[1]) {
+    const digits = celMatch[1].replace(/\D/g, "");
+    return digits.length >= 8 ? digits : "—";
+  }
+
+  const mobile = observacion.match(/\b9\d{8}\b/);
+  return mobile?.[0] ?? "—";
 }
 
 export function splitEmbeddedDni(value: string): { contacto: string; dni: string } {
@@ -86,11 +95,11 @@ export function splitEmbeddedDni(value: string): { contacto: string; dni: string
     return { contacto: "—", dni: "—" };
   }
 
-  const slashMatch = trimmed.match(/^(.+?)\s*\/\/\s*DNI\s*:?\s*([\d\s]{8,11})\s*$/i);
+  const slashMatch = trimmed.match(/^(?:(.+?)\s*)?\/\/\s*DNI\s*:?\s*([\d\s]{8,11})\s*$/i);
   if (slashMatch) {
     return {
-      contacto: slashMatch[1].trim() || "—",
-      dni: slashMatch[2].replace(/\s+/g, ""),
+      contacto: slashMatch[1]?.trim() || "—",
+      dni: slashMatch[2].replace(/\s+/g, "").slice(0, 8),
     };
   }
 
@@ -98,7 +107,15 @@ export function splitEmbeddedDni(value: string): { contacto: string; dni: string
   if (conDniMatch) {
     return {
       contacto: conDniMatch[1].trim() || "—",
-      dni: conDniMatch[2].replace(/\s+/g, ""),
+      dni: conDniMatch[2].replace(/\s+/g, "").slice(0, 8),
+    };
+  }
+
+  const dniSuffix = trimmed.match(/^(.+?)\s+dni\s*:?\s*([\d\s]{8,11})\s*$/i);
+  if (dniSuffix) {
+    return {
+      contacto: dniSuffix[1].trim() || "—",
+      dni: dniSuffix[2].replace(/\s+/g, "").slice(0, 8),
     };
   }
 

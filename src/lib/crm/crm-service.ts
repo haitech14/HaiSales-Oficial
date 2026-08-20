@@ -1085,7 +1085,7 @@ async function ensureClienteForOportunidad(
       telefono: phone || null,
       ruc: row.cliente_ruc?.trim() || null,
       tipo_cliente: formatTipoClienteLabel(tipoClienteLabel),
-      segmento: "Prospecto",
+      segmento: "Otros",
       estado_comercial: "prospecto",
       ejecutivo_nombre: responsable,
       ejecutivo_iniciales: row.responsable_iniciales?.trim() || buildOwnerInitials(responsable),

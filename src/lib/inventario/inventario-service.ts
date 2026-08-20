@@ -1,5 +1,6 @@
 import { Box, Cog, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { scheduleHaitechPush } from "@/lib/integraciones/haitech-sync-service";
 import type { Database } from "@/integrations/supabase/types";
 import {
   inventarioKpis as staticKpis,
@@ -347,6 +348,7 @@ export async function createProducto(
     throw new Error(error.message);
   }
 
+  scheduleHaitechPush("producto", data.id);
   return mapRowToProduct(data);
 }
 

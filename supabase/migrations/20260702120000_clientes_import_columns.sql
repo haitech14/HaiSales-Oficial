@@ -78,7 +78,8 @@ BEGIN
     CURRENT_DATE,
     true
   FROM public.clientes_legacy_import src
-  ON CONFLICT (user_id, ruc)
+  WHERE src.ruc IS NOT NULL AND btrim(src.ruc) <> ''
+  ON CONFLICT (user_id, ruc) WHERE ruc IS NOT NULL AND btrim(ruc) <> ''
   DO UPDATE SET
     razon_social = EXCLUDED.razon_social,
     correo = EXCLUDED.correo,

@@ -345,7 +345,7 @@ export function PipelineProspectDetailSheet({
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <Field label="RUC" value={detail?.clienteRuc || "—"} />
                     <Field label="Tipo" value={tipoCliente} />
-                    <Field label="Segmento" value={detail?.cliente?.segmento || "—"} />
+                    <Field label="Rubro" value={detail?.cliente?.segmento || "—"} />
                     <Field label="Estado" value={detail?.cliente?.estadoComercial || "Prospecto"} />
                     <Field label="Contacto principal" value={detail?.cliente?.contacto || "—"} />
                     <Field

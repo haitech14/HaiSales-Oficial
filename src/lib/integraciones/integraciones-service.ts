@@ -20,6 +20,8 @@ const CHANNEL_TO_INTEGRATION: Record<string, string> = {
   zavu: "zavu",
   email: "sunat",
   web: "woocommerce",
+  haitech_store: "haitech_store",
+  haitech_soporte: "haitech_store",
 };
 
 function mapStatus(status: string): IntegracionEstado {

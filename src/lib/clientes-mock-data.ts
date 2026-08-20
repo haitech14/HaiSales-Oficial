@@ -1,17 +1,34 @@
-export type ClientSegment = "Corporativo" | "PYME" | "Minorista" | "Prospecto" | "Otros";
+export type ClientSegment =
+  | "Medicina"
+  | "Educación"
+  | "Construcción"
+  | "Ingeniería"
+  | "Gobierno"
+  | "Legal"
+  | "Banca y finanzas"
+  | "Minería"
+  | "Industria"
+  | "Comercio"
+  | "Logística"
+  | "Tecnología"
+  | "Servicios"
+  | "Otros";
 export type ClientStatus = "Activo" | "Prospecto" | "Con deuda" | "Inactivo";
 
 export type ClientRecord = {
   id: string;
   fechaAlta: string;
   ruc: string;
+  dni: string;
   razonSocial: string;
+  nombreComercial: string;
   correo: string;
   telefono: string;
   direccion: string;
   ciudad: string;
   provincia: string;
   distrito: string;
+  pais: string;
   tipoCliente: string;
   equipoInteres: string;
   produccionMensual: string;
@@ -32,20 +49,21 @@ export type ClientRecord = {
 
 type ClientMockInput = Omit<
   ClientRecord,
-  "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones"
+  "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones" | "dni"
 > &
-  Partial<Pick<ClientRecord, "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones">>;
+  Partial<Pick<ClientRecord, "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones" | "dni">>;
 
 const clientImportDefaults: Pick<
   ClientRecord,
-  "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones"
+  "correo" | "direccion" | "ciudad" | "provincia" | "distrito" | "tipoCliente" | "equipoInteres" | "produccionMensual" | "fechaToner" | "ultimaCompra" | "cumpleanos" | "frecuenciaCompra" | "ticketCompra" | "modelosInteres" | "observaciones" | "dni"
 > = {
   correo: "—",
   direccion: "—",
   ciudad: "—",
   provincia: "—",
   distrito: "—",
-  tipoCliente: "Público",
+  pais: "Perú",
+  tipoCliente: "Publico",
   equipoInteres: "—",
   produccionMensual: "—",
   fechaToner: "—",
@@ -55,10 +73,11 @@ const clientImportDefaults: Pick<
   ticketCompra: "—",
   modelosInteres: "—",
   observaciones: "—",
+  dni: "—",
 };
 
 export function withClientDefaults(client: ClientMockInput): ClientRecord {
-  return { ...clientImportDefaults, ...client };
+  return { nombreComercial: "", ...clientImportDefaults, ...client };
 }
 
 export const clientesKpis = [
@@ -106,28 +125,37 @@ export const clientesKpis = [
 
 export const clientesTabs = [
   { id: "todos", label: "Todos", count: null },
-  { id: "publico", label: "Público", count: 0 },
-  { id: "distribuidor", label: "Distribuidor No Técnico", count: 0 },
-  { id: "tecnico", label: "Técnico", count: 0 },
+  { id: "publico", label: "Publico", count: 0 },
+  { id: "distribuidor", label: "Distribuidor Corporativo", count: 0 },
+  { id: "tecnico", label: "Tecnico", count: 0 },
   { id: "mayorista", label: "Mayorista", count: 0 },
   { id: "proveedor", label: "Proveedor", count: 0 },
 ];
 
 /** Gobierno se asigna como tipo, pero pertenece a la pestaña Público. */
 export const clienteTipoOptions = [
-  "Público",
+  "Publico",
   "Gobierno",
-  "Distribuidor No Técnico",
-  "Técnico",
+  "Distribuidor Corporativo",
+  "Tecnico",
   "Mayorista",
   "Proveedor",
 ];
 
 export const clienteSegmentoOptions: ClientSegment[] = [
-  "Corporativo",
-  "PYME",
-  "Minorista",
-  "Prospecto",
+  "Medicina",
+  "Educación",
+  "Construcción",
+  "Ingeniería",
+  "Gobierno",
+  "Legal",
+  "Banca y finanzas",
+  "Minería",
+  "Industria",
+  "Comercio",
+  "Logística",
+  "Tecnología",
+  "Servicios",
   "Otros",
 ];
 
@@ -145,13 +173,28 @@ export const demoClienteRucs = [
   "20654321987",
 ];
 
-const SEGMENT_CHART_COLORS: Record<ClientSegment | "Otros", string> = {
-  Corporativo: "#3b82f6",
-  PYME: "#eab308",
-  Minorista: "#a855f7",
-  Prospecto: "#06b6d4",
-  Otros: "#1e40af",
-};
+const SEGMENT_CHART_PALETTE = [
+  "#e11d48",
+  "#0284c7",
+  "#ea580c",
+  "#4f46e5",
+  "#be123c",
+  "#7c3aed",
+  "#0f766e",
+  "#a16207",
+  "#334155",
+  "#db2777",
+  "#0369a1",
+  "#16a34a",
+  "#9333ea",
+  "#1e40af",
+];
+
+function colorForSegment(label: string) {
+  const index = clienteSegmentoOptions.indexOf(label as ClientSegment);
+  if (index >= 0) return SEGMENT_CHART_PALETTE[index % SEGMENT_CHART_PALETTE.length];
+  return "#1e40af";
+}
 
 export type SegmentChartItem = {
   label: string;
@@ -189,7 +232,7 @@ export function buildSegmentChart(clients: ClientRecord[]): SegmentChartItem[] {
       label,
       count,
       percent: Math.round((count / total) * 100),
-      color: SEGMENT_CHART_COLORS[label as ClientSegment] ?? SEGMENT_CHART_COLORS.Otros,
+      color: colorForSegment(label),
     }))
     .sort((a, b) => b.count - a.count);
 }
@@ -288,9 +331,9 @@ export function matchesClientesTipoTab(tipo: string, tabId: string): boolean {
 export function formatTipoClienteLabel(tipo: string): string {
   switch (normalizeTipoClienteKey(tipo)) {
     case "distribuidor":
-      return "Distribuidor No Técnico";
+      return "Distribuidor Corporativo";
     case "tecnico":
-      return "Técnico";
+      return "Tecnico";
     case "mayorista":
       return "Mayorista";
     case "proveedor":
@@ -298,7 +341,7 @@ export function formatTipoClienteLabel(tipo: string): string {
     case "gobierno":
       return "Gobierno";
     default:
-      return "Público";
+      return "Publico";
   }
 }
 
@@ -321,19 +364,26 @@ export function getTipoClienteStyles(tipo: string) {
   }
 }
 
-export function getSegmentStyles(segment: ClientSegment) {
-  switch (segment) {
-    case "Corporativo":
-      return "bg-blue-50 text-blue-700 border-blue-100";
-    case "PYME":
-      return "bg-orange-50 text-orange-700 border-orange-100";
-    case "Minorista":
-      return "bg-violet-50 text-violet-700 border-violet-100";
-    case "Prospecto":
-      return "bg-cyan-50 text-cyan-700 border-cyan-100";
-    default:
-      return "bg-slate-50 text-slate-600 border-slate-100";
-  }
+export function getSegmentStyles(segment: string) {
+  const styles = [
+    "bg-rose-50 text-rose-700 border-rose-100",
+    "bg-sky-50 text-sky-700 border-sky-100",
+    "bg-orange-50 text-orange-700 border-orange-100",
+    "bg-indigo-50 text-indigo-700 border-indigo-100",
+    "bg-red-50 text-red-700 border-red-100",
+    "bg-violet-50 text-violet-700 border-violet-100",
+    "bg-teal-50 text-teal-700 border-teal-100",
+    "bg-amber-50 text-amber-800 border-amber-100",
+    "bg-slate-100 text-slate-700 border-slate-200",
+    "bg-pink-50 text-pink-700 border-pink-100",
+    "bg-cyan-50 text-cyan-700 border-cyan-100",
+    "bg-emerald-50 text-emerald-700 border-emerald-100",
+    "bg-purple-50 text-purple-700 border-purple-100",
+    "bg-blue-50 text-blue-700 border-blue-100",
+  ];
+  const index = clienteSegmentoOptions.indexOf(segment as ClientSegment);
+  if (index >= 0) return styles[index % styles.length];
+  return "bg-slate-50 text-slate-600 border-slate-100";
 }
 
 export function getClientStatusStyles(status: ClientStatus) {

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, CreditCard, FileText, MessageCircle, Package, ShoppingBag, Truck } from "lucide-react";
+import { Building2, CreditCard, FileText, MessageCircle, Package, ShoppingBag, Store, Truck } from "lucide-react";
 
 export type IntegracionEstado = "Conectado" | "Pendiente" | "Error";
 
@@ -54,6 +54,15 @@ export const integraciones: IntegracionItem[] = [
     icon: MessageCircle,
     iconBg: "bg-teal-50",
     iconColor: "text-teal-600",
+  }),
+  catalogItem({
+    id: "haitech_store",
+    nombre: "HaiStore + HaiSupport",
+    descripcion: "Sincroniza catálogo, inventario, servicios y clientes con haitech.pe y soporte.haitech.pe.",
+    categoria: "E-commerce",
+    icon: Store,
+    iconBg: "bg-sky-50",
+    iconColor: "text-sky-600",
   }),
   catalogItem({
     id: "woocommerce",

@@ -193,7 +193,7 @@ export default function PipelinePage() {
     (codigo: string) => {
       const opportunity = findOpportunity(codigo);
       if (!opportunity) {
-        toast.error("No se encontró la oportunidad");
+        toast.error("No se encontrï¿½ la oportunidad");
         return;
       }
       setEditingOpportunity(opportunity);
@@ -370,7 +370,7 @@ export default function PipelinePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar oportunidad</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Eliminar {pendingDelete?.title}? Esta acción no se puede deshacer.
+              ï¿½Eliminar {pendingDelete?.title}? Esta acciï¿½n no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -503,7 +503,7 @@ export default function PipelinePage() {
                       </button>
                       <button type="button" className="app-toolbar-link">
                         <Filter className="h-3.5 w-3.5" />
-                        Más filtros
+                        Mï¿½s filtros
                       </button>
                     </>
                   )}
@@ -558,13 +558,13 @@ export default function PipelinePage() {
                       <thead>
                         <tr className="app-table-head-row">
                           <th className="px-4 py-2.5">Fecha</th>
-                          <th className="px-4 py-2.5">Código</th>
+                          <th className="px-4 py-2.5">Cï¿½digo</th>
                           <th className="px-4 py-2.5">Cliente</th>
                           <th className="px-4 py-2.5">Valor</th>
                           <th className="px-4 py-2.5">Etapa</th>
                           <th className="px-4 py-2.5">Probabilidad</th>
                           <th className="px-4 py-2.5">Responsable</th>
-                          <th className="px-4 py-2.5 text-right">Acción</th>
+                          <th className="px-4 py-2.5 text-right">Acciï¿½n</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -632,7 +632,7 @@ export default function PipelinePage() {
                                       type="button"
                                       onClick={(event) => event.stopPropagation()}
                                       className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                      aria-label="Más acciones"
+                                      aria-label="Mï¿½s acciones"
                                     >
                                       <MoreHorizontal className="h-4 w-4" />
                                     </button>

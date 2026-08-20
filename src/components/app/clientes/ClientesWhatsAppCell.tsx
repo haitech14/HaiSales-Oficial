@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { formatContactPhone } from "@/lib/crm/contact-display-name";
 import { cn } from "@/lib/utils";
 
@@ -15,36 +17,122 @@ function WhatsAppGlyph({ className }: { className?: string }) {
   );
 }
 
+function digitsFromPhone(value: string) {
+  if (!value || value === "—") return "";
+  return value.replace(/\D/g, "");
+}
+
 type ClientesWhatsAppCellProps = {
   telefono: string;
+  onSave: (value: string) => Promise<void>;
   className?: string;
 };
 
-export function ClientesWhatsAppCell({ telefono, className }: ClientesWhatsAppCellProps) {
-  const formatted = formatContactPhone(telefono === "—" ? "" : telefono);
-  if (!formatted) {
-    return <span className={cn("block px-1 py-0.5 text-[12px] text-slate-400", className)}>—</span>;
+export function ClientesWhatsAppCell({ telefono, onSave, className }: ClientesWhatsAppCellProps) {
+  const rawDigits = digitsFromPhone(telefono);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(rawDigits);
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setDraft(rawDigits);
+  }, [isEditing, rawDigits]);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  const formatted = formatContactPhone(rawDigits) ?? rawDigits;
+  const url = formatted ? whatsAppUrl(formatted) : null;
+
+  const save = async () => {
+    const nextDigits = draft.replace(/\D/g, "");
+    const nextValue = nextDigits || "—";
+    const currentValue = rawDigits || "—";
+    if (nextValue === currentValue) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(nextValue);
+      setIsEditing(false);
+    } catch {
+      setDraft(rawDigits);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className={cn("relative min-w-[120px]", className)}>
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          placeholder="999999999"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => void save()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void save();
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setDraft(rawDigits);
+              setIsEditing(false);
+            }
+          }}
+          disabled={isSaving}
+          className="w-full rounded border border-blue-300 bg-white px-1.5 py-0.5 text-xs text-slate-800 shadow-sm outline-none ring-2 ring-blue-100"
+        />
+        {isSaving ? (
+          <Loader2 className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-blue-500" />
+        ) : null}
+      </div>
+    );
   }
 
-  const url = whatsAppUrl(formatted);
-
   return (
-    <a
-      href={url ?? undefined}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(event) => event.stopPropagation()}
-      className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded px-1 py-0.5 text-[12px] font-medium text-emerald-700 transition hover:bg-emerald-50",
-        !url && "pointer-events-none",
-        className,
-      )}
-      title={url ? `Abrir WhatsApp: ${formatted}` : formatted}
-    >
-      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
-        <WhatsAppGlyph className="h-3 w-3" />
-      </span>
-      <span className="truncate">{formatted}</span>
-    </a>
+    <div className={cn("flex min-h-[28px] w-full min-w-0 items-center gap-1", className)}>
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+          title={`Abrir WhatsApp: ${formatted}`}
+          aria-label={`Abrir WhatsApp: ${formatted}`}
+        >
+          <WhatsAppGlyph className="h-3.5 w-3.5" />
+        </a>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        title={rawDigits ? "Clic para editar celular" : "Clic para agregar celular"}
+        className="group/cell flex min-h-[28px] min-w-0 flex-1 items-center gap-1 rounded px-1 text-left transition hover:bg-blue-50 hover:ring-1 hover:ring-blue-200"
+      >
+        {rawDigits ? (
+          <span className="truncate text-[12px] font-medium text-emerald-700">{formatted}</span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-[12px] text-slate-400">
+            <Plus className="h-3 w-3" />
+            Agregar celular
+          </span>
+        )}
+        <Pencil className="h-3 w-3 shrink-0 text-blue-500 opacity-0 transition group-hover/cell:opacity-100" />
+      </button>
+    </div>
   );
 }

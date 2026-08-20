@@ -293,11 +293,11 @@ export function NuevoClienteModal({
             </div>
 
             <div>
-              <FieldLabel required>Segmento</FieldLabel>
+              <FieldLabel required>Rubro</FieldLabel>
               <div className="relative">
                 <SelectField
                   icon={Tag}
-                  placeholder="Selecciona un segmento"
+                  placeholder="Selecciona un rubro"
                   value={form.segmento}
                   onValueChange={(value) => updateField("segmento", value)}
                   options={clienteSegmentos}

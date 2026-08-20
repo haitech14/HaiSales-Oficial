@@ -31,7 +31,7 @@ function SegmentDonutChart({
   if (segments.length === 0) {
     return (
       <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
-        Sin datos de segmento
+        Sin datos de rubro
       </div>
     );
   }
@@ -111,7 +111,7 @@ export function ClientesRightPanel({
     <aside className={cn("w-[300px] shrink-0 border-l border-slate-200 bg-white", className)}>
       <div className="space-y-5 p-4">
         <section>
-          <h3 className="app-panel-title">Clientes por segmento</h3>
+          <h3 className="app-panel-title">Clientes por rubro</h3>
           <div className="mt-4">
             <SegmentDonutChart segments={segments} total={totalClients} />
           </div>

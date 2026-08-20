@@ -1,10 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
+import { scheduleHaitechPush } from "@/lib/integraciones/haitech-sync-service";
 import { joinUbicacion, parseUbicacion } from "@/lib/clientes/location-utils";
+import { resolveClienteContacto, extractDniDocumento, isDniDocumento } from "@/lib/clientes/contacto-from-ruc";
 import {
   addPurchaseItemToStats,
   createEmptyPurchaseStats,
   formatEquipoInteres,
   formatUltimaFechaToner,
+  getGuiaAtencionContacto,
   getGuiaClienteStats,
   loadGuiasStatsMaps,
   mergePurchaseStats,
@@ -14,6 +17,7 @@ import {
   type ClientePurchaseStats,
   type GuiasStatsMaps,
 } from "@/lib/clientes/guias-cliente-analytics";
+import { splitEmbeddedDni } from "@/lib/logistica/rotulo-utils";
 import { withRealKpi } from "@/lib/kpi-utils";
 import type { Database } from "@/integrations/supabase/types";
 import {
@@ -94,25 +98,44 @@ function formatBirthday(iso: string) {
   });
 }
 
+export function shouldShowNombreComercial(razonSocial: string, nombreComercial?: string | null): boolean {
+  const trade = nombreComercial?.trim();
+  if (!trade) return false;
+  return trade.localeCompare(razonSocial.trim(), "es", { sensitivity: "accent" }) !== 0;
+}
+
+export function formatClienteRazonSocialDisplay(razonSocial: string, nombreComercial?: string | null): string {
+  const legal = razonSocial.trim();
+  if (!shouldShowNombreComercial(legal, nombreComercial)) return legal;
+  return `${legal} (${nombreComercial!.trim()})`;
+}
+
 function formatCurrency(value: number) {
   return `S/ ${Math.round(value).toLocaleString("es-PE")}`;
 }
 
 function mapRowToClient(row: ClienteRow): ClientRecord {
   const ejecutivo = row.ejecutivo_nombre ?? "Sin asignar";
-  const ubicacion = parseUbicacion(row.ciudad ?? row.distrito);
+  const ubicacion = parseUbicacion(row.ciudad ?? row.distrito, row.pais);
+  const contactoSplit = splitEmbeddedDni(row.contacto_nombre ?? "");
+  const contactoNombre =
+    contactoSplit.contacto !== "—" ? contactoSplit.contacto : row.contacto_nombre ?? "";
+  const dniDocumento = extractDniDocumento(row.ruc ?? "");
   return {
     id: row.id,
     fechaAlta: formatDate(row.fecha_alta),
     ruc: row.ruc ?? "—",
+    dni: dniDocumento || contactoSplit.dni || "—",
     razonSocial: row.razon_social,
+    nombreComercial: row.nombre_comercial?.trim() || "",
     correo: row.correo ?? row.email ?? "—",
     telefono: row.telefono ?? "—",
     direccion: row.direccion ?? "—",
     ciudad: ubicacion.ciudad,
     provincia: ubicacion.provincia,
     distrito: ubicacion.distrito,
-    tipoCliente: formatTipoClienteLabel(row.tipo_cliente ?? "Público"),
+    pais: row.pais?.trim() || "Perú",
+    tipoCliente: formatTipoClienteLabel(row.tipo_cliente ?? "Publico"),
     equipoInteres: "—",
     produccionMensual: row.produccion_mensual?.trim() || "—",
     fechaToner: row.fecha_toner ? formatBirthday(row.fecha_toner) : "—",
@@ -122,7 +145,7 @@ function mapRowToClient(row: ClienteRow): ClientRecord {
     ticketCompra: "—",
     modelosInteres: row.modelos_interes?.trim() || "—",
     observaciones: row.observaciones ?? row.notas ?? "—",
-    contacto: row.contacto_nombre ?? "—",
+    contacto: resolveClienteContacto(row.ruc ?? "", row.razon_social, contactoNombre),
     cargo: row.contacto_cargo ?? "—",
     segmento: row.segmento as ClientSegment,
     estado: ESTADO_FROM_DB[row.estado_comercial] ?? "Activo",
@@ -388,7 +411,7 @@ function mergeModelosInteres(stored: string, purchased: Set<string>): string {
   }
 
   if (modelos.size === 0) return "—";
-  return Array.from(modelos).slice(0, 5).join(", ");
+  return Array.from(modelos).slice(0, 12).join(", ");
 }
 
 async function augmentVentasStatsFromLegacy(
@@ -462,9 +485,16 @@ async function loadVentasStatsMaps(userId: string): Promise<VentasStatsMaps> {
     }
   }
 
-  await augmentVentasStatsFromLegacy(byRuc);
+  if (ventaCount === 0) {
+    await augmentVentasStatsFromLegacy(byRuc);
+  }
 
   return { byClientId, byRuc, ventaCount, ventaTotalSum };
+}
+
+function isBlankDisplay(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return !trimmed || trimmed === "—";
 }
 
 function enrichClientWithPurchaseStats(
@@ -474,29 +504,42 @@ function enrichClientWithPurchaseStats(
 ): ClientRecord {
   const ventasStats = getClientVentasStats(client, ventasMaps);
   const guiaStats = getGuiaClienteStats(client.ruc, guiasMaps);
+  const atencion = getGuiaAtencionContacto(client.ruc, guiasMaps);
   const purchase = mergePurchaseStats(
     ventasStats?.purchase ?? createEmptyPurchaseStats(),
     guiaStats ?? createEmptyPurchaseStats(),
   );
   const ultimaFecha = ventasStats?.fechas[ventasStats.fechas.length - 1];
   const tonerAuto = formatUltimaFechaToner(purchase.tonerFechas);
-  const fechaTonerStored = client.fechaToner !== "—";
+  const dniDocumento = extractDniDocumento(client.ruc);
+  const contactoAuto = client.contacto.trim() === client.razonSocial.trim();
+  const contacto =
+    atencion && !isBlankDisplay(atencion.contacto) && (isBlankDisplay(client.contacto) || contactoAuto)
+      ? atencion.contacto
+      : client.contacto;
+  const dni = dniDocumento || (!isBlankDisplay(client.dni) ? client.dni : atencion?.dni || "—");
+  const telefono =
+    isBlankDisplay(client.telefono) && atencion && !isBlankDisplay(atencion.telefono)
+      ? atencion.telefono
+      : client.telefono;
 
   return {
     ...client,
+    contacto,
+    dni,
+    telefono,
     ultimaCompra: ultimaFecha ? formatDate(ultimaFecha) : client.ultimaCompra,
     frecuenciaCompra: formatFrecuenciaCompra(ventasStats),
     ticketCompra: formatTicketCompra(ventasStats),
     modelosInteres: mergeModelosInteres(
       client.modelosInteres,
-      ventasStats?.modelos ?? purchaseStatsToLabels(purchase),
+      new Set([
+        ...purchaseStatsToLabels(purchase),
+        ...(ventasStats?.modelos ?? []),
+      ]),
     ),
     equipoInteres: formatEquipoInteres(purchase),
-    fechaToner: fechaTonerStored
-      ? client.fechaToner
-      : tonerAuto
-        ? formatDate(tonerAuto)
-        : "—",
+    fechaToner: tonerAuto ? formatDate(tonerAuto) : client.fechaToner,
   };
 }
 
@@ -531,9 +574,12 @@ async function enrichClientsWithVentasStats(
 
 
 async function loadClientesRows(userId: string): Promise<ClienteRow[]> {
+  const select =
+    "id,fecha_alta,ruc,razon_social,nombre_comercial,correo,email,telefono,direccion,ciudad,pais,distrito,tipo_cliente,produccion_mensual,fecha_toner,cumpleanos,modelos_interes,observaciones,notas,contacto_nombre,contacto_cargo,segmento,estado_comercial,ejecutivo_nombre,ejecutivo_iniciales";
+
   const { data, error } = await supabase
     .from("clientes")
-    .select("*")
+    .select(select)
     .eq("user_id", userId)
     .order("fecha_alta", { ascending: false });
 
@@ -542,14 +588,14 @@ async function loadClientesRows(userId: string): Promise<ClienteRow[]> {
     return [];
   }
 
-  if (data?.length) return data;
+  if (data?.length) return data as ClienteRow[];
 
   const imported = await importLegacyClientesIfNeeded(userId);
   if (!imported) return [];
 
   const retry = await supabase
     .from("clientes")
-    .select("*")
+    .select(select)
     .eq("user_id", userId)
     .order("fecha_alta", { ascending: false });
 
@@ -558,7 +604,7 @@ async function loadClientesRows(userId: string): Promise<ClienteRow[]> {
     return [];
   }
 
-  return retry.data ?? [];
+  return (retry.data ?? []) as ClienteRow[];
 }
 
 /** Carga rápida: solo filas de clientes, sin estadísticas de ventas/guias. */
@@ -567,7 +613,6 @@ export async function fetchClientesList(userId: string | null): Promise<Clientes
     return buildSnapshot([], emptyAnalytics(), 0);
   }
 
-  await runOnceLegacySetup(userId);
   const rows = await loadClientesRows(userId);
   return buildSnapshot(rows.map(mapRowToClient), emptyAnalytics(), 0);
 }
@@ -580,6 +625,8 @@ export async function fetchClientesEnrichment(
   if (clients.length === 0) {
     return { clients, analytics: emptyAnalytics(), avgTicket: 0 };
   }
+
+  await runOnceLegacySetup(userId);
 
   const { clients: enriched, maps, avgTicket } = await enrichClientsWithVentasStats(userId, clients);
   const debtByAge = await loadDebtByAge(userId);
@@ -603,10 +650,19 @@ export async function fetchClientesSnapshot(userId: string | null): Promise<Clie
 }
 
 const SEGMENT_TO_DB: Record<string, string> = {
-  corporativo: "Corporativo",
-  pyme: "PYME",
-  minorista: "Minorista",
-  prospecto: "Prospecto",
+  medicina: "Medicina",
+  educacion: "Educación",
+  construccion: "Construcción",
+  ingenieria: "Ingeniería",
+  gobierno: "Gobierno",
+  legal: "Legal",
+  "banca-y-finanzas": "Banca y finanzas",
+  mineria: "Minería",
+  industria: "Industria",
+  comercio: "Comercio",
+  logistica: "Logística",
+  tecnologia: "Tecnología",
+  servicios: "Servicios",
   otros: "Otros",
 };
 
@@ -620,16 +676,19 @@ function parseDistrito(value: string) {
 export type ClienteEditableField =
   | "ruc"
   | "razonSocial"
+  | "nombreComercial"
   | "tipoCliente"
   | "segmento"
   | "produccionMensual"
   | "fechaToner"
   | "contacto"
+  | "dni"
   | "telefono"
   | "direccion"
   | "ciudad"
   | "provincia"
   | "distrito"
+  | "pais"
   | "correo"
   | "cumpleanos"
   | "modelosInteres"
@@ -638,6 +697,16 @@ export type ClienteEditableField =
 function emptyToNull(value: string) {
   const trimmed = value.trim();
   return trimmed === "" || trimmed === "—" ? null : trimmed;
+}
+
+function composeContactoStorage(contacto: string, dni: string, ruc: string) {
+  const name = emptyToNull(contacto);
+  if (extractDniDocumento(ruc)) return name;
+
+  const dniDigits = dni.replace(/\D/g, "").slice(0, 8);
+  if (!name) return dniDigits.length === 8 ? `// DNI ${dniDigits}` : null;
+  if (dniDigits.length === 8) return `${name} // DNI ${dniDigits}`;
+  return name;
 }
 
 function cumpleanosToIso(value: string): string | null {
@@ -661,6 +730,8 @@ function buildClienteUpdatePayload(field: ClienteEditableField, value: string) {
       return { ruc: emptyToNull(value) };
     case "razonSocial":
       return { razon_social: value.trim() };
+    case "nombreComercial":
+      return { nombre_comercial: emptyToNull(value) };
     case "tipoCliente":
       return { tipo_cliente: value.trim() };
     case "segmento":
@@ -671,6 +742,8 @@ function buildClienteUpdatePayload(field: ClienteEditableField, value: string) {
       return { fecha_toner: cumpleanosToIso(value) };
     case "contacto":
       return { contacto_nombre: emptyToNull(value) };
+    case "dni":
+      return {};
     case "telefono":
       return { telefono: emptyToNull(value) };
     case "direccion":
@@ -679,6 +752,8 @@ function buildClienteUpdatePayload(field: ClienteEditableField, value: string) {
     case "provincia":
     case "distrito":
       return { ciudad: emptyToNull(value) };
+    case "pais":
+      return { pais: emptyToNull(value) };
     case "correo": {
       const correo = emptyToNull(value);
       return { correo, email: correo };
@@ -713,7 +788,7 @@ export async function updateClienteFromVentaForm(
       contacto_nombre: emptyToNull(data.contacto),
       telefono: emptyToNull(data.celular),
       direccion: emptyToNull(data.direccion),
-      tipo_cliente: formatTipoClienteLabel(data.tipoCliente.trim() || "Público"),
+      tipo_cliente: formatTipoClienteLabel(data.tipoCliente.trim() || "Publico"),
     })
     .eq("id", clientId)
     .eq("user_id", userId)
@@ -726,6 +801,7 @@ export async function updateClienteFromVentaForm(
   if (!updated?.id) {
     throw new Error("No se encontró el cliente para actualizar");
   }
+  scheduleHaitechPush("cliente", clientId);
 }
 
 /** Resuelve el UUID local del cliente por id, RUC o razón social. */
@@ -774,7 +850,7 @@ export async function updateClienteField(
   clientId: string,
   field: ClienteEditableField,
   value: string,
-  currentClient?: Pick<ClientRecord, "ciudad" | "provincia" | "distrito">,
+  currentClient?: Pick<ClientRecord, "ciudad" | "provincia" | "distrito" | "contacto" | "dni" | "ruc">,
 ): Promise<ClientRecord> {
   let payload: ReturnType<typeof buildClienteUpdatePayload>;
 
@@ -786,6 +862,27 @@ export async function updateClienteField(
     };
     payload = {
       ciudad: emptyToNull(joinUbicacion(nextUbicacion.ciudad, nextUbicacion.provincia, nextUbicacion.distrito)),
+    };
+  } else if (field === "dni") {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    if (isDniDocumento(currentClient?.ruc)) {
+      payload = { ruc: emptyToNull(digits) };
+    } else {
+      payload = {
+        contacto_nombre: composeContactoStorage(
+          currentClient?.contacto ?? "",
+          digits,
+          currentClient?.ruc ?? "",
+        ),
+      };
+    }
+  } else if (field === "contacto") {
+    payload = {
+      contacto_nombre: composeContactoStorage(
+        value,
+        currentClient?.dni ?? "",
+        currentClient?.ruc ?? "",
+      ),
     };
   } else {
     payload = buildClienteUpdatePayload(field, value);
@@ -804,6 +901,7 @@ export async function updateClienteField(
   }
 
   const { clients: enriched } = await enrichClientsWithVentasStats(userId, [mapRowToClient(data)]);
+  scheduleHaitechPush("cliente", clientId);
   return enriched[0];
 }
 
@@ -823,13 +921,14 @@ export async function createCliente(
     .insert({
       user_id: userId,
       razon_social: form.razonSocial.trim(),
+      nombre_comercial: form.nombreComercial.trim() || null,
       ruc: form.rucDni.trim() || null,
       telefono: form.telefono.trim() || null,
       email: form.correo.trim() || null,
       correo: form.correo.trim() || null,
       direccion: form.direccionFiscal.trim() || null,
       contacto_nombre: form.contactoPrincipal.trim() || null,
-      segmento: SEGMENT_TO_DB[form.segmento] ?? "Otros",
+      segmento: SEGMENT_TO_DB[form.segmento] ?? (form.segmento.trim() || "Otros"),
       estado_comercial:
         form.estadoInicial === "prospecto"
           ? "prospecto"
@@ -844,6 +943,7 @@ export async function createCliente(
         .map((part) => part[0]?.toUpperCase() ?? "")
         .join(""),
       distrito: form.distrito ? parseDistrito(form.distrito) : null,
+      pais: "Perú",
       activo: !esBorrador,
     })
     .select("*")
@@ -853,6 +953,7 @@ export async function createCliente(
     throw new Error(error.message);
   }
 
+  scheduleHaitechPush("cliente", data.id);
   return mapRowToClient(data);
 }
 
@@ -877,7 +978,7 @@ function mapRowToPickerOption(row: ClienteRow, matchHint?: string): ClientePicke
   const telefono = row.telefono?.trim() || "";
   const correo = (row.correo ?? row.email)?.trim() || "";
   const direccion = row.direccion?.trim() || "";
-  const tipoCliente = formatTipoClienteLabel(row.tipo_cliente ?? "Público");
+  const tipoCliente = formatTipoClienteLabel(row.tipo_cliente ?? "Publico");
   const hintParts = matchHint
     ? [matchHint]
     : [ruc ? `RUC ${ruc}` : null, contacto || null, telefono || null, ciudad || null].filter(
